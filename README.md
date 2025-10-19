@@ -8,6 +8,7 @@ Static site generator that fetches events from Madrid's open data portal, filter
 
 - Go 1.21+ (tested with 1.25.3)
 - FreeBSD/amd64 target for deployment (cross-compiles from Linux/macOS)
+- [just](https://github.com/casey/just) (optional, for easy task running)
 
 ### Install
 
@@ -19,14 +20,21 @@ cd madrid-events
 # Build for local testing (Linux/macOS)
 go build -o build/buildsite ./cmd/buildsite
 
+# Or with just
+just build
+
 # Build for FreeBSD deployment
 ./scripts/build-freebsd.sh
+# Or: just freebsd
 ```
 
 ### Run Locally
 
 ```bash
-# Generate site with real Madrid API data
+# Build site and start local dev server (http://localhost:8080)
+just dev
+
+# Or manually:
 ./build/buildsite \
   -json-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json \
   -xml-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml \
@@ -34,18 +42,23 @@ go build -o build/buildsite ./cmd/buildsite
   -out-dir ./public \
   -data-dir ./data
 
-# View generated files
-open public/index.html
+# View in browser
+open http://localhost:8080
 ```
 
 ### Run Tests
 
 ```bash
 # All tests
-go test ./...
+just test
+# Or: go test ./...
+
+# With coverage
+just test-coverage
 
 # Integration test
-go test -tags=integration ./cmd/buildsite
+just test-integration
+# Or: go test -tags=integration ./cmd/buildsite
 
 # Specific package
 go test -v ./internal/fetch
@@ -142,16 +155,22 @@ In NFSN web UI → Scheduled Tasks, add:
 ## Development
 
 ```bash
-# Run tests on file change
+# View all available tasks
+just
+
+# Common tasks
+just build          # Build binary
+just test           # Run tests
+just dev            # Build and serve locally
+just clean          # Clean build artifacts
+just fmt            # Format code
+just lint           # Run linter
+just freebsd        # Cross-compile for FreeBSD
+
+# Manual commands also work
 go test ./... -v
-
-# Check test coverage
 go test -cover ./...
-
-# Format code
 go fmt ./...
-
-# Run linter
 go vet ./...
 ```
 
