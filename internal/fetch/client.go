@@ -23,7 +23,7 @@ func NewClient(timeout time.Duration) *Client {
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
-		userAgent: "madrid-events-site-generator/1.0 (https://github.com/yourusername/madrid-events)",
+		userAgent: "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)",
 	}
 }
 

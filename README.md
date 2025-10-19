@@ -13,7 +13,7 @@ Static site generator that fetches events from Madrid's open data portal, filter
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/madrid-events.git
+git clone https://github.com/ericphanson/madrid-events.git
 cd madrid-events
 
 # Build for local testing (Linux/macOS)

@@ -38,7 +38,7 @@ func TestClient_FetchWithUserAgent(t *testing.T) {
 	if capturedUserAgent == "" {
 		t.Error("User-Agent header not set")
 	}
-	if capturedUserAgent != "madrid-events-site-generator/1.0 (https://github.com/yourusername/madrid-events)" {
+	if capturedUserAgent != "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)" {
 		t.Errorf("Unexpected User-Agent: %s", capturedUserAgent)
 	}
 }

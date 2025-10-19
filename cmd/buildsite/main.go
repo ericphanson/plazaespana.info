@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/madrid-events/internal/fetch"
-	"github.com/yourusername/madrid-events/internal/filter"
-	"github.com/yourusername/madrid-events/internal/render"
-	"github.com/yourusername/madrid-events/internal/snapshot"
+	"github.com/ericphanson/madrid-events/internal/fetch"
+	"github.com/ericphanson/madrid-events/internal/filter"
+	"github.com/ericphanson/madrid-events/internal/render"
+	"github.com/ericphanson/madrid-events/internal/snapshot"
 )
 
 // readCSSHash reads the CSS hash from the assets directory.

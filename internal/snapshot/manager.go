@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/yourusername/madrid-events/internal/fetch"
+	"github.com/ericphanson/madrid-events/internal/fetch"
 )
 
 // Manager handles saving and loading event snapshots for fallback resilience.

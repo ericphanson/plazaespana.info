@@ -1,6 +1,6 @@
 package filter
 
-import "github.com/yourusername/madrid-events/internal/fetch"
+import "github.com/ericphanson/madrid-events/internal/fetch"
 
 // DeduplicateByID removes duplicate events based on ID-EVENTO field.
 // Keeps the first occurrence of each unique ID.

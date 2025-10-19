@@ -21,7 +21,7 @@
 Run:
 ```bash
 cd /workspace
-go mod init github.com/yourusername/madrid-events
+go mod init github.com/ericphanson/madrid-events
 ```
 
 Expected: Creates `go.mod` with module name and Go version (1.21+)
@@ -279,7 +279,7 @@ func TestClient_FetchWithUserAgent(t *testing.T) {
 	if capturedUserAgent == "" {
 		t.Error("User-Agent header not set")
 	}
-	if capturedUserAgent != "madrid-events-site-generator/1.0 (https://github.com/yourusername/madrid-events)" {
+	if capturedUserAgent != "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)" {
 		t.Errorf("Unexpected User-Agent: %s", capturedUserAgent)
 	}
 }
@@ -316,7 +316,7 @@ func NewClient(timeout time.Duration) *Client {
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
-		userAgent: "madrid-events-site-generator/1.0 (https://github.com/yourusername/madrid-events)",
+		userAgent: "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)",
 	}
 }
 
@@ -991,7 +991,7 @@ package filter
 import (
 	"testing"
 
-	"github.com/yourusername/madrid-events/internal/fetch"
+	"github.com/ericphanson/madrid-events/internal/fetch"
 )
 
 func TestDeduplicateByID(t *testing.T) {
@@ -1042,7 +1042,7 @@ Create `/workspace/internal/filter/dedupe.go`:
 ```go
 package filter
 
-import "github.com/yourusername/madrid-events/internal/fetch"
+import "github.com/ericphanson/madrid-events/internal/fetch"
 
 // DeduplicateByID removes duplicate events based on ID-EVENTO field.
 // Keeps the first occurrence of each unique ID.
@@ -1095,7 +1095,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/yourusername/madrid-events/internal/fetch"
+	"github.com/ericphanson/madrid-events/internal/fetch"
 )
 
 func TestManager_SaveAndLoad(t *testing.T) {
@@ -1162,7 +1162,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/yourusername/madrid-events/internal/fetch"
+	"github.com/ericphanson/madrid-events/internal/fetch"
 )
 
 // Manager handles saving and loading event snapshots for fallback resilience.
@@ -1599,10 +1599,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/yourusername/madrid-events/internal/fetch"
-	"github.com/yourusername/madrid-events/internal/filter"
-	"github.com/yourusername/madrid-events/internal/render"
-	"github.com/yourusername/madrid-events/internal/snapshot"
+	"github.com/ericphanson/madrid-events/internal/fetch"
+	"github.com/ericphanson/madrid-events/internal/filter"
+	"github.com/ericphanson/madrid-events/internal/render"
+	"github.com/ericphanson/madrid-events/internal/snapshot"
 )
 
 func main() {
@@ -2119,14 +2119,14 @@ Expected: Downloads dependencies and updates go.mod/go.sum
 
 **Step 2: Verify module paths**
 
-If you see errors about "github.com/yourusername/madrid-events", update all import paths in:
+If you see errors about "github.com/ericphanson/madrid-events", update all import paths in:
 - `internal/filter/dedupe.go`
 - `internal/filter/dedupe_test.go`
 - `internal/snapshot/manager.go`
 - `internal/snapshot/manager_test.go`
 - `cmd/buildsite/main.go`
 
-Replace "github.com/yourusername/madrid-events" with your actual module name from go.mod.
+Replace "github.com/ericphanson/madrid-events" with your actual module name from go.mod.
 
 **Step 3: Test all packages**
 
@@ -2264,7 +2264,7 @@ The implementation is complete and ready for deployment.
 - Use `@superpowers:systematic-debugging` if any test fails
 
 **Known customizations needed:**
-- Replace "github.com/yourusername/madrid-events" with actual module path in go.mod
+- Replace "github.com/ericphanson/madrid-events" with actual module path in go.mod
 - Adjust User-Agent string in `internal/fetch/client.go` to include actual repo URL
 - Update CSS hash computation in main.go to read from `public/assets/css.hash`
 
