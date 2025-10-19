@@ -316,4 +316,57 @@ Total: 6/6 tests passing in 0.002s
 
 ---
 
+### Task 8: Time Parsing with Europe/Madrid Timezone (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** [to be added]
+
+**Steps Completed:**
+1. ✅ Wrote failing test in `internal/filter/time_test.go` (TestParseEventDateTime and TestIsInFuture)
+2. ✅ Ran test to verify failure (undefined: ParseEventDateTime, IsInFuture)
+3. ✅ Wrote minimal implementation in `internal/filter/time.go`
+4. ✅ Ran test to verify success - all tests pass
+5. ✅ Updated log file with results
+
+**Files Created:**
+- Created: `internal/filter/time_test.go` - Tests for date/time parsing with Madrid timezone
+- Created: `internal/filter/time.go` - Date/time parsing implementation for Europe/Madrid
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: ParseEventDateTime, undefined: IsInFuture)
+After implementation: PASS
+- TestParseEventDateTime/Valid_date_with_time: PASS (0.00s) [15/11/2025 19:30]
+- TestParseEventDateTime/Valid_date_without_time_(all-day): PASS (0.00s) [20/11/2025 all-day]
+- TestParseEventDateTime/Invalid_date_format: PASS (0.00s) [error expected and received]
+- TestIsInFuture: PASS (0.00s) [future/past time comparison]
+Total: 4/4 new tests passing + 6 from Task 7 = 10/10 tests passing in 0.002s
+```
+
+**Implementation Details:**
+- `ParseEventDateTime()` function that:
+  - Parses Madrid API date format (DD/MM/YYYY)
+  - Supports optional time in HH:MM format
+  - Uses ParseInLocation with Europe/Madrid timezone
+  - Layout: "02/01/2006" for dates, "02/01/2006 15:04" for date+time
+  - Concatenates fecha and hora when time is provided
+  - Returns time.Time in specified timezone or error with context
+- `IsInFuture()` function that:
+  - Compares event time against reference time (typically now)
+  - Returns boolean result using time.After()
+  - Enables filtering of past events
+- Timezone-aware: All times parsed to Europe/Madrid to handle DST correctly
+- Handles all-day events: Empty hora field treated as midnight (start of day)
+
+**Test Coverage:**
+- Valid date with time (15/11/2025 19:30) - validates full datetime parsing
+- Valid date without time (20/11/2025) - validates all-day event handling
+- Invalid date format (2025-11-15) - validates error handling for wrong format
+- Future/past comparison - validates IsInFuture logic with 24-hour offsets
+- Timezone verification - ensures parsed times are in Europe/Madrid location
+
+**Issues Encountered:** None - implementation followed TDD approach exactly as planned, all tests passed on first try
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
