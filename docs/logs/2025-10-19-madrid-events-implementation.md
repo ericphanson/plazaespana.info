@@ -263,4 +263,57 @@ Total: 7/7 tests passing
 
 ---
 
+### Task 7: Haversine Distance Filter (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** [pending]
+
+**Steps Completed:**
+1. ✅ Wrote failing test in `internal/filter/geo_test.go` (TestHaversineDistance and TestWithinRadius)
+2. ✅ Ran test to verify failure (undefined: HaversineDistance, WithinRadius)
+3. ✅ Wrote minimal implementation in `internal/filter/geo.go`
+4. ✅ Ran test to verify success - all tests pass
+5. ✅ Updated log file with results
+
+**Files Created:**
+- Created: `internal/filter/geo_test.go` - Tests for Haversine distance calculation and radius checking
+- Created: `internal/filter/geo.go` - Haversine distance implementation for geo filtering
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: HaversineDistance, undefined: WithinRadius)
+After implementation: PASS
+- TestHaversineDistance/Same_point: PASS (0.00s) [distance: 0.0 km]
+- TestHaversineDistance/Plaza_de_España_to_nearby_point_(~350m): PASS (0.00s) [distance: ~0.35 km]
+- TestHaversineDistance/Plaza_de_España_to_far_point_(~5km): PASS (0.00s) [distance: ~5.0 km]
+- TestWithinRadius/At_plaza: PASS (0.00s) [within 0.35 km radius]
+- TestWithinRadius/Just_inside: PASS (0.00s) [within 0.35 km radius]
+- TestWithinRadius/Far_away: PASS (0.00s) [outside 0.35 km radius]
+Total: 6/6 tests passing in 0.002s
+```
+
+**Implementation Details:**
+- `HaversineDistance()` function that:
+  - Calculates great-circle distance between two GPS coordinates
+  - Uses Haversine formula: a = sin²(Δlat/2) + cos(lat1) × cos(lat2) × sin²(Δlon/2)
+  - Returns distance in kilometers (Earth radius: 6371.0 km)
+  - Converts degrees to radians for trigonometric calculations
+- `WithinRadius()` function that:
+  - Checks if distance between two points ≤ specified radius
+  - Returns boolean result
+  - Wraps HaversineDistance for convenience
+- Constants: `earthRadiusKm = 6371.0` (standard Earth radius in kilometers)
+- All calculations use float64 precision for accuracy
+
+**Test Coverage:**
+- Same point (0 km distance) - validates algorithm handles identical coordinates
+- Nearby point (~350m) - validates accuracy at Plaza de España filter radius (0.35 km)
+- Far point (~5 km) - validates accuracy at larger distances
+- Radius checks for points inside and outside filter boundary
+- Uses tolerance thresholds to account for floating-point precision
+
+**Issues Encountered:** None - implementation followed TDD approach exactly as planned, all tests passed on first try
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
