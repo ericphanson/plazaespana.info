@@ -369,4 +369,56 @@ Total: 4/4 new tests passing + 6 from Task 7 = 10/10 tests passing in 0.002s
 
 ---
 
+### Task 9: Event Deduplication (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** [pending]
+
+**Steps Completed:**
+1. ✅ Wrote failing test in `internal/filter/dedupe_test.go` (TestDeduplicateByID and TestDeduplicateByID_Empty)
+2. ✅ Ran test to verify failure (undefined: DeduplicateByID)
+3. ✅ Wrote minimal implementation in `internal/filter/dedupe.go`
+4. ✅ Ran test to verify success - all tests pass
+5. ✅ Updated log file with results
+
+**Files Created:**
+- Created: `internal/filter/dedupe_test.go` - Tests for event deduplication by ID-EVENTO
+- Created: `internal/filter/dedupe.go` - Event deduplication implementation
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: DeduplicateByID)
+After implementation: PASS
+- TestDeduplicateByID: PASS (0.00s) [5 events -> 3 unique events]
+- TestDeduplicateByID_Empty: PASS (0.00s) [empty list -> empty list]
+- TestHaversineDistance: PASS (0.00s) [from Task 7]
+- TestWithinRadius: PASS (0.00s) [from Task 7]
+- TestParseEventDateTime: PASS (0.00s) [from Task 8]
+- TestIsInFuture: PASS (0.00s) [from Task 8]
+Total: 6/6 tests passing in 0.003s
+```
+
+**Implementation Details:**
+- `DeduplicateByID()` function that:
+  - Accepts []fetch.RawEvent slice
+  - Removes duplicates based on ID-EVENTO field
+  - Keeps first occurrence of each unique ID
+  - Skips events with empty ID-EVENTO (defensive)
+  - Uses map[string]bool to track seen IDs
+  - Returns new slice with unique events only
+  - Preserves original order of first occurrences
+- Algorithm: O(n) time complexity with single pass through events
+- Memory: O(k) where k is number of unique event IDs
+
+**Test Coverage:**
+- Duplicate removal: 5 events with 2 duplicate IDs reduced to 3 unique events
+- First occurrence preserved: Verified "First" title kept over "Duplicate First"
+- All unique IDs present in result: EVT-001, EVT-002, EVT-003
+- Empty list handling: Empty input returns empty output (no panics)
+- Defensive: Skips events without ID-EVENTO field
+
+**Issues Encountered:** None - implementation followed TDD approach exactly as planned, all tests passed on first try
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
