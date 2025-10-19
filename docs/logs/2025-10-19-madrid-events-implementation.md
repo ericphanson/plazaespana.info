@@ -208,7 +208,7 @@ Total: 5/5 tests passing
 ### Task 6: CSV Fetch Fallback (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** [pending]
+**Commit:** 192fec5
 
 **Steps Completed:**
 1. ✅ Wrote failing tests in `internal/fetch/client_test.go` (TestClient_FetchCSV_Semicolon and TestClient_FetchCSV_Comma)
