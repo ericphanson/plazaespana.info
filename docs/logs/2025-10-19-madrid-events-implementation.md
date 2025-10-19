@@ -551,4 +551,67 @@ Total: 1/1 tests passing in 0.003s
 
 ---
 
+### Task 12: JSON Output Rendering (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-20
+**Commit:** edad461
+
+**Steps Completed:**
+1. ✅ Added JSONEvent type to `internal/render/types.go`
+2. ✅ Wrote failing test in `internal/render/json_test.go` (TestJSONRenderer_Render)
+3. ✅ Ran test to verify failure (undefined: NewJSONRenderer)
+4. ✅ Wrote minimal implementation in `internal/render/json.go`
+5. ✅ Ran test to verify success - all tests pass
+6. ✅ Committed changes with Co-Authored-By attribution
+7. ✅ Updated log file with results
+
+**Files Created/Modified:**
+- Modified: `internal/render/types.go` - Added JSONEvent struct with JSON tags
+- Created: `internal/render/json_test.go` - Tests for JSON renderer with atomic write verification
+- Created: `internal/render/json.go` - JSON renderer implementation with atomic writes
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: NewJSONRenderer)
+After implementation: PASS
+- TestHTMLRenderer_Render: PASS (0.00s) [from Task 11]
+- TestJSONRenderer_Render: PASS (0.00s) [NEW - JSON rendering + atomic write]
+Total: 2/2 tests passing in 0.004s
+```
+
+**Implementation Details:**
+- `JSONRenderer` struct (empty, stateless)
+- `NewJSONRenderer()` constructor for consistency with HTMLRenderer
+- `Render()` method that:
+  - Encodes []JSONEvent to JSON with pretty printing (2-space indentation)
+  - Writes to temporary file (outputPath.tmp)
+  - Atomically renames temp file to final location
+  - Returns error with context on any failure
+- `JSONEvent` struct contains:
+  - ID: Event identifier (from ID-EVENTO)
+  - Title: Event title
+  - StartTime: ISO 8601 formatted start time (RFC3339)
+  - EndTime: ISO 8601 formatted end time (optional, omitempty)
+  - VenueName: Venue name (optional, omitempty)
+  - DetailsURL: Link to full event details (optional, omitempty)
+- All fields use JSON tags for proper serialization
+- Optional fields use `omitempty` to minimize output size
+
+**Test Coverage:**
+- JSON encoding and marshaling
+- Single event rendering with all fields populated
+- Output file creation and content verification
+- JSON validity verification (unmarshal roundtrip)
+- Event data integrity (ID field verification)
+
+**Atomic Write Pattern Verification:**
+- Confirmed temp file + rename pattern in implementation
+- Prevents serving partial JSON during updates
+- Critical for cron-based static site generation
+- Matches pattern used in HTMLRenderer (Task 11) and SnapshotManager (Task 10)
+
+**Issues Encountered:** None - implementation followed TDD approach exactly as planned, all tests passed on first try
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
