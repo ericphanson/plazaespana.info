@@ -33,7 +33,7 @@ dev: build hash-css
       -csv-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv \
       -out-dir ./public \
       -data-dir ./data \
-      -lat 40.42338 -lon -3.71217 -radius-km 0.35 \
+      -lat 40.42338 -lon -3.71217 -radius-km 2.0 \
       -timezone Europe/Madrid
 
     echo ""

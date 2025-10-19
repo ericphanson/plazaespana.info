@@ -48,7 +48,7 @@ func main() {
 	dataDir := flag.String("data-dir", "./data", "Data directory for snapshots")
 	lat := flag.Float64("lat", 40.42338, "Reference latitude (Plaza de España)")
 	lon := flag.Float64("lon", -3.71217, "Reference longitude (Plaza de España)")
-	radiusKm := flag.Float64("radius-km", 0.35, "Filter radius in kilometers")
+	radiusKm := flag.Float64("radius-km", 2.0, "Filter radius in kilometers")
 	timezone := flag.String("timezone", "Europe/Madrid", "Timezone for event times")
 
 	flag.Parse()
