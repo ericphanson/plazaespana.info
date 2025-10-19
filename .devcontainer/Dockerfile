@@ -7,6 +7,7 @@ ENV TZ="$TZ"
 ARG CLAUDE_CODE_VERSION=latest
 ARG GH_VERSION=2.63.2
 ARG GIT_DELTA_VERSION=0.18.2
+ARG JUST_VERSION=1.36.0
 ARG ZSH_IN_DOCKER_VERSION=1.2.0
 ARG NODE_MAJOR=20
 
@@ -70,6 +71,20 @@ RUN ARCH=$(dpkg --print-architecture) && \
     wget "https://github.com/dandavison/delta/releases/download/${GIT_DELTA_VERSION}/git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
     dpkg -i "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
     rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
+
+# Install just (command runner)
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in \
+        amd64) JUST_ARCH="x86_64" ;; \
+        arm64) JUST_ARCH="aarch64" ;; \
+        armhf) JUST_ARCH="armv7" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    wget "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${JUST_ARCH}-unknown-linux-musl.tar.gz" && \
+    tar -xzf "just-${JUST_VERSION}-${JUST_ARCH}-unknown-linux-musl.tar.gz" && \
+    mv just /usr/local/bin/ && \
+    chmod +x /usr/local/bin/just && \
+    rm "just-${JUST_VERSION}-${JUST_ARCH}-unknown-linux-musl.tar.gz"
 
 # Create a non-root user
 ARG USERNAME=vscode
