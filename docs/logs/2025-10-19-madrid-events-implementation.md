@@ -319,7 +319,7 @@ Total: 6/6 tests passing in 0.002s
 ### Task 8: Time Parsing with Europe/Madrid Timezone (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** [to be added]
+**Commit:** 80aa29c
 
 **Steps Completed:**
 1. ✅ Wrote failing test in `internal/filter/time_test.go` (TestParseEventDateTime and TestIsInFuture)
