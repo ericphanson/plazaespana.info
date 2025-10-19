@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/yourusername/madrid-events/internal/fetch"
@@ -12,6 +14,17 @@ import (
 	"github.com/yourusername/madrid-events/internal/render"
 	"github.com/yourusername/madrid-events/internal/snapshot"
 )
+
+// readCSSHash reads the CSS hash from the assets directory.
+// Returns "placeholder" if the file doesn't exist or cannot be read.
+func readCSSHash(outDir string) string {
+	hashPath := filepath.Join(outDir, "assets", "css.hash")
+	content, err := os.ReadFile(hashPath)
+	if err != nil {
+		return "placeholder"
+	}
+	return strings.TrimSpace(string(content))
+}
 
 func main() {
 	// Parse flags
@@ -170,7 +183,7 @@ func main() {
 	htmlRenderer := render.NewHTMLRenderer("templates/index.tmpl.html")
 	htmlData := render.TemplateData{
 		Lang:        "es",
-		CSSHash:     "placeholder",
+		CSSHash:     readCSSHash(*outDir),
 		LastUpdated: now.Format("2006-01-02 15:04 MST"),
 		Events:      templateEvents,
 	}
