@@ -19,7 +19,7 @@ func TestParseEventDateTime(t *testing.T) {
 		expectedDay int
 	}{
 		{
-			name:        "Valid date with time",
+			name:        "Valid date with time (DD/MM/YYYY)",
 			fecha:       "15/11/2025",
 			hora:        "19:30",
 			expectError: false,
@@ -33,9 +33,23 @@ func TestParseEventDateTime(t *testing.T) {
 			expectedDay: 20,
 		},
 		{
+			name:        "CSV format YYYY-MM-DD HH:MM:SS.S",
+			fecha:       "2025-10-25 00:00:00.0",
+			hora:        "",
+			expectError: false,
+			expectedDay: 25,
+		},
+		{
+			name:        "CSV format with non-zero time",
+			fecha:       "2026-03-03 18:30:15.0",
+			hora:        "",
+			expectError: false,
+			expectedDay: 3,
+		},
+		{
 			name:        "Invalid date format",
-			fecha:       "2025-11-15",
-			hora:        "19:30",
+			fecha:       "invalid-date",
+			hora:        "",
 			expectError: true,
 		},
 	}

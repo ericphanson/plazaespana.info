@@ -171,10 +171,10 @@ func parseCSV(data []byte, delimiter rune) ([]RawEvent, error) {
 		}
 
 		// Parse coordinates
-		if latStr := getField(row, headerMap, "COORDENADA-LATITUD"); latStr != "" {
+		if latStr := getField(row, headerMap, "LATITUD"); latStr != "" {
 			fmt.Sscanf(latStr, "%f", &event.Lat)
 		}
-		if lonStr := getField(row, headerMap, "COORDENADA-LONGITUD"); lonStr != "" {
+		if lonStr := getField(row, headerMap, "LONGITUD"); lonStr != "" {
 			fmt.Sscanf(lonStr, "%f", &event.Lon)
 		}
 

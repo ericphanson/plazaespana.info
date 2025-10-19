@@ -79,7 +79,7 @@ func TestClient_FetchXML(t *testing.T) {
 }
 
 func TestClient_FetchCSV_Semicolon(t *testing.T) {
-	csvData := `ID-EVENTO;TITULO;FECHA;FECHA-FIN;HORA;NOMBRE-INSTALACION;COORDENADA-LATITUD;COORDENADA-LONGITUD
+	csvData := `ID-EVENTO;TITULO;FECHA;FECHA-FIN;HORA;NOMBRE-INSTALACION;LATITUD;LONGITUD
 CSV-001;CSV Event;25/11/2025;25/11/2025;17:30;CSV Venue;40.423;-3.712`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +114,7 @@ CSV-001;CSV Event;25/11/2025;25/11/2025;17:30;CSV Venue;40.423;-3.712`
 }
 
 func TestClient_FetchCSV_Comma(t *testing.T) {
-	csvData := `ID-EVENTO,TITULO,FECHA,FECHA-FIN,HORA,NOMBRE-INSTALACION,COORDENADA-LATITUD,COORDENADA-LONGITUD
+	csvData := `ID-EVENTO,TITULO,FECHA,FECHA-FIN,HORA,NOMBRE-INSTALACION,LATITUD,LONGITUD
 CSV-002,CSV Event 2,26/11/2025,26/11/2025,18:00,Venue 2,40.42,-3.71`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
