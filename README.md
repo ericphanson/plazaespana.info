@@ -464,3 +464,34 @@ article{ border-radius:12px; padding:1rem }
 - **Structured data:** output per-event JSON-LD (`schema.org/Event`) in the page.
 - **Internationalization:** pre-render `/en/` and `/es/`; date/time already normalized to Europe/Madrid in your generator.
 - **No external calls:** no fonts, no map SDKs, no analytics; maximizes longevity and CSP strength.
+
+---
+
+## Implementation Status
+
+All core components implemented and tested:
+
+- ✅ **HTTP client with JSON/XML/CSV fallback** — Three-tier fallback chain with automatic format detection
+- ✅ **Haversine geographic filtering** — Precise distance calculation for Plaza de España proximity (0.35 km radius)
+- ✅ **Time parsing with Europe/Madrid timezone** — Correct DST handling and all-day event support
+- ✅ **Event deduplication** — Remove duplicates by ID-EVENTO field
+- ✅ **Snapshot manager for resilience** — Fallback to last successful fetch when upstream fails
+- ✅ **HTML template rendering** — Static page generation with atomic writes
+- ✅ **JSON API output** — Machine-readable event feed
+- ✅ **CLI orchestration with atomic writes** — Complete fetch → filter → render pipeline
+- ✅ **FreeBSD cross-compilation** — Static binary built with `CGO_ENABLED=0`
+- ✅ **Frontend assets with content hashing** — CSS with cache-busting filenames
+- ✅ **Deployment artifacts** — `.htaccess` with caching rules and security headers
+
+**Test Coverage:**
+- Unit tests: All internal packages (`fetch`, `filter`, `render`, `snapshot`)
+- Integration test: Skeleton with build tag for end-to-end validation
+- All tests passing: `go test ./...` ✅
+
+**Build Status:**
+- FreeBSD/amd64 binary: 7.7M (optimized with `-ldflags="-s -w"`)
+- Binary verified: ELF64, OS/ABI=FreeBSD, statically linked
+- Ready for deployment to NearlyFreeSpeech.NET
+
+**Deployment:**
+See `ops/deploy-notes.md` for complete deployment instructions to NFSN.

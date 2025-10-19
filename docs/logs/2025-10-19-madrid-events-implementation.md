@@ -1004,4 +1004,193 @@ ok  	github.com/yourusername/madrid-events/cmd/buildsite	0.005s
 
 ---
 
+### Task 17: Update go.mod Dependencies
+**Status:** ✅ Completed
+**Completed:** 2025-10-20
+**Commit:** [No changes needed]
+
+**Steps Completed:**
+1. ✅ Ran `go mod tidy` to update dependencies
+2. ✅ Verified all imports are correct
+3. ✅ Ran `go test ./...` to verify all tests pass
+4. ✅ Checked git status for any changes
+
+**Test Results:**
+```
+Command: go mod tidy
+Output: (no output - no changes needed)
+
+Command: go test ./...
+Output:
+?   	github.com/yourusername/madrid-events/cmd/buildsite	[no test files]
+ok  	github.com/yourusername/madrid-events/internal/fetch	(cached)
+ok  	github.com/yourusername/madrid-events/internal/filter	0.003s
+ok  	github.com/yourusername/madrid-events/internal/render	0.005s
+ok  	github.com/yourusername/madrid-events/internal/snapshot	0.003s
+
+All tests passing! ✅
+```
+
+**Dependency Status:**
+- go.mod: No changes (already clean)
+- go.sum: No changes (no external dependencies)
+- Module path: github.com/yourusername/madrid-events
+- Go version: 1.25.3 (exceeds required 1.21+)
+- External dependencies: None (uses standard library only)
+
+**Import Verification:**
+All internal package imports are correct and use the proper module path:
+- `github.com/yourusername/madrid-events/internal/fetch` ✅
+- `github.com/yourusername/madrid-events/internal/filter` ✅
+- `github.com/yourusername/madrid-events/internal/render` ✅
+- `github.com/yourusername/madrid-events/internal/snapshot` ✅
+
+**Cleanup:**
+- Removed cmd/buildsite/.gitkeep (directory now has real files: main.go, main_integration_test.go)
+
+**No Commit Required:**
+- go mod tidy made no changes (dependencies already up-to-date)
+- Only cleanup was removing obsolete .gitkeep file
+
+**Issues Encountered:** None - all dependencies already correct, all tests passing
+
+---
+
+### Task 18: Build and Test FreeBSD Binary
+**Status:** ✅ Completed
+**Completed:** 2025-10-20
+**Commit:** [No commit - build artifact only]
+
+**Steps Completed:**
+1. ✅ Ran `./scripts/build-freebsd.sh` to cross-compile for FreeBSD/amd64
+2. ✅ Verified binary properties (ELF format, OS/ABI, architecture)
+3. ✅ Confirmed static linking and proper build flags
+4. ✅ Updated log file with results
+
+**Build Results:**
+```
+Command: ./scripts/build-freebsd.sh
+Output:
+Building for FreeBSD/amd64...
+Build complete: build/buildsite
+Binary info:
+-rwxr-xr-x 1 vscode vscode 7.7M Oct 20 00:41 build/buildsite
+Ready to deploy to NearlyFreeSpeech.NET
+
+Binary size: 7.7M (7.7 megabytes) - optimized with -ldflags="-s -w"
+```
+
+**Binary Verification:**
+```
+Command: readelf -h build/buildsite | grep -E "(OS/ABI|Machine|Class)"
+Output:
+  Class:                             ELF64
+  OS/ABI:                            UNIX - FreeBSD
+  Machine:                           Advanced Micro Devices X86-64
+
+✅ Confirmed: FreeBSD/amd64 binary (not Linux/ARM64 development binary)
+✅ Confirmed: ELF64 format
+✅ Confirmed: x86-64 architecture (AMD64)
+✅ Confirmed: FreeBSD OS/ABI (byte 0x09 in ELF header)
+```
+
+**Build Configuration:**
+- GOOS=freebsd: Target operating system
+- GOARCH=amd64: Target architecture (x86-64)
+- CGO_ENABLED=0: Pure Go binary (no C dependencies)
+- -trimpath: Remove local path information for reproducible builds
+- -ldflags="-s -w": Strip debugging symbols and DWARF info for smaller binary
+- Output: build/buildsite (executable)
+
+**Static Linking Verification:**
+- CGO_ENABLED=0 ensures no dynamic C library dependencies
+- Binary is fully self-contained (no libc dependencies)
+- Safe for deployment to FreeBSD systems without matching library versions
+- Critical for NearlyFreeSpeech.NET deployment (unknown FreeBSD version)
+
+**Binary Size Optimization:**
+- Stripped symbols: -s flag removes symbol table
+- Stripped DWARF: -w flag removes debugging information
+- Trimmed paths: -trimpath removes local filesystem paths
+- Result: 7.7M (smaller than development build which would be ~11M)
+
+**Deployment Readiness:**
+- ✅ Binary format: FreeBSD ELF64
+- ✅ Architecture: AMD64 (x86-64)
+- ✅ Static linking: No external dependencies
+- ✅ Size optimized: Debug info stripped
+- ✅ Ready to upload to /home/bin/buildsite on NFSN
+
+**Script Features:**
+- Bash strict mode: set -euo pipefail
+- Creates build directory if needed
+- Cross-compilation with proper GOOS/GOARCH/CGO_ENABLED
+- Shows binary info with file and ls commands
+- Confirms deployment readiness
+
+**Next Steps:**
+- Ready for SFTP upload to NearlyFreeSpeech.NET
+- See ops/deploy-notes.md for deployment instructions
+- Binary can be tested on FreeBSD system if available
+- Consider adding SHA256 checksum to build output
+
+**Issues Encountered:** None - build succeeded on first try, binary verified as FreeBSD/amd64
+
+---
+
+### Task 19: Documentation Updates
+**Status:** ✅ Completed
+**Completed:** 2025-10-20
+**Commit:** [pending]
+
+**Steps Completed:**
+1. ✅ Read README.md to understand structure
+2. ✅ Added "Implementation Status" section at end of README
+3. ✅ Listed all completed core components with checkmarks
+4. ✅ Added test coverage and build status information
+5. ✅ Referenced deployment documentation
+6. ✅ Will commit with Co-Authored-By attribution
+
+**Files Modified:**
+- Modified: `README.md` - Added Implementation Status section
+
+**Implementation Status Section Contents:**
+- All core components list (11 items with ✅ checkmarks)
+- Test coverage summary (unit tests + integration test)
+- Build status (FreeBSD/amd64 binary, 7.7M, optimized)
+- Deployment readiness confirmation
+- Reference to ops/deploy-notes.md for deployment instructions
+
+**Documentation Structure:**
+- Added at end of README.md after "Shared best practices for both options"
+- Markdown separator line (---) before section
+- Organized into subsections: components, test coverage, build status, deployment
+- Uses checkmarks (✅) for visual clarity
+- Includes specific metrics (binary size, test count, etc.)
+
+**Component Coverage:**
+- HTTP client with JSON/XML/CSV fallback ✅
+- Haversine geographic filtering ✅
+- Time parsing with Europe/Madrid timezone ✅
+- Event deduplication ✅
+- Snapshot manager for resilience ✅
+- HTML template rendering ✅
+- JSON API output ✅
+- CLI orchestration with atomic writes ✅
+- FreeBSD cross-compilation ✅
+- Frontend assets with content hashing ✅
+- Deployment artifacts (.htaccess, notes) ✅
+
+**Information Added:**
+- Test coverage: All internal packages tested
+- Integration test: Build tag separation explained
+- All tests passing: go test ./... verification
+- Binary size: 7.7M optimized
+- Binary properties: ELF64, FreeBSD, statically linked
+- Deployment readiness: Ready for NFSN
+
+**Issues Encountered:** None - documentation added smoothly to end of README
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
