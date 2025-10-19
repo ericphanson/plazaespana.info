@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Read(//Users/eph/.config/superpowers/skills/skills/debugging/systematic-debugging/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
