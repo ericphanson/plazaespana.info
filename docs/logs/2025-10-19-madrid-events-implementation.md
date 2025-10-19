@@ -614,4 +614,136 @@ Total: 2/2 tests passing in 0.004s
 
 ---
 
+### Task 13: Main CLI Orchestration
+**Status:** ✅ Completed
+**Completed:** 2025-10-20
+**Commit:** (pending)
+
+**Steps Completed:**
+1. ✅ Read Task 13 requirements from implementation plan
+2. ✅ Reviewed existing internal package structure (fetch, filter, render, snapshot)
+3. ✅ Created `cmd/buildsite/main.go` with complete pipeline orchestration
+4. ✅ Built binary successfully (11M Linux binary)
+5. ✅ Tested CLI structure with fake URL to verify graceful error handling
+6. ✅ Updated log file with results
+
+**Files Created:**
+- Created: `cmd/buildsite/main.go` - Complete CLI orchestration with fetch/filter/render pipeline
+
+**Build Results:**
+```
+Binary: build/buildsite
+Size: 11M (Linux/ARM64 - development build)
+Build command: go build -o build/buildsite ./cmd/buildsite
+Status: SUCCESS (no compilation errors)
+```
+
+**CLI Structure Test:**
+```bash
+./build/buildsite -json-url https://example.com/test.json -out-dir ./public -data-dir ./data
+
+Output:
+2025/10/20 00:32:49 Fetching JSON from: https://example.com/test.json
+2025/10/20 00:32:49 JSON fetch failed: HTTP request failed: Get "https://example.com/test.json": dial tcp 23.215.0.138:443: connect: no route to host
+2025/10/20 00:32:49 All fetch attempts failed, loading snapshot...
+2025/10/20 00:32:49 Failed to load snapshot: reading snapshot: open data/last_success.json: no such file or directory
+
+Status: Expected behavior - CLI handles failures gracefully, attempts full fallback chain
+```
+
+**Implementation Details:**
+
+**Flag Parsing:**
+- `-json-url` (required): Madrid events JSON URL
+- `-xml-url` (optional): XML fallback URL
+- `-csv-url` (optional): CSV fallback URL
+- `-out-dir` (default: ./public): Output directory for static files
+- `-data-dir` (default: ./data): Data directory for snapshots
+- `-lat` (default: 40.42338): Reference latitude (Plaza de España)
+- `-lon` (default: -3.71217): Reference longitude (Plaza de España)
+- `-radius-km` (default: 0.35): Filter radius in kilometers
+- `-timezone` (default: Europe/Madrid): Timezone for event times
+
+**Pipeline Orchestration:**
+
+1. **Initialization:**
+   - Load Europe/Madrid timezone
+   - Create HTTP client with 30s timeout
+   - Create snapshot manager for data directory
+
+2. **Fetch with Fallback Chain:**
+   - Try JSON from primary URL
+   - If fails, try XML from fallback URL
+   - If fails, try CSV from fallback URL
+   - If all fail, load last successful snapshot
+   - Log each attempt and result
+
+3. **Deduplication:**
+   - Call filter.DeduplicateByID() on raw events
+   - Remove duplicate ID-EVENTO entries
+   - Log count after deduplication
+
+4. **Filtering:**
+   - Geographic: Skip events with missing coordinates (0,0)
+   - Geographic: filter.WithinRadius() for Plaza de España proximity
+   - Temporal: Parse event dates with filter.ParseEventDateTime()
+   - Temporal: Use end date if available, otherwise start date
+   - Temporal: filter.IsInFuture() to exclude past events
+   - Log count after filtering
+
+5. **Data Transformation:**
+   - Convert to render.TemplateEvent for HTML rendering
+   - Convert to render.JSONEvent for JSON API output
+   - Format timestamps (human-readable for HTML, RFC3339 for JSON)
+
+6. **Rendering:**
+   - Create output directory with os.MkdirAll
+   - Render HTML to {outDir}/index.html using HTMLRenderer
+   - Render JSON to {outDir}/events.json using JSONRenderer
+   - Both use atomic writes (temp file + rename)
+   - Log generated file paths
+
+7. **Snapshot Management:**
+   - On successful fetch: Save to snapshot for future fallback
+   - On fetch failure: Load from snapshot (with stale data warning)
+   - Snapshot failures logged but don't stop execution
+
+**Error Handling:**
+- Fatal errors: Missing required flags, invalid timezone, snapshot load failure (when all fetches fail)
+- Warning errors: Snapshot save failure (logged but doesn't stop execution)
+- Graceful errors: Individual fetch failures (try next fallback), invalid event dates (skip event)
+- All errors include context with fmt.Errorf wrapping
+
+**Logging Strategy:**
+- Start: Log fetch attempts with URLs
+- Success: Log event counts at each stage (fetched, deduplicated, filtered)
+- Failure: Log specific error messages for each fallback attempt
+- Output: Log generated file paths
+- Completion: Log "Build complete!" message
+
+**Integration with Components:**
+- fetch.NewClient() - HTTP client from Task 4-6
+- fetch.FetchJSON/FetchXML/FetchCSV() - Multi-format fetching
+- filter.DeduplicateByID() - Deduplication from Task 9
+- filter.WithinRadius() - Haversine distance from Task 7
+- filter.ParseEventDateTime() - Timezone parsing from Task 8
+- filter.IsInFuture() - Temporal filtering from Task 8
+- snapshot.NewManager() - Snapshot manager from Task 10
+- render.NewHTMLRenderer() - HTML rendering from Task 11
+- render.NewJSONRenderer() - JSON rendering from Task 12
+
+**Module Path:**
+- Uses: github.com/yourusername/madrid-events (from go.mod)
+- Imports all internal packages correctly
+- No compilation errors or missing dependencies
+
+**Next Steps:**
+- Run go test ./... to verify all tests still pass
+- Commit changes with Co-Authored-By attribution
+- Consider FreeBSD cross-compilation test (Task 18)
+
+**Issues Encountered:** None - CLI compiled successfully, all imports resolved, error handling works as expected
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*

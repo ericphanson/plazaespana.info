@@ -23,7 +23,7 @@ build/
 bin/
 
 # Build artifacts
-buildsite
+/buildsite
 
 # IDE
 .vscode/*
