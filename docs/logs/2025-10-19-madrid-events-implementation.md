@@ -123,4 +123,44 @@ After fix: PASS
 
 ---
 
+### Task 4: HTTP Client with User-Agent (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** (pending)
+
+**Steps Completed:**
+1. ✅ Wrote failing test in `internal/fetch/client_test.go`
+2. ✅ Ran test to verify failure (undefined: NewClient, FetchJSON)
+3. ✅ Wrote minimal implementation in `internal/fetch/client.go`
+4. ✅ Ran test to verify success - all tests pass
+
+**Files Created:**
+- `internal/fetch/client_test.go` - Tests for HTTP client with User-Agent verification
+- `internal/fetch/client.go` - HTTP client implementation with User-Agent header
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: NewClient)
+After implementation: PASS
+- TestNewClient: PASS (0.00s)
+- TestClient_FetchWithUserAgent: PASS (0.01s)
+- TestEvent_UnmarshalJSON: PASS (0.00s) [from Task 3]
+- TestRawEvent_Fields: PASS (0.00s) [from Task 3]
+Total: 4/4 tests passing
+```
+
+**Implementation Details:**
+- `Client` struct with configurable timeout and User-Agent
+- `NewClient()` constructor accepting timeout parameter
+- `FetchJSON()` method that:
+  - Creates HTTP request with User-Agent header
+  - Handles HTTP errors (non-200 status codes)
+  - Reads and decodes JSON response
+  - Returns JSONResponse or error with context
+- User-Agent: "madrid-events-site-generator/1.0 (https://github.com/yourusername/madrid-events)"
+
+**Issues Encountered:** None - implementation followed TDD approach exactly as planned
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
