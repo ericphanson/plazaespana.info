@@ -835,4 +835,115 @@ Status: SUCCESS
 
 ---
 
+### Task 15: Deployment Artifacts - .htaccess
+**Status:** ✅ Completed
+**Completed:** 2025-10-20
+**Commit:** [pending]
+
+**Steps Completed:**
+1. ✅ Created .htaccess with Apache caching rules and security headers
+2. ✅ Created deployment notes with NFSN setup instructions
+3. ✅ Verified file contents match plan requirements
+4. ✅ Will commit with Co-Authored-By attribution
+5. ✅ Will update log file with results
+
+**Files Created:**
+- Created: `ops/htaccess` - Apache configuration for caching and security
+- Created: `ops/deploy-notes.md` - NFSN deployment instructions
+
+**Implementation Details:**
+
+**htaccess Configuration:**
+
+**Caching Rules (mod_expires):**
+- HTML files: 5 minutes (frequent updates from hourly cron)
+- JSON files: 5 minutes (frequent updates from hourly cron)
+- CSS files: 30 days (content-hashed filenames enable safe long-term caching)
+- JavaScript files: 30 days (content-hashed filenames enable safe long-term caching)
+- Images: 30 days (static assets)
+- ExpiresActive On enables mod_expires directives
+
+**Security Headers (mod_headers):**
+- Content-Security-Policy: Strict CSP to prevent XSS attacks
+  - default-src 'none': Block all sources by default
+  - style-src 'self': Allow CSS only from same origin
+  - img-src 'self' data:: Allow images from same origin and data URIs
+  - font-src 'self': Allow fonts only from same origin
+  - base-uri 'none': Prevent base tag hijacking
+  - frame-ancestors 'none': Prevent embedding in frames/iframes
+- Referrer-Policy: no-referrer (privacy protection)
+- X-Content-Type-Options: nosniff (prevent MIME-type sniffing)
+- Permissions-Policy: Disable geolocation, microphone, camera (privacy protection)
+- X-Frame-Options: DENY (prevent clickjacking)
+- Header unset ETag: Remove ETag headers (redundant with FileETag None)
+
+**Cache Control:**
+- FileETag None: Disable ETag generation (use Expires headers instead)
+
+**deploy-notes.md Structure:**
+
+**Initial Setup Section:**
+1. Build FreeBSD binary with ./scripts/build-freebsd.sh
+2. Upload via SFTP:
+   - Binary to /home/bin/buildsite
+   - Template to /home/templates/index.tmpl.html
+   - htaccess to /home/public/.htaccess
+3. Set permissions:
+   - chmod +x on binary
+   - Create directories: /home/data, /home/public/assets, /home/templates
+4. Configure cron job in NFSN web UI:
+   - Full command with all required flags
+   - JSON, XML, CSV URLs for fallback chain
+   - Output directory: /home/public
+   - Data directory: /home/data
+   - Plaza de España coordinates: 40.42338, -3.71217
+   - Filter radius: 0.35 km
+   - Timezone: Europe/Madrid
+   - Suggested schedule: Every hour (or */10 for 10-minute intervals)
+
+**Updates Section:**
+- Simple 3-step update process:
+  1. Build new binary locally
+  2. Upload via SFTP
+  3. Automatic pickup on next cron run
+
+**Deployment Strategy:**
+- Static site hosting on NearlyFreeSpeech.NET (FreeBSD)
+- Cron-based regeneration (hourly or more frequent)
+- Atomic file writes prevent serving partial updates
+- Snapshot fallback provides resilience when upstream API fails
+- Content-hashed CSS enables aggressive browser caching
+- Short TTL for HTML/JSON ensures fresh content (5 minutes)
+
+**Integration Points:**
+- htaccess goes to /home/public/.htaccess (document root)
+- Caching headers match content update frequency (hourly cron)
+- Security headers harden static site against common web attacks
+- Binary runs from /home/bin (non-web-accessible directory)
+- Templates in /home/templates (non-web-accessible)
+- Data snapshots in /home/data (non-web-accessible)
+- Only /home/public exposed via web server
+
+**File Sizes:**
+- ops/htaccess: 819 bytes (21 lines)
+- ops/deploy-notes.md: 1.1K (34 lines)
+
+**Security Considerations:**
+- CSP prevents inline scripts and external resource loading
+- X-Frame-Options prevents clickjacking attacks
+- Referrer-Policy protects user privacy
+- Permissions-Policy disables unnecessary browser features
+- X-Content-Type-Options prevents MIME confusion attacks
+
+**Next Steps:**
+- Commit both files with Co-Authored-By attribution
+- Test .htaccess configuration on NFSN after deployment
+- Verify cache headers with browser dev tools
+- Verify security headers with securityheaders.com or similar
+- Consider adding subresource integrity (SRI) for CSS in future
+
+**Issues Encountered:** None - files created according to plan specifications
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
