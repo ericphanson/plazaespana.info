@@ -16,3 +16,13 @@ type TemplateEvent struct {
 	NombreInstalacion string
 	ContentURL        string
 }
+
+// JSONEvent represents an event in the machine-readable JSON output.
+type JSONEvent struct {
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	StartTime  string `json:"start_time"`
+	EndTime    string `json:"end_time,omitempty"`
+	VenueName  string `json:"venue_name,omitempty"`
+	DetailsURL string `json:"details_url,omitempty"`
+}
