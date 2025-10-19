@@ -22,6 +22,9 @@ go.work.sum
 build/
 bin/
 
+# Build artifacts
+buildsite
+
 # IDE
 .vscode/*
 !.vscode/settings.json
