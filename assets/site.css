@@ -1,0 +1,84 @@
+:root {
+  --bg: #ffffff;
+  --fg: #111;
+  --muted: #666;
+  --card: #f6f6f6;
+  --link: #0645ad;
+  --accent: #2151d1;
+  --radius: 14px;
+  --shadow: 0 1px 4px rgba(0,0,0,.06);
+  --max: 900px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --fg: #eaeaea;
+    --muted: #9aa0a6;
+    --card: #1a1d24;
+    --link: #8ab4f8;
+    --accent: #8ab4f8;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial;
+}
+
+header, main, footer {
+  max-width: var(--max);
+  margin: auto;
+  padding: 1rem;
+}
+
+.stamp {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+}
+
+main {
+  display: grid;
+  gap: 1rem;
+}
+
+article {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+article h2 {
+  margin: 0.2rem 0 0.4rem;
+}
+
+.when, .where {
+  margin: 0.25rem 0;
+}
+
+a {
+  color: var(--link);
+}
+
+a:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+footer {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 2rem;
+}

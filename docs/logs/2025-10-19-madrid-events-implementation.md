@@ -746,4 +746,93 @@ Status: Expected behavior - CLI handles failures gracefully, attempts full fallb
 
 ---
 
+### Task 14: Frontend Assets - CSS
+**Status:** ✅ Completed
+**Completed:** 2025-10-20
+**Commit:** (pending)
+
+**Steps Completed:**
+1. ✅ Created hand-rolled CSS file (assets/site.css)
+2. ✅ Created asset hashing script (scripts/hash-assets.sh)
+3. ✅ Made script executable (chmod +x)
+4. ✅ Tested asset hashing script successfully
+5. ✅ Will commit with Co-Authored-By attribution
+
+**Files Created:**
+- Created: `assets/site.css` - Hand-rolled CSS with dark mode support
+- Created: `scripts/hash-assets.sh` - Content hashing script for cache busting
+
+**Script Test Results:**
+```
+Command: ./scripts/hash-assets.sh
+Output: Generated: public/assets/site.aabdcaf3.css
+
+Generated Files:
+- public/assets/site.aabdcaf3.css (1.2K)
+- public/assets/css.hash (contains: aabdcaf3)
+
+Hash Value: aabdcaf3 (first 8 chars of SHA256)
+Status: SUCCESS
+```
+
+**Implementation Details:**
+
+**CSS Features:**
+- CSS custom properties (variables) for theming
+- Automatic dark mode support via `@media (prefers-color-scheme: dark)`
+- Light mode colors: white background, dark text, blue links
+- Dark mode colors: dark background (#0f1115), light text, blue links (#8ab4f8)
+- Semantic variables: --bg, --fg, --muted, --card, --link, --accent, --radius, --shadow, --max
+- Responsive design: max-width of 900px for content
+- System font stack: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu
+- Card-based layout: rounded corners (14px), subtle shadows
+- Grid-based main layout with 1rem gap
+- Accessibility: focus states with outline, semantic color variables
+
+**CSS Selectors:**
+- Universal box-sizing: border-box
+- Smooth scrolling on html element
+- Body: zero margin, variable-based theming, 16px base font size, 1.55 line height
+- Container elements: max-width constraint, centered, 1rem padding
+- Article cards: background, border-radius, padding, box-shadow
+- Typography: muted timestamps (.stamp), event time/location (.when, .where)
+- Links: colored, focus outline with 2px solid accent color
+- Footer: muted color, smaller font, top margin
+
+**Hash Script Features:**
+- Bash script with strict error handling (set -euo pipefail)
+- Checks if assets/site.css exists before processing
+- Generates SHA256 hash using sha256sum
+- Truncates to first 8 characters for filename
+- Copies CSS to public/assets/site.$HASH.css
+- Writes hash to public/assets/css.hash for template integration
+- Creates public/assets directory if needed
+- Provides user feedback on success/warning
+
+**Integration Points:**
+- Hash value (aabdcaf3) will be read by main.go to update CSSHash in TemplateData
+- HTML template references /assets/site.{{.CSSHash}}.css for cache busting
+- .htaccess (Task 15) will set 30-day cache for CSS files (safe with content hashing)
+- Script should be run before deployment or as part of build process
+
+**Cache Busting Strategy:**
+- Content-based hashing ensures unique filename per CSS version
+- Browser can cache aggressively (30 days) without stale content risk
+- Template dynamically references correct hashed filename
+- No need for query string cache busting (?v=123)
+
+**File Sizes:**
+- site.css: 1.2K (1,229 bytes) - hand-rolled, no bloat
+- site.aabdcaf3.css: 1.2K (identical copy with hashed name)
+- css.hash: 9 bytes (8-char hash + newline)
+
+**Next Steps:**
+- Update main.go to read css.hash file and use value in TemplateData.CSSHash
+- Currently main.go uses placeholder "placeholder" for CSSHash
+- Consider running hash-assets.sh as part of build-freebsd.sh or separate deploy script
+
+**Issues Encountered:** None - script worked perfectly on first run, hash generated successfully
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
