@@ -166,7 +166,7 @@ Total: 4/4 tests passing
 ### Task 5: XML Fetch Fallback (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** [pending]
+**Commit:** 6efae97
 
 **Steps Completed:**
 1. ✅ Wrote failing test in `internal/fetch/client_test.go` (TestClient_FetchXML)
