@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="utf-8">
+  <title>{{if eq .Lang "es"}}Eventos en Plaza de España{{else}}Plaza de España events{{end}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/assets/site.{{.CSSHash}}.css">
+</head>
+<body>
+  <header>
+    <h1>{{if eq .Lang "es"}}Eventos en Plaza de España (Madrid){{else}}Events at Plaza de España (Madrid){{end}}</h1>
+    <p class="stamp">Última actualización: {{.LastUpdated}}</p>
+  </header>
+
+  <main>
+    {{range .Events}}
+    <article id="ev-{{.IDEvento}}">
+      <h2>{{.Titulo}}</h2>
+      <p class="when">{{.StartHuman}}</p>
+      {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+      {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+    </article>
+    {{else}}
+    <p>No hay eventos próximos.</p>
+    {{end}}
+  </main>
+
+  <footer>
+    <p>Datos: <a href="https://datos.madrid.es">Ayuntamiento de Madrid – datos.madrid.es</a></p>
+  </footer>
+</body>
+</html>
