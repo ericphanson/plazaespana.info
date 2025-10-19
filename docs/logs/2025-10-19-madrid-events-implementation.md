@@ -421,4 +421,57 @@ Total: 6/6 tests passing in 0.003s
 
 ---
 
+### Task 10: Snapshot Manager for Resilience (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** [pending]
+
+**Steps Completed:**
+1. ✅ Wrote failing test in `internal/snapshot/manager_test.go` (TestManager_SaveAndLoad and TestManager_LoadSnapshot_NotExists)
+2. ✅ Ran test to verify failure (undefined: NewManager)
+3. ✅ Wrote minimal implementation in `internal/snapshot/manager.go`
+4. ✅ Ran test to verify success - all tests pass
+5. ✅ Updated log file with results
+
+**Files Created:**
+- Created: `internal/snapshot/manager_test.go` - Tests for snapshot save/load with atomic writes
+- Created: `internal/snapshot/manager.go` - Snapshot manager implementation for fallback resilience
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: NewManager)
+After implementation: PASS
+- TestManager_SaveAndLoad: PASS (0.00s) [save 2 events, load 2 events]
+- TestManager_LoadSnapshot_NotExists: PASS (0.00s) [error expected and received]
+Total: 2/2 tests passing in 0.005s
+```
+
+**Implementation Details:**
+- `Manager` struct with configurable data directory
+- `NewManager()` constructor accepting data directory path
+- `SaveSnapshot()` method that:
+  - Creates data directory if needed (os.MkdirAll with 0755 permissions)
+  - Encodes events to JSON with pretty printing (2-space indentation)
+  - Writes to temporary file (last_success.json.tmp)
+  - Atomically renames temp file to final location (last_success.json)
+  - Returns error with context on any failure
+- `LoadSnapshot()` method that:
+  - Reads last_success.json from data directory
+  - Decodes JSON to []fetch.RawEvent
+  - Returns events or error with context
+  - Returns error if snapshot file doesn't exist (expected behavior for fallback)
+- Atomic writes prevent serving partial updates during file writes
+- Uses filepath.Join for cross-platform path construction
+
+**Test Coverage:**
+- Save and load cycle: 2 events saved, 2 events loaded with correct content
+- Atomic write: Verifies snapshot file exists after SaveSnapshot
+- Data integrity: Verifies loaded event IDs match saved event IDs
+- Non-existent file: LoadSnapshot returns error when file doesn't exist (expected)
+- Temporary directory: Uses t.TempDir() for isolated test execution
+
+**Issues Encountered:** None - implementation followed TDD approach exactly as planned, all tests passed on first try
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
