@@ -266,7 +266,7 @@ Total: 7/7 tests passing
 ### Task 7: Haversine Distance Filter (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** [pending]
+**Commit:** 251f866
 
 **Steps Completed:**
 1. ✅ Wrote failing test in `internal/filter/geo_test.go` (TestHaversineDistance and TestWithinRadius)
