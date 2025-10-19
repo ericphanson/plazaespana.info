@@ -127,11 +127,54 @@
 **Phase 0 Complete:**
 - ✅ Build reporting infrastructure working perfectly
 - ✅ Report shows all fetch attempts, filter stats, warnings
+- ✅ Enhanced Markdown report with diagrams
 
 **Phase 1 Partial:**
 - ✅ Default radius fixed (1 → 204 events!)
 - ✅ HTML has UTF-8 charset
 - ❌ Encoding corruption persists (needs CSV encoding fix)
+
+---
+
+### Task 0.5: Enhanced Markdown Report (Added)
+
+**Status:** COMPLETED
+**Started:** 2025-10-20 01:55:00
+**Ended:** 2025-10-20 01:56:00
+
+**Goal:** Enhance build report with Markdown format, tables, and Mermaid diagrams
+
+**Changes made:**
+
+✅ Created `internal/report/markdown.go`:
+- WriteMarkdown() method with full Markdown formatting
+- Markdown tables for all data (fetch attempts, processing, output)
+- Mermaid pipeline diagram showing data flow
+- Mermaid pie chart for geographic filter distribution
+- Each fetch attempt as its own subsection
+- Error analysis with specific recommendations (JSON newline, XML root element)
+- Visual ASCII pipeline flow with event counts at each stage
+- Performance metrics table
+
+✅ Updated `cmd/buildsite/main.go`:
+- Write both text and Markdown reports
+- Text report: `public/build-report.txt`
+- Markdown report: `public/build-report.md`
+
+**Test Results:**
+- Build successful
+- Both reports generated
+- Markdown report verified with:
+  - ✅ Mermaid diagrams rendering correctly
+  - ✅ Tables properly formatted
+  - ✅ Each fetch attempt in own subsection
+  - ✅ Error details with analysis and recommendations
+  - ✅ Pipeline visualization showing 1001 → 204 events
+
+**Duration:** ~1 minute
+**Status:** ✓ SUCCESS
+
+---
 
 **Next Steps:**
 Based on build report insights:
@@ -139,5 +182,5 @@ Based on build report insights:
 2. Fix JSON parsing (handle `\n` in strings)
 3. Fix XML structure (Contenidos root element)
 
-All issues are now clearly documented in build-report.txt!
+All issues are now clearly documented in build-report.md with visual diagrams!
 

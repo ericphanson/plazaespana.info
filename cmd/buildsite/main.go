@@ -30,13 +30,24 @@ func readCSSHash(outDir string) string {
 func main() {
 	// Initialize build report
 	buildReport := report.NewBuildReport()
+	var outputDir string
 	defer func() {
 		buildReport.Duration = time.Since(buildReport.BuildTime)
-		reportPath := filepath.Join("./public", "build-report.txt")
-		if f, err := os.Create(reportPath); err == nil {
+
+		// Write text report
+		txtPath := filepath.Join(outputDir, "build-report.txt")
+		if f, err := os.Create(txtPath); err == nil {
 			buildReport.WriteText(f)
 			f.Close()
-			log.Println("Build report written to:", reportPath)
+			log.Println("Text report written to:", txtPath)
+		}
+
+		// Write markdown report
+		mdPath := filepath.Join(outputDir, "build-report.md")
+		if f, err := os.Create(mdPath); err == nil {
+			buildReport.WriteMarkdown(f)
+			f.Close()
+			log.Println("Markdown report written to:", mdPath)
 		}
 	}()
 
@@ -52,6 +63,9 @@ func main() {
 	timezone := flag.String("timezone", "Europe/Madrid", "Timezone for event times")
 
 	flag.Parse()
+
+	// Capture output directory for deferred report writing
+	outputDir = *outDir
 
 	if *jsonURL == "" {
 		log.Fatal("Missing required flag: -json-url")

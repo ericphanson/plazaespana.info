@@ -13,8 +13,8 @@ import (
 func ParseEventDateTime(fecha, hora string, loc *time.Location) (time.Time, error) {
 	// Try different date formats in order of likelihood
 	formats := []struct {
-		layout   string
-		useHora  bool // whether to append hora field
+		layout  string
+		useHora bool // whether to append hora field
 	}{
 		{"2006-01-02 15:04:05.0", false}, // CSV format with fractional seconds (already has time)
 		{"2006-01-02 15:04:05", false},   // CSV format without fractional seconds (already has time)
