@@ -474,4 +474,81 @@ Total: 2/2 tests passing in 0.005s
 
 ---
 
+### Task 11: HTML Template Rendering (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** 953a733
+
+**Steps Completed:**
+1. ✅ Created HTML template file (templates/index.tmpl.html)
+2. ✅ Created types.go with TemplateData and TemplateEvent structs
+3. ✅ Wrote failing test in `internal/render/html_test.go` (TestHTMLRenderer_Render)
+4. ✅ Ran test to verify failure (undefined: NewHTMLRenderer)
+5. ✅ Wrote minimal implementation in `internal/render/html.go`
+6. ✅ Ran test to verify success - all tests pass
+7. ✅ Committed changes with proper attribution
+8. ✅ Updated log file with results
+
+**Files Created:**
+- Created: `templates/index.tmpl.html` - HTML template with Spanish localization
+- Created: `internal/render/types.go` - TemplateData and TemplateEvent type definitions
+- Created: `internal/render/html_test.go` - Tests for HTML renderer with temp file verification
+- Created: `internal/render/html.go` - HTML renderer implementation with atomic writes
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: NewHTMLRenderer)
+After implementation: PASS
+- TestHTMLRenderer_Render: PASS (0.00s) [template rendering + atomic write]
+Total: 1/1 tests passing in 0.003s
+```
+
+**Implementation Details:**
+- `HTMLRenderer` struct with configurable template path
+- `NewHTMLRenderer()` constructor accepting template path
+- `Render()` method that:
+  - Parses HTML template using html/template package
+  - Writes to temporary file (outputPath.tmp)
+  - Executes template with provided TemplateData
+  - Atomically renames temp file to final location
+  - Cleans up temp file on template execution error
+  - Returns error with context on any failure
+- `TemplateData` struct contains:
+  - Lang: Language code for localization (es/en)
+  - CSSHash: Content hash for cache-busting CSS filename
+  - LastUpdated: Formatted timestamp of generation
+  - Events: Slice of TemplateEvent structs for rendering
+- `TemplateEvent` struct contains:
+  - IDEvento: Event ID for anchor links
+  - Titulo: Event title
+  - StartHuman: Human-readable start time
+  - NombreInstalacion: Venue name
+  - ContentURL: Link to full event details
+- HTML template features:
+  - Conditional Spanish/English titles based on Lang
+  - Content-hashed CSS reference (/assets/site.{{.CSSHash}}.css)
+  - Semantic HTML5 structure (header, main, article, footer)
+  - Empty state message when no events available
+  - Madrid open data attribution in footer
+  - Conditional rendering of venue and details link
+
+**Test Coverage:**
+- Template parsing and execution
+- Data binding (Lang, LastUpdated, Events)
+- Multiple events rendering (2 test events)
+- Output file creation and content verification
+- String matching for rendered event titles
+
+**Atomic Write Pattern Verification:**
+- Confirmed temp file + rename pattern in implementation
+- Prevents serving partial HTML during updates
+- Critical for cron-based static site generation
+- Cleanup of temp file on template execution errors
+
+**Issues Encountered:**
+- Initial types.go had unused "time" import (fixed before test run)
+- No other issues - implementation followed TDD approach exactly as planned
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
