@@ -205,4 +205,62 @@ Total: 5/5 tests passing
 
 ---
 
+### Task 6: CSV Fetch Fallback (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** [pending]
+
+**Steps Completed:**
+1. ✅ Wrote failing tests in `internal/fetch/client_test.go` (TestClient_FetchCSV_Semicolon and TestClient_FetchCSV_Comma)
+2. ✅ Ran test to verify failure (undefined: FetchCSV)
+3. ✅ Added `bytes` and `encoding/csv` imports to `internal/fetch/client.go`
+4. ✅ Wrote minimal implementation (FetchCSV method, parseCSV and getField helper functions)
+5. ✅ Fixed delimiter detection issue (added validation for ID-EVENTO column to detect wrong delimiter)
+6. ✅ Ran test to verify success - all tests pass
+
+**Files Modified:**
+- Modified: `internal/fetch/client_test.go` - Added TestClient_FetchCSV_Semicolon and TestClient_FetchCSV_Comma
+- Modified: `internal/fetch/client.go` - Added FetchCSV method, parseCSV and getField helper functions
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: FetchCSV)
+After initial implementation: FAIL (TestClient_FetchCSV_Comma failing - empty event data)
+After delimiter validation fix: PASS
+- TestNewClient: PASS (0.00s)
+- TestClient_FetchWithUserAgent: PASS (0.00s)
+- TestClient_FetchXML: PASS (0.00s) [from Task 5]
+- TestClient_FetchCSV_Semicolon: PASS (0.00s) [NEW]
+- TestClient_FetchCSV_Comma: PASS (0.00s) [NEW]
+- TestEvent_UnmarshalJSON: PASS (0.00s) [from Task 3]
+- TestRawEvent_Fields: PASS (0.00s) [from Task 3]
+Total: 7/7 tests passing
+```
+
+**Implementation Details:**
+- `FetchCSV()` method that:
+  - Creates HTTP request with User-Agent header
+  - Handles HTTP errors (non-200 status codes)
+  - Reads response body into memory
+  - Tries semicolon delimiter first (Madrid's preferred format)
+  - Falls back to comma delimiter if semicolon fails or produces no events
+  - Returns []RawEvent or error with context
+- `parseCSV()` helper function that:
+  - Parses CSV with specified delimiter
+  - Builds header map from first row
+  - Validates presence of ID-EVENTO column (detects wrong delimiter usage)
+  - Parses coordinates using fmt.Sscanf
+  - Returns []RawEvent or error
+- `getField()` helper function for safe column access by name
+- Supports both semicolon (;) and comma (,) delimiters with automatic fallback
+
+**Issues Encountered:**
+- Initial implementation had a subtle bug: when parsing comma-delimited CSV with semicolon delimiter, the CSV parser still "succeeds" but treats entire lines as single fields
+- This caused the semicolon parse to return 2 records (header + data) but with only 1 field each containing the full comma-separated line
+- The headerMap would not contain "ID-EVENTO" as a separate key
+- Fixed by adding validation: check if "ID-EVENTO" column exists in headerMap before processing data rows
+- This ensures the fallback mechanism works correctly by detecting incorrect delimiter usage
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*

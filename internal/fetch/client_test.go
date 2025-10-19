@@ -77,3 +77,54 @@ func TestClient_FetchXML(t *testing.T) {
 		t.Errorf("Expected IDEvento 'XML-001', got '%s'", events[0].IDEvento)
 	}
 }
+
+func TestClient_FetchCSV_Semicolon(t *testing.T) {
+	csvData := `ID-EVENTO;TITULO;FECHA;FECHA-FIN;HORA;NOMBRE-INSTALACION;COORDENADA-LATITUD;COORDENADA-LONGITUD
+CSV-001;CSV Event;25/11/2025;25/11/2025;17:30;CSV Venue;40.423;-3.712`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		w.Write([]byte(csvData))
+	}))
+	defer server.Close()
+
+	client := NewClient(5 * time.Second)
+	events, err := client.FetchCSV(server.URL)
+	if err != nil {
+		t.Fatalf("FetchCSV failed: %v", err)
+	}
+
+	if len(events) != 1 {
+		t.Fatalf("Expected 1 event, got %d", len(events))
+	}
+	if events[0].IDEvento != "CSV-001" {
+		t.Errorf("Expected IDEvento 'CSV-001', got '%s'", events[0].IDEvento)
+	}
+	if events[0].Titulo != "CSV Event" {
+		t.Errorf("Expected Titulo 'CSV Event', got '%s'", events[0].Titulo)
+	}
+}
+
+func TestClient_FetchCSV_Comma(t *testing.T) {
+	csvData := `ID-EVENTO,TITULO,FECHA,FECHA-FIN,HORA,NOMBRE-INSTALACION,COORDENADA-LATITUD,COORDENADA-LONGITUD
+CSV-002,CSV Event 2,26/11/2025,26/11/2025,18:00,Venue 2,40.42,−3.71`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		w.Write([]byte(csvData))
+	}))
+	defer server.Close()
+
+	client := NewClient(5 * time.Second)
+	events, err := client.FetchCSV(server.URL)
+	if err != nil {
+		t.Fatalf("FetchCSV failed: %v", err)
+	}
+
+	if len(events) != 1 {
+		t.Fatalf("Expected 1 event, got %d", len(events))
+	}
+	if events[0].IDEvento != "CSV-002" {
+		t.Errorf("Expected IDEvento 'CSV-002', got '%s'", events[0].IDEvento)
+	}
+}
