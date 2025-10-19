@@ -2,6 +2,7 @@ package fetch
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -53,4 +54,41 @@ func (c *Client) FetchJSON(url string) (*JSONResponse, error) {
 	}
 
 	return &result, nil
+}
+
+// XMLResponse wraps the Madrid API XML structure.
+type XMLResponse struct {
+	XMLName xml.Name   `xml:"response"`
+	Events  []RawEvent `xml:"event"`
+}
+
+// FetchXML fetches and decodes XML from the given URL.
+func (c *Client) FetchXML(url string) ([]RawEvent, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("User-Agent", c.userAgent)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	var result XMLResponse
+	if err := xml.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("decoding XML: %w", err)
+	}
+
+	return result.Events, nil
 }

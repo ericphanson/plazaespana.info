@@ -163,4 +163,46 @@ Total: 4/4 tests passing
 
 ---
 
+### Task 5: XML Fetch Fallback (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** [pending]
+
+**Steps Completed:**
+1. ✅ Wrote failing test in `internal/fetch/client_test.go` (TestClient_FetchXML)
+2. ✅ Ran test to verify failure (undefined: FetchXML)
+3. ✅ Added `encoding/xml` import to `internal/fetch/client.go`
+4. ✅ Wrote minimal implementation (XMLResponse type and FetchXML method)
+5. ✅ Ran test to verify success - all tests pass
+
+**Files Modified:**
+- Modified: `internal/fetch/client_test.go` - Added TestClient_FetchXML
+- Modified: `internal/fetch/client.go` - Added XMLResponse type and FetchXML method
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined: FetchXML)
+After implementation: PASS
+- TestNewClient: PASS (0.00s)
+- TestClient_FetchWithUserAgent: PASS (0.00s)
+- TestClient_FetchXML: PASS (0.00s) [NEW]
+- TestEvent_UnmarshalJSON: PASS (0.00s) [from Task 3]
+- TestRawEvent_Fields: PASS (0.00s) [from Task 3]
+Total: 5/5 tests passing
+```
+
+**Implementation Details:**
+- `XMLResponse` struct wraps Madrid API XML structure with `<response>` root and `<event>` children
+- `FetchXML()` method that:
+  - Creates HTTP request with User-Agent header
+  - Handles HTTP errors (non-200 status codes)
+  - Reads and decodes XML response
+  - Returns []RawEvent or error with context
+- Uses same error handling pattern as FetchJSON for consistency
+- RawEvent struct already had XML tags from Task 3, enabling seamless XML unmarshaling
+
+**Issues Encountered:** None - implementation followed TDD approach exactly as planned
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*

@@ -42,3 +42,38 @@ func TestClient_FetchWithUserAgent(t *testing.T) {
 		t.Errorf("Unexpected User-Agent: %s", capturedUserAgent)
 	}
 }
+
+func TestClient_FetchXML(t *testing.T) {
+	xmlData := `<?xml version="1.0" encoding="UTF-8"?>
+<response>
+	<event>
+		<ID-EVENTO>XML-001</ID-EVENTO>
+		<TITULO>XML Event</TITULO>
+		<FECHA>20/11/2025</FECHA>
+		<FECHA-FIN>20/11/2025</FECHA-FIN>
+		<HORA>18:00</HORA>
+		<NOMBRE-INSTALACION>Test Venue</NOMBRE-INSTALACION>
+		<COORDENADA-LATITUD>40.42</COORDENADA-LATITUD>
+		<COORDENADA-LONGITUD>-3.71</COORDENADA-LONGITUD>
+	</event>
+</response>`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		w.Write([]byte(xmlData))
+	}))
+	defer server.Close()
+
+	client := NewClient(5 * time.Second)
+	events, err := client.FetchXML(server.URL)
+	if err != nil {
+		t.Fatalf("FetchXML failed: %v", err)
+	}
+
+	if len(events) != 1 {
+		t.Fatalf("Expected 1 event, got %d", len(events))
+	}
+	if events[0].IDEvento != "XML-001" {
+		t.Errorf("Expected IDEvento 'XML-001', got '%s'", events[0].IDEvento)
+	}
+}
