@@ -103,11 +103,19 @@ CSV-001;CSV Event;25/11/2025;25/11/2025;17:30;CSV Venue;40.423;-3.712`
 	if events[0].Titulo != "CSV Event" {
 		t.Errorf("Expected Titulo 'CSV Event', got '%s'", events[0].Titulo)
 	}
+	// Validate coordinates
+	if events[0].Lat != 40.42 && events[0].Lat != 40.423 {
+		t.Errorf("Expected Lat ~40.42, got %f", events[0].Lat)
+	}
+	// Check longitude is negative and close to expected value
+	if events[0].Lon >= 0 || events[0].Lon < -4 || events[0].Lon > -3 {
+		t.Errorf("Expected Lon ~-3.71, got %f", events[0].Lon)
+	}
 }
 
 func TestClient_FetchCSV_Comma(t *testing.T) {
 	csvData := `ID-EVENTO,TITULO,FECHA,FECHA-FIN,HORA,NOMBRE-INSTALACION,COORDENADA-LATITUD,COORDENADA-LONGITUD
-CSV-002,CSV Event 2,26/11/2025,26/11/2025,18:00,Venue 2,40.42,−3.71`
+CSV-002,CSV Event 2,26/11/2025,26/11/2025,18:00,Venue 2,40.42,-3.71`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
@@ -126,5 +134,13 @@ CSV-002,CSV Event 2,26/11/2025,26/11/2025,18:00,Venue 2,40.42,−3.71`
 	}
 	if events[0].IDEvento != "CSV-002" {
 		t.Errorf("Expected IDEvento 'CSV-002', got '%s'", events[0].IDEvento)
+	}
+	// Validate coordinates
+	if events[0].Lat != 40.42 && events[0].Lat != 40.423 {
+		t.Errorf("Expected Lat ~40.42, got %f", events[0].Lat)
+	}
+	// Check longitude is negative and close to expected value
+	if events[0].Lon >= 0 || events[0].Lon < -4 || events[0].Lon > -3 {
+		t.Errorf("Expected Lon ~-3.71, got %f", events[0].Lon)
 	}
 }
