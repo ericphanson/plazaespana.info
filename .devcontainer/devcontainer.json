@@ -1,0 +1,43 @@
+{
+  "name": "Plaza España Calendar - Go + FreeBSD",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go"
+      ],
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.gopath": "/go",
+        "go.goroot": "/usr/local/go"
+      }
+    }
+  },
+  "runArgs": [
+    "--cap-add=SYS_PTRACE",
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW",
+    "--security-opt",
+    "seccomp=unconfined"
+  ],
+  "remoteUser": "vscode",
+  "postCreateCommand": "go version && go env",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "waitFor": "postStartCommand",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true,
+      "username": "vscode",
+      "userUid": "1000",
+      "userGid": "1000"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  }
+}

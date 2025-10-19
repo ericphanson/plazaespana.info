@@ -1,0 +1,45 @@
+# Build outputs
+build/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Go workspace
+go.work
+go.work.sum
+
+# Output of the go coverage tool
+*.out
+
+# Dependencies
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Public/generated files
+public/
+
+# Data files
+data/
+
+# Logs
+logs/
+*.log
