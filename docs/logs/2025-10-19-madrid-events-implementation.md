@@ -89,7 +89,7 @@ Total: 8 files created (parse directory created but not used in final plan)
 ### Task 3: Define Event Types (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** (pending)
+**Commit:** af867f3
 
 **Steps Completed:**
 1. ✅ Wrote failing test in `internal/fetch/types_test.go`
