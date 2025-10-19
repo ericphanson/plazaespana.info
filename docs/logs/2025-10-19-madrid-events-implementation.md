@@ -424,7 +424,7 @@ Total: 6/6 tests passing in 0.003s
 ### Task 10: Snapshot Manager for Resilience (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** [pending]
+**Commit:** d46a549
 
 **Steps Completed:**
 1. ✅ Wrote failing test in `internal/snapshot/manager_test.go` (TestManager_SaveAndLoad and TestManager_LoadSnapshot_NotExists)
