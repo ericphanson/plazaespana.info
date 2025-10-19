@@ -126,7 +126,7 @@ After fix: PASS
 ### Task 4: HTTP Client with User-Agent (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** (pending)
+**Commit:** 537e3f8
 
 **Steps Completed:**
 1. ✅ Wrote failing test in `internal/fetch/client_test.go`
