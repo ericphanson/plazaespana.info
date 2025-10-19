@@ -372,7 +372,7 @@ Total: 4/4 new tests passing + 6 from Task 7 = 10/10 tests passing in 0.002s
 ### Task 9: Event Deduplication (TDD)
 **Status:** ✅ Completed
 **Completed:** 2025-10-19
-**Commit:** [pending]
+**Commit:** e8dc2ea
 
 **Steps Completed:**
 1. ✅ Wrote failing test in `internal/filter/dedupe_test.go` (TestDeduplicateByID and TestDeduplicateByID_Empty)
