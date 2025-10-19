@@ -1417,7 +1417,7 @@ Local build (Linux): ✅ Success
 FreeBSD cross-compile: ✅ Success (7.7M, static binary)
 ```
 
-**Commit:** [To be added after commit]
+**Commit:** dd2167f
 
 **Issues Encountered:** None - straightforward fix with proper fallback handling
 
