@@ -86,4 +86,41 @@ Total: 8 files created (parse directory created but not used in final plan)
 
 ---
 
+### Task 3: Define Event Types (TDD)
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** (pending)
+
+**Steps Completed:**
+1. ✅ Wrote failing test in `internal/fetch/types_test.go`
+2. ✅ Ran test to verify failure (undefined: JSONResponse, RawEvent)
+3. ✅ Wrote minimal implementation in `internal/fetch/types.go`
+4. ✅ Fixed JSON tag issue (removed ,string from float64 fields)
+5. ✅ Ran test to verify success - all tests pass
+
+**Files Created:**
+- `internal/fetch/types_test.go` - Test for RawEvent and JSONResponse types
+- `internal/fetch/types.go` - Event type definitions matching Madrid API structure
+
+**Test Results:**
+```
+Initial run: FAIL (expected - undefined types)
+After implementation: FAIL (JSON unmarshal error - ,string tag on float64)
+After fix: PASS
+- TestEvent_UnmarshalJSON: PASS
+- TestRawEvent_Fields: PASS
+```
+
+**Implementation Details:**
+- `RawEvent` struct with fields matching Madrid API (ID-EVENTO, TITULO, etc.)
+- Support for both JSON and XML tags for multi-format fallback
+- `JSONResponse` wraps JSON-LD structure with @context and @graph
+- Coordinates stored as float64 (not string) for direct JSON unmarshaling
+
+**Issues Encountered:**
+- Initial implementation used `json:"COORDENADA-LATITUD,string"` tag which is invalid for unmarshaling numeric values
+- Fixed by removing `,string` modifier - Madrid API provides coordinates as numbers
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
