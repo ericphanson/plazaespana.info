@@ -749,7 +749,7 @@ Status: Expected behavior - CLI handles failures gracefully, attempts full fallb
 ### Task 14: Frontend Assets - CSS
 **Status:** ✅ Completed
 **Completed:** 2025-10-20
-**Commit:** (pending)
+**Commit:** e3ddf92
 
 **Steps Completed:**
 1. ✅ Created hand-rolled CSS file (assets/site.css)
