@@ -41,4 +41,49 @@
 
 ---
 
+### Task 2: Create Directory Structure
+**Status:** ✅ Completed
+**Completed:** 2025-10-19
+**Commit:** eb10313
+
+**Steps Completed:**
+1. ✅ Created directory tree with `mkdir -p` for all required directories
+2. ✅ Created `.gitkeep` files in each directory (8 total)
+3. ✅ Verified structure with `tree -L 2 -a`
+4. ✅ Committed changes with proper attribution
+
+**Directories Created:**
+- `cmd/buildsite/` - Main CLI entry point
+- `internal/fetch/` - HTTP client for Madrid open data API
+- `internal/parse/` - Format-specific decoders
+- `internal/filter/` - Location and time filtering
+- `internal/render/` - Static site generation
+- `internal/snapshot/` - Resilience/fallback system
+- `templates/` - HTML templates
+- `assets/` - Frontend assets (CSS)
+- `ops/` - Deployment artifacts
+
+**Files Created:**
+- `cmd/buildsite/.gitkeep`
+- `internal/fetch/.gitkeep`
+- `internal/parse/.gitkeep`
+- `internal/filter/.gitkeep`
+- `internal/render/.gitkeep`
+- `internal/snapshot/.gitkeep`
+- `templates/.gitkeep`
+- `assets/.gitkeep`
+- `ops/.gitkeep`
+
+**Verification Results:**
+```
+tree -L 2 -a output shows all 9 directories with .gitkeep files
+Total: 8 files created (parse directory created but not used in final plan)
+```
+
+**Test Results:** N/A (no tests for directory structure task)
+
+**Issues Encountered:** None - all directories created successfully
+
+---
+
 *Log will be updated after each task completion with status, test results, and any issues encountered.*
