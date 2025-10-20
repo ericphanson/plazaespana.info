@@ -211,3 +211,62 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 **Result:** Client constructor updated and ready for cache/throttle integration
 
 ---
+
+### Task 2.2 & 2.3: Update fetch() Method (Combined)
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Modified:**
+- `internal/fetch/client.go` - fetch() method
+
+**Implementation:** Comprehensive respectful fetching in fetch() method:
+
+1. **Cache Check** (before HTTP request):
+   - Check cache.Get(url) first
+   - If cached and not expired, return immediately (cache hit)
+   - Record audit event for cache hit
+
+2. **Throttling**:
+   - Call throttle.Wait(url) before HTTP request
+   - Enforces per-host minimum delay
+   - Logs delay to stderr so user knows why build is slow
+   - Format: `[mode] Waiting Xms before fetching URL`
+
+3. **If-Modified-Since Header**:
+   - Add header if we have cached data (even if expired)
+   - Allows server to return 304 Not Modified
+
+4. **304 Not Modified Handling**:
+   - Use cached body if server returns 304
+   - Record as cache hit in audit
+
+5. **Rate Limit Detection**:
+   - Detect 429 (Too Many Requests)
+   - Detect 403 (Forbidden)
+   - Detect 503 (Service Unavailable)
+   - Mark as RateLimited in audit trail
+   - Return clear error message
+
+6. **Cache Storage**:
+   - Store successful responses (200 OK)
+   - Capture Last-Modified and ETag headers
+   - Log warning if cache write fails (don't fail request)
+
+7. **Request Auditing**:
+   - Record all fetch attempts
+   - Track: URL, timestamp, cache hit, status code, delay, errors
+   - Mark rate-limited requests
+
+**Features:**
+- Cache hit path: No HTTP request, instant return
+- 304 path: HTTP request but no body transfer (saves bandwidth)
+- Throttle delays logged to stderr
+- Rate limit errors clearly identified
+- All requests audited for build reports
+
+**Tests:** All 31 fetch package tests passing
+
+**Result:** fetch() method fully implements respectful fetching
+
+---

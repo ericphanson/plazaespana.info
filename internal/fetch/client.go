@@ -297,34 +297,141 @@ func getField(row []string, headerMap map[string]int, fieldName string) string {
 
 // fetch retrieves data from a URL or local file.
 // Supports both HTTP(S) URLs and file:// URLs.
+// Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
 func (c *Client) fetch(url string) ([]byte, error) {
-	// Handle file:// URLs
+	// Handle file:// URLs (no caching for local files)
 	if strings.HasPrefix(url, "file://") {
 		path := strings.TrimPrefix(url, "file://")
 		return os.ReadFile(path)
 	}
 
-	// Handle HTTP(S) URLs
+	// Check cache first
+	cached, err := c.cache.Get(url)
+	if err != nil {
+		// Cache read error - log but continue to fetch
+		fmt.Fprintf(os.Stderr, "Warning: cache read error: %v\n", err)
+	}
+
+	if cached != nil {
+		// Cache hit! Use cached data
+		c.auditor.Record(RequestRecord{
+			URL:       url,
+			Timestamp: time.Now(),
+			CacheHit:  true,
+		})
+		return cached.Body, nil
+	}
+
+	// Cache miss - need to make HTTP request
+	// Wait for throttle to allow request
+	delay, err := c.throttle.Wait(url)
+	if err != nil {
+		return nil, fmt.Errorf("throttle error: %w", err)
+	}
+
+	if delay > 0 {
+		// Log the delay so user knows why build is slow
+		fmt.Fprintf(os.Stderr, "[%s] Waiting %v before fetching %s\n",
+			c.config.Mode, delay.Round(time.Millisecond), url)
+	}
+
+	// Create HTTP request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("User-Agent", c.userAgent)
 
+	// Add If-Modified-Since header if we have cached data (even if expired)
+	if cached != nil && cached.LastModified != "" {
+		req.Header.Set("If-Modified-Since", cached.LastModified)
+	}
+
+	// Make HTTP request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		c.auditor.Record(RequestRecord{
+			URL:       url,
+			Timestamp: time.Now(),
+			CacheHit:  false,
+			DelayMs:   delay.Milliseconds(),
+			Error:     err.Error(),
+		})
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
+	// Handle 304 Not Modified - use cached data
+	if resp.StatusCode == http.StatusNotModified && cached != nil {
+		c.auditor.Record(RequestRecord{
+			URL:        url,
+			Timestamp:  time.Now(),
+			CacheHit:   true,
+			StatusCode: 304,
+			DelayMs:    delay.Milliseconds(),
+		})
+		return cached.Body, nil
+	}
+
+	// Check for rate limiting or errors
+	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusServiceUnavailable {
+		c.auditor.Record(RequestRecord{
+			URL:         url,
+			Timestamp:   time.Now(),
+			CacheHit:    false,
+			StatusCode:  resp.StatusCode,
+			DelayMs:     delay.Milliseconds(),
+			RateLimited: true,
+		})
+		return nil, fmt.Errorf("HTTP %d (rate limited): %s", resp.StatusCode, resp.Status)
+	}
+
 	if resp.StatusCode != http.StatusOK {
+		c.auditor.Record(RequestRecord{
+			URL:        url,
+			Timestamp:  time.Now(),
+			CacheHit:   false,
+			StatusCode: resp.StatusCode,
+			DelayMs:    delay.Milliseconds(),
+		})
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
+	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		c.auditor.Record(RequestRecord{
+			URL:        url,
+			Timestamp:  time.Now(),
+			CacheHit:   false,
+			StatusCode: resp.StatusCode,
+			DelayMs:    delay.Milliseconds(),
+			Error:      err.Error(),
+		})
 		return nil, fmt.Errorf("reading response: %w", err)
 	}
+
+	// Store in cache
+	entry := CacheEntry{
+		URL:          url,
+		Body:         body,
+		LastModified: resp.Header.Get("Last-Modified"),
+		ETag:         resp.Header.Get("ETag"),
+		StatusCode:   resp.StatusCode,
+	}
+	if err := c.cache.Set(entry); err != nil {
+		// Log cache write error but don't fail the request
+		fmt.Fprintf(os.Stderr, "Warning: cache write error: %v\n", err)
+	}
+
+	// Record successful fetch
+	c.auditor.Record(RequestRecord{
+		URL:        url,
+		Timestamp:  time.Now(),
+		CacheHit:   false,
+		StatusCode: resp.StatusCode,
+		DelayMs:    delay.Milliseconds(),
+	})
 
 	return body, nil
 }
