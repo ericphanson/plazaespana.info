@@ -54,3 +54,38 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 **Result:** Mode configuration system ready
 
 ---
+
+### Task 1.2: Create HTTPCache
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Created:**
+- `internal/fetch/cache.go` - Persistent HTTP response caching
+- `internal/fetch/cache_test.go` - Cache tests
+
+**Implementation:**
+- CacheEntry struct with URL, Body, LastModified, ETag, FetchedAt, StatusCode
+- HTTPCache struct with cacheDir and ttl
+- NewHTTPCache() - Creates cache directory (os.MkdirAll)
+- Get() - Retrieves cached entry if not expired (TTL check)
+- Set() - Stores entry with atomic write (temp file + rename)
+- cachePath() - SHA256-based safe filename generation (first 8 bytes)
+
+**Features:**
+- TTL-based expiration (configurable per mode)
+- Atomic writes prevent partial cache corruption
+- SHA256 hash ensures safe filenames from arbitrary URLs
+- Cache miss returns nil (not error)
+- Expired entries treated as cache miss
+
+**Tests:** 5 tests, all passing
+- TestHTTPCache_Miss - Verify cache miss behavior
+- TestHTTPCache_HitAndExpiration - Verify cache hit and TTL expiration (100ms TTL)
+- TestHTTPCache_AtomicWrite - Verify temp file cleanup
+- TestHTTPCache_MultipleURLs - Verify independent cache entries
+- TestHTTPCache_ETag - Verify ETag storage
+
+**Result:** HTTP caching system ready for integration
+
+---
