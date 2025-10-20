@@ -218,3 +218,21 @@ Update HTML build report to track both cultural events pipeline (datos.madrid.es
 **Commits**: 5 total (1 per task)
 
 **Result**: ✅ **Production ready** - Dual pipeline build report successfully implemented and tested
+
+---
+
+### Post-Implementation Cleanup
+
+**Status**: ✅ Complete
+**Time**: 2025-10-20 14:30
+
+**Goal**: Remove legacy markdown report code
+
+**Changes Made**:
+- Removed `internal/report/markdown.go` (388 lines) - unused legacy code
+- Updated CLAUDE.md to remove markdown.go references
+- Verified build still works
+
+**Rationale**: WriteMarkdown() was never called in the codebase, only WriteHTML() is used for build reports. Keeping unused code adds maintenance burden and creates confusion.
+
+**Result**: Cleaner codebase with only actively used report generation code

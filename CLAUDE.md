@@ -85,7 +85,6 @@ internal/
   report/                          # Build metrics and reporting
     types.go                       # BuildReport, PipelineReport, filter stats
     html.go                        # HTML build report generation
-    markdown.go                    # Markdown report (legacy, unused)
 
   snapshot/                        # Fallback resilience
     manager.go                     # Save/load snapshots (atomic writes)
@@ -153,7 +152,6 @@ Every build generates an HTML report (`public/build-report.html`) with detailed 
 internal/report/
   types.go      # BuildReport, PipelineReport, PipelineFetchReport, PipelineFilterReport
   html.go       # HTML report rendering with CSS-based styling
-  markdown.go   # Markdown report rendering (unused, legacy)
 ```
 
 **Key Metrics Tracked:**
