@@ -69,3 +69,4 @@ testdata/fixtures/madrid-events.xml
 testdata/fixtures/madrid-events.csv
 
 /screenshots
+!/screenshots/capture.sh
