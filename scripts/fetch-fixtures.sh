@@ -8,18 +8,18 @@ echo "Fetching Madrid event data fixtures..."
 
 # JSON
 echo "  - Downloading JSON..."
-curl -s "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json" \
-  > "$FIXTURES_DIR/madrid-events.json"
+curl -f -s -L "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json" \
+  -o "$FIXTURES_DIR/madrid-events.json"
 
 # XML
 echo "  - Downloading XML..."
-curl -s "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml" \
-  > "$FIXTURES_DIR/madrid-events.xml"
+curl -f -s -L "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml" \
+  -o "$FIXTURES_DIR/madrid-events.xml"
 
 # CSV
 echo "  - Downloading CSV..."
-curl -s "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv" \
-  > "$FIXTURES_DIR/madrid-events.csv"
+curl -f -s -L "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv" \
+  -o "$FIXTURES_DIR/madrid-events.csv"
 
 echo "✓ Fixtures downloaded to $FIXTURES_DIR/"
 echo "  JSON: $(wc -l < "$FIXTURES_DIR/madrid-events.json") lines"

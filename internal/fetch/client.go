@@ -9,8 +9,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/ericphanson/madrid-events/internal/event"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 )
@@ -32,132 +34,150 @@ func NewClient(timeout time.Duration) *Client {
 }
 
 // FetchJSON fetches and decodes JSON from the given URL.
-func (c *Client) FetchJSON(url string) (*JSONResponse, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	req.Header.Set("User-Agent", c.userAgent)
+// Returns ParseResult with successful events and individual parse errors.
+func (c *Client) FetchJSON(url string, loc *time.Location) event.ParseResult {
+	var result event.ParseResult
 
-	resp, err := c.httpClient.Do(req)
+	// Fetch data (supports both HTTP and file:// URLs)
+	body, err := c.fetch(url)
 	if err != nil {
-		return nil, fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response: %w", err)
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "JSON",
+			Error:       err,
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
 	// Preprocess JSON to escape literal newlines in string values
 	// Madrid's JSON sometimes contains unescaped newlines which are invalid JSON
 	body = fixJSONNewlines(body)
 
-	var result JSONResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("decoding JSON: %w", err)
+	var response JSONResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "JSON",
+			Error:       fmt.Errorf("decoding JSON: %w", err),
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
-	// DEBUG: Log structure of first event to see actual field names
-	if len(result.Graph) > 0 {
-		first := result.Graph[0]
-		fmt.Printf("DEBUG JSON first event: IDEvento=%q Titulo=%q Fecha=%q Lat=%.5f Lon=%.5f\n",
-			first.IDEvento, first.Titulo, first.Fecha, first.Lat, first.Lon)
-
-		// Also save raw JSON sample to file for inspection
-		sample := body
-		if len(body) > 2000 {
-			sample = body[:2000]
+	// Parse each event individually with error recovery
+	for i, jsonEvent := range response.Graph {
+		canonical, err := jsonEvent.ToCanonical(loc)
+		if err != nil {
+			// Log parse error but continue processing other events
+			result.Errors = append(result.Errors, event.ParseError{
+				Source:      "JSON",
+				Index:       i,
+				RawData:     fmt.Sprintf("ID=%s", jsonEvent.ID),
+				Error:       err,
+				RecoverType: "skipped",
+			})
+			continue
 		}
-		os.WriteFile("/tmp/json-sample.txt", sample, 0644)
+
+		result.Events = append(result.Events, event.SourcedEvent{
+			Event:  canonical,
+			Source: "JSON",
+		})
 	}
 
-	return &result, nil
-}
-
-// XMLResponse wraps the Madrid API XML structure.
-type XMLResponse struct {
-	XMLName xml.Name   `xml:"Contenidos"`
-	Events  []RawEvent `xml:"contenido"`
+	return result
 }
 
 // FetchXML fetches and decodes XML from the given URL.
-func (c *Client) FetchXML(url string) ([]RawEvent, error) {
-	req, err := http.NewRequest("GET", url, nil)
+// Returns ParseResult with successful events and individual parse errors.
+func (c *Client) FetchXML(url string, loc *time.Location) event.ParseResult {
+	var result event.ParseResult
+
+	// Fetch data (supports both HTTP and file:// URLs)
+	body, err := c.fetch(url)
 	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	req.Header.Set("User-Agent", c.userAgent)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "XML",
+			Error:       err,
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response: %w", err)
+	var response XMLResponse
+	if err := xml.Unmarshal(body, &response); err != nil {
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "XML",
+			Error:       fmt.Errorf("decoding XML: %w", err),
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
-	var result XMLResponse
-	if err := xml.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("decoding XML: %w", err)
+	// Parse each event individually with error recovery
+	for i, xmlEvent := range response.Events {
+		canonical, err := xmlEvent.ToCanonical(loc)
+		if err != nil {
+			// Log parse error but continue processing other events
+			result.Errors = append(result.Errors, event.ParseError{
+				Source:      "XML",
+				Index:       i,
+				RawData:     fmt.Sprintf("ID=%s", xmlEvent.IDEvento),
+				Error:       err,
+				RecoverType: "skipped",
+			})
+			continue
+		}
+
+		result.Events = append(result.Events, event.SourcedEvent{
+			Event:  canonical,
+			Source: "XML",
+		})
 	}
 
-	return result.Events, nil
+	return result
 }
 
 // FetchCSV fetches and parses CSV from the given URL.
 // Handles both semicolon and comma delimiters.
-func (c *Client) FetchCSV(url string) ([]RawEvent, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	req.Header.Set("User-Agent", c.userAgent)
+// Returns ParseResult with successful events and individual parse errors.
+func (c *Client) FetchCSV(url string, loc *time.Location) event.ParseResult {
+	var result event.ParseResult
 
-	resp, err := c.httpClient.Do(req)
+	// Fetch data (supports both HTTP and file:// URLs)
+	body, err := c.fetch(url)
 	if err != nil {
-		return nil, fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response: %w", err)
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "CSV",
+			Error:       err,
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
 	// Try semicolon first (Madrid's preferred format)
-	events, err := parseCSV(body, ';')
-	if err != nil || len(events) == 0 {
+	result = parseCSV(body, ';', loc)
+	if len(result.Events) == 0 && len(result.Errors) > 0 {
 		// Fall back to comma
-		events, err = parseCSV(body, ',')
+		result = parseCSV(body, ',', loc)
 	}
 
-	return events, err
+	return result
 }
 
-func parseCSV(data []byte, delimiter rune) ([]RawEvent, error) {
+func parseCSV(data []byte, delimiter rune, loc *time.Location) event.ParseResult {
+	var result event.ParseResult
+
 	// Convert from ISO-8859-1/Windows-1252 to UTF-8
 	// Madrid's CSV files use Windows-1252 encoding
 	decoder := charmap.Windows1252.NewDecoder()
 	utf8Data, err := io.ReadAll(transform.NewReader(bytes.NewReader(data), decoder))
 	if err != nil {
-		return nil, fmt.Errorf("converting encoding: %w", err)
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "CSV",
+			Error:       fmt.Errorf("converting encoding: %w", err),
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
 	r := csv.NewReader(bytes.NewReader(utf8Data))
@@ -166,11 +186,21 @@ func parseCSV(data []byte, delimiter rune) ([]RawEvent, error) {
 
 	records, err := r.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("parsing CSV: %w", err)
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "CSV",
+			Error:       fmt.Errorf("parsing CSV: %w", err),
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
 	if len(records) < 2 {
-		return nil, fmt.Errorf("CSV has no data rows")
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "CSV",
+			Error:       fmt.Errorf("CSV has no data rows"),
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
 	// Build header map
@@ -182,36 +212,60 @@ func parseCSV(data []byte, delimiter rune) ([]RawEvent, error) {
 	// Validate that we have the expected ID-EVENTO column
 	// (this helps detect wrong delimiter usage)
 	if _, hasIDEvento := headerMap["ID-EVENTO"]; !hasIDEvento {
-		return nil, fmt.Errorf("missing ID-EVENTO column (wrong delimiter?)")
+		result.Errors = append(result.Errors, event.ParseError{
+			Source:      "CSV",
+			Error:       fmt.Errorf("missing ID-EVENTO column (wrong delimiter?)"),
+			RecoverType: "skipped",
+		})
+		return result
 	}
 
-	var events []RawEvent
-	for i := 1; i < len(records); i++ {
-		row := records[i]
-		event := RawEvent{
-			IDEvento:          getField(row, headerMap, "ID-EVENTO"),
-			Titulo:            getField(row, headerMap, "TITULO"),
-			Fecha:             getField(row, headerMap, "FECHA"),
-			FechaFin:          getField(row, headerMap, "FECHA-FIN"),
-			Hora:              getField(row, headerMap, "HORA"),
-			NombreInstalacion: getField(row, headerMap, "NOMBRE-INSTALACION"),
-			Direccion:         getField(row, headerMap, "DIRECCION"),
-			ContentURL:        getField(row, headerMap, "CONTENT-URL"),
-			Descripcion:       getField(row, headerMap, "DESCRIPCION"),
+	// Parse each row individually with error recovery
+	for i, row := range records[1:] {
+		csvEvent := parseCSVRow(row, headerMap)
+		canonical, err := csvEvent.ToCanonical(loc)
+		if err != nil {
+			result.Errors = append(result.Errors, event.ParseError{
+				Source:      "CSV",
+				Index:       i,
+				RawData:     fmt.Sprintf("ID=%s", csvEvent.IDEvento),
+				Error:       err,
+				RecoverType: "skipped",
+			})
+			continue
 		}
-
-		// Parse coordinates
-		if latStr := getField(row, headerMap, "LATITUD"); latStr != "" {
-			fmt.Sscanf(latStr, "%f", &event.Lat)
-		}
-		if lonStr := getField(row, headerMap, "LONGITUD"); lonStr != "" {
-			fmt.Sscanf(lonStr, "%f", &event.Lon)
-		}
-
-		events = append(events, event)
+		result.Events = append(result.Events, event.SourcedEvent{
+			Event:  canonical,
+			Source: "CSV",
+		})
 	}
 
-	return events, nil
+	return result
+}
+
+// parseCSVRow extracts fields from a CSV row into a CSVEvent struct.
+func parseCSVRow(row []string, headerMap map[string]int) CSVEvent {
+	event := CSVEvent{
+		IDEvento:          getField(row, headerMap, "ID-EVENTO"),
+		Titulo:            getField(row, headerMap, "TITULO"),
+		Fecha:             getField(row, headerMap, "FECHA"),
+		FechaFin:          getField(row, headerMap, "FECHA-FIN"),
+		Hora:              getField(row, headerMap, "HORA"),
+		NombreInstalacion: getField(row, headerMap, "NOMBRE-INSTALACION"),
+		Direccion:         getField(row, headerMap, "DIRECCION"),
+		ContentURL:        getField(row, headerMap, "CONTENT-URL"),
+		Descripcion:       getField(row, headerMap, "DESCRIPCION"),
+	}
+
+	// Parse coordinates
+	if latStr := getField(row, headerMap, "LATITUD"); latStr != "" {
+		fmt.Sscanf(latStr, "%f", &event.Latitud)
+	}
+	if lonStr := getField(row, headerMap, "LONGITUD"); lonStr != "" {
+		fmt.Sscanf(lonStr, "%f", &event.Longitud)
+	}
+
+	return event
 }
 
 func getField(row []string, headerMap map[string]int, fieldName string) string {
@@ -220,6 +274,40 @@ func getField(row []string, headerMap map[string]int, fieldName string) string {
 		return ""
 	}
 	return row[idx]
+}
+
+// fetch retrieves data from a URL or local file.
+// Supports both HTTP(S) URLs and file:// URLs.
+func (c *Client) fetch(url string) ([]byte, error) {
+	// Handle file:// URLs
+	if strings.HasPrefix(url, "file://") {
+		path := strings.TrimPrefix(url, "file://")
+		return os.ReadFile(path)
+	}
+
+	// Handle HTTP(S) URLs
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("User-Agent", c.userAgent)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	return body, nil
 }
 
 // fixJSONNewlines preprocesses JSON to escape literal newlines in string values.

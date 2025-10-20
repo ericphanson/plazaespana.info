@@ -6,21 +6,22 @@ import (
 )
 
 func TestEvent_UnmarshalJSON(t *testing.T) {
+	// Test with JSON-LD format (actual Madrid API format)
 	jsonData := `{
 		"@id": "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json",
 		"@context": {
 			"@vocab": "http://www.w3.org/ns/dcat#"
 		},
 		"@graph": [{
-			"ID-EVENTO": "12345",
-			"TITULO": "Test Event",
-			"FECHA": "01/11/2025",
-			"FECHA-FIN": "01/11/2025",
-			"HORA": "19:00",
-			"NOMBRE-INSTALACION": "Test Venue",
-			"COORDENADA-LATITUD": 40.42338,
-			"COORDENADA-LONGITUD": -3.71217,
-			"CONTENT-URL": "https://example.com/event"
+			"id": "12345",
+			"title": "Test Event",
+			"description": "Test description",
+			"dtstart": "2025-11-01 19:00:00.0",
+			"dtend": "2025-11-01 22:00:00.0",
+			"event-location": "Test Venue",
+			"latitude": 40.42338,
+			"longitude": -3.71217,
+			"link": "https://example.com/event"
 		}]
 	}`
 
@@ -35,14 +36,20 @@ func TestEvent_UnmarshalJSON(t *testing.T) {
 	}
 
 	event := response.Graph[0]
-	if event.IDEvento != "12345" {
-		t.Errorf("Expected IDEvento '12345', got '%s'", event.IDEvento)
+	if event.ID != "12345" {
+		t.Errorf("Expected ID '12345', got '%s'", event.ID)
 	}
-	if event.Titulo != "Test Event" {
-		t.Errorf("Expected Titulo 'Test Event', got '%s'", event.Titulo)
+	if event.Title != "Test Event" {
+		t.Errorf("Expected Title 'Test Event', got '%s'", event.Title)
 	}
-	if event.Lat != 40.42338 {
-		t.Errorf("Expected Lat 40.42338, got %f", event.Lat)
+	if event.Latitude != 40.42338 {
+		t.Errorf("Expected Latitude 40.42338, got %f", event.Latitude)
+	}
+	if event.Longitude != -3.71217 {
+		t.Errorf("Expected Longitude -3.71217, got %f", event.Longitude)
+	}
+	if event.Location != "Test Venue" {
+		t.Errorf("Expected Location 'Test Venue', got '%s'", event.Location)
 	}
 }
 
