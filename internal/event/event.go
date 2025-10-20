@@ -26,6 +26,9 @@ type CulturalEvent struct {
 
 	// Source tracking
 	Sources []string // ["JSON", "XML", "CSV"]
+
+	// Filter tracking (for audit trail)
+	FilterResult FilterResult
 }
 
 // EventType returns the type of this event.

@@ -25,6 +25,9 @@ type CityEvent struct {
 	WebURL      string
 	ImageURL    string
 	Price       string
+
+	// Filter tracking (for audit trail)
+	FilterResult FilterResult
 }
 
 // EventType returns the type of this event.
