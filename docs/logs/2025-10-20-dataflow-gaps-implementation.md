@@ -247,3 +247,69 @@ if !hasCoords {
 - This fix prevents city events from being incorrectly filtered
 - Events with missing coords now have correct filter reason
 - More accurate reporting of data quality issues
+
+---
+
+### Phase 4: Data Quality
+
+#### Task 4.1: Deduplicate Source Labels (20 min)
+**Status:** In Progress
+**Started:** 2025-10-20
+
+**Goal:** Deduplicate Sources slice after merging to prevent inflated coverage statistics.
+
+**Problem:**
+- If same event ID appears multiple times within a single source, Sources may contain duplicates (e.g., ["JSON", "JSON"])
+- This inflates coverage buckets (InTwoSources/InAllThree) incorrectly
+- Source coverage metrics become inaccurate
+
+**Solution:** Deduplicate Sources slice after merging all events.
+
+**Files to modify:**
+- `internal/pipeline/pipeline.go` - Merge function
+
+**Implementation:**
+1. ✅ Added deduplicateStrings helper function to pipeline.go
+2. ✅ Called it on evt.Sources before adding to merged slice
+3. ✅ Added comprehensive test TestPipeline_Merge_DeduplicatesSources
+4. ✅ Verified all 1055 events have no duplicate sources
+5. ✅ All tests passing
+
+**Changes:**
+- Added deduplicateStrings(input []string) function
+- Uses map to track seen strings, preserves order
+- Called in Merge() for each event before adding to results
+- Test verifies every event's Sources slice has no duplicates
+
+**Before:**
+```go
+existing.Sources = append(existing.Sources, sourced.Source)
+// If same ID appears twice from JSON: Sources = ["JSON", "JSON"]
+// Coverage stats: InTwoSources++ (WRONG: only 1 unique source)
+```
+
+**After:**
+```go
+evt.Sources = deduplicateStrings(evt.Sources)
+// Duplicates removed: ["JSON", "JSON"] becomes ["JSON"]
+// Coverage stats: InOneSource++ (CORRECT)
+```
+
+**Test Results:**
+- TestPipeline_Merge_DeduplicatesSources: PASS
+- Verified 1055 events have no duplicate sources
+- All pipeline tests passing (7 tests)
+
+**Status:** ✅ Complete
+**Completed:** 2025-10-20
+
+**Impact:**
+- Source coverage metrics now accurate
+- InTwoSources/InAllThree buckets no longer inflated
+- Coverage reports show true cross-source presence
+- Data quality metrics more reliable
+
+**Notes:**
+- Simple fix with significant impact on metrics accuracy
+- Preserves source order for consistency
+- No performance impact (O(n) with small n)

@@ -255,3 +255,47 @@ func TestPipeline_Merge_EmptyResult(t *testing.T) {
 
 	t.Log("Merge handled all-failures case correctly (empty result)")
 }
+
+func TestPipeline_Merge_DeduplicatesSources(t *testing.T) {
+	// This test specifically verifies that duplicate sources are removed
+	loc, err := time.LoadLocation("Europe/Madrid")
+	if err != nil {
+		t.Fatalf("loading timezone: %v", err)
+	}
+
+	config := fetch.DefaultDevelopmentConfig()
+	client, err := fetch.NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	pipeline := NewPipeline(
+		"file:///workspace/testdata/fixtures/madrid-events.json",
+		"file:///workspace/testdata/fixtures/madrid-events.xml",
+		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		client,
+		loc,
+	)
+
+	result := pipeline.FetchAll()
+	merged := pipeline.Merge(result)
+
+	// Verify no event has duplicate sources
+	for _, evt := range merged {
+		// Check for duplicates in Sources
+		seen := make(map[string]bool)
+		for _, src := range evt.Sources {
+			if seen[src] {
+				t.Errorf("Event %s has duplicate source %q: %v", evt.ID, src, evt.Sources)
+			}
+			seen[src] = true
+		}
+
+		// Verify Sources slice length matches unique count
+		if len(evt.Sources) != len(seen) {
+			t.Errorf("Event %s has %d sources but only %d unique: %v",
+				evt.ID, len(evt.Sources), len(seen), evt.Sources)
+		}
+	}
+
+	t.Logf("Verified %d events have no duplicate sources", len(merged))
+}

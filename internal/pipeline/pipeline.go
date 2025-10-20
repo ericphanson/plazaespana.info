@@ -177,8 +177,25 @@ func (p *Pipeline) Merge(result PipelineResult) []event.CulturalEvent {
 	// Convert map to slice
 	merged := make([]event.CulturalEvent, 0, len(seen))
 	for _, evt := range seen {
+		// Deduplicate Sources to prevent inflated coverage stats
+		evt.Sources = deduplicateStrings(evt.Sources)
 		merged = append(merged, *evt)
 	}
 
 	return merged
+}
+
+// deduplicateStrings removes duplicate strings from a slice while preserving order.
+func deduplicateStrings(input []string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(input))
+
+	for _, s := range input {
+		if !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
+	}
+
+	return result
 }
