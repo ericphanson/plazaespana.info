@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ericphanson/madrid-events/internal/audit"
 	"github.com/ericphanson/madrid-events/internal/config"
 	"github.com/ericphanson/madrid-events/internal/event"
 	"github.com/ericphanson/madrid-events/internal/fetch"
@@ -535,6 +536,23 @@ func main() {
 	buildReport.CityPipeline.EventCount = len(filteredCityEvents)
 	buildReport.CityPipeline.Duration = time.Since(cityStart)
 	log.Printf("City events pipeline completed in %v", buildReport.CityPipeline.Duration)
+
+	// =====================================================================
+	// AUDIT EXPORT: Save complete audit trail with all events
+	// =====================================================================
+	log.Println("\n=== Exporting Audit Trail ===")
+	auditPath := filepath.Join(cfg.Snapshot.DataDir, "audit-events.json")
+	auditErr := audit.SaveAuditJSON(allEvents, allCityEvents, auditPath, buildReport.BuildTime, buildReport.Duration)
+	if auditErr != nil {
+		log.Printf("Warning: Failed to save audit JSON: %v", auditErr)
+		buildReport.AddWarning("Failed to export audit trail: %v", auditErr)
+	} else {
+		auditInfo, _ := os.Stat(auditPath)
+		log.Printf("Audit trail exported: %s (%.1f MB, %d total events)",
+			auditPath,
+			float64(auditInfo.Size())/1024/1024,
+			len(allEvents)+len(allCityEvents))
+	}
 
 	// =====================================================================
 	// RENDERING: Render both cultural and city events

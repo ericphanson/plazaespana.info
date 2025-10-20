@@ -160,3 +160,39 @@ Implement comprehensive audit trail system that tracks all events through the fi
 **Result**: City events filtering now tags instead of removes, ready for audit export
 
 ---
+
+### Task 5: Integrate Audit Export
+
+**Status**: ✅ Complete
+**Time**: 2025-10-20
+
+**Goal**: Call audit.SaveAuditJSON to export complete audit trail after filtering
+
+**Changes Made**:
+1. Updated `cmd/buildsite/main.go`:
+   - Added audit package import (line 12)
+   - Added audit export section after both pipelines complete (lines 540-555)
+   - Calls `audit.SaveAuditJSON(allEvents, allCityEvents, ...)`
+   - Exports to `data/audit-events.json`
+   - Logs file size and total event count
+   - Graceful error handling (warning if export fails)
+
+2. Export details:
+   - Location: `{dataDir}/audit-events.json`
+   - Includes: All cultural events + all city events
+   - Contains: Complete event data + FilterResult for each
+   - Timing: Build start time and total duration
+
+**Integration point**:
+- Placed between pipeline completion and rendering
+- After: Both filtering pipelines done
+- Before: HTML/JSON rendering starts
+- Perfect spot: All data available, no rendering conflicts
+
+**Verification**:
+- ✅ Build successful: `go build ./cmd/buildsite`
+- ✅ All tests pass: `go test ./...` (10 packages)
+
+**Result**: Audit export fully integrated into build pipeline
+
+---
