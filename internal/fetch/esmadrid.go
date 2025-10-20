@@ -15,7 +15,7 @@ import (
 
 // EsmadridServiceList represents the root element of the ESMadrid XML feed.
 type EsmadridServiceList struct {
-	XMLName  xml.Name           `xml:"serviceList"`
+	XMLName  xml.Name          `xml:"serviceList"`
 	Services []EsmadridService `xml:"service"`
 }
 
@@ -54,9 +54,9 @@ type EsmadridService struct {
 
 // esmadridExtradata holds the raw extradata structure for custom parsing.
 type esmadridExtradata struct {
-	Items      []esmadridItem      `xml:"item"`
-	Categorias esmadridCategorias  `xml:"categorias"`
-	Fechas     esmadridFechas      `xml:"fechas"`
+	Items      []esmadridItem     `xml:"item"`
+	Categorias esmadridCategorias `xml:"categorias"`
+	Fechas     esmadridFechas     `xml:"fechas"`
 }
 
 // esmadridItem represents a name-value pair in extradata.
@@ -72,8 +72,8 @@ type esmadridCategorias struct {
 
 // esmadridCategoria represents a single categoria.
 type esmadridCategoria struct {
-	Items         []esmadridItem         `xml:"item"`
-	Subcategorias esmadridSubcategorias  `xml:"subcategorias"`
+	Items         []esmadridItem        `xml:"item"`
+	Subcategorias esmadridSubcategorias `xml:"subcategorias"`
 }
 
 // esmadridSubcategorias represents the subcategorias structure.

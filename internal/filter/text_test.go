@@ -30,10 +30,10 @@ func TestMatchesLocation(t *testing.T) {
 			want:      true,
 		},
 		{
-			name:    "match in address",
-			address: "Calle de la Plaza de España, 1",
+			name:     "match in address",
+			address:  "Calle de la Plaza de España, 1",
 			keywords: []string{"plaza de españa"},
-			want:    true,
+			want:     true,
 		},
 		{
 			name:        "match in description",
@@ -61,10 +61,10 @@ func TestMatchesLocation(t *testing.T) {
 			want:      true,
 		},
 		{
-			name:      "nearby landmark",
-			address:   "Parque del Oeste",
-			keywords:  []string{"parque del oeste"},
-			want:      true,
+			name:     "nearby landmark",
+			address:  "Parque del Oeste",
+			keywords: []string{"parque del oeste"},
+			want:     true,
 		},
 	}
 

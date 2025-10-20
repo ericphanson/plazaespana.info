@@ -138,3 +138,68 @@
 **Next:** Task 5 (Create ESMadrid HTTP client)
 
 ---
+
+### Task 5: Create ESMadrid HTTP Client
+**Status:** ✅ Complete
+**Commit:** 0b7d89d
+**Files:** internal/fetch/esmadrid.go, internal/fetch/esmadrid_test.go
+
+**Implementation:**
+- Added FetchEsmadridEvents(url string) function
+- Sets User-Agent header matching project pattern
+- 30-second HTTP timeout
+- Proper error handling (HTTP errors, XML parsing, I/O)
+- Follows same pattern as existing fetch/client.go
+
+**Test Results:**
+- 5 new HTTP fetch tests using httptest mock server:
+  - TestFetchEsmadridEvents_Success (validates User-Agent, parses 2 events)
+  - TestFetchEsmadridEvents_HTTPError (handles 404 errors)
+  - TestFetchEsmadridEvents_InvalidXML (handles parsing errors)
+  - TestFetchEsmadridEvents_EmptyResponse (handles empty serviceList)
+  - TestFetchEsmadridEvents_Timeout (verifies timeout configured)
+- All 41 fetch package tests passing
+- Build verified: `just build` successful
+
+**Code Review:**
+- ✅ All acceptance criteria met
+- ✅ Excellent test coverage (5 tests: success, HTTP errors, XML errors, edge cases)
+- ✅ 5.4:1 test-to-code ratio
+- ✅ Consistent with existing client.go patterns
+- Minor notes: User-Agent duplication, timeout test (non-blocking)
+
+**Next:** Task 6 (Implement city event filtering)
+
+---
+
+### Task 6: Implement City Event Filtering
+**Status:** ✅ Complete
+**Commit:** c8d1d97
+**Files:** internal/filter/city.go, internal/filter/city_test.go
+
+**Implementation:**
+- Created FilterCityEvents function with signature from plan
+- GPS radius filtering (reuses WithinRadius from geo.go)
+- Category filtering with whitelist (empty list = include all)
+- Time filtering (excludes events ended >pastWeeks ago)
+- Europe/Madrid timezone-aware time comparisons
+
+**Test Results:**
+- 5 new tests for FilterCityEvents:
+  - TestFilterCityEvents_GPSRadius (distance-based filtering)
+  - TestFilterCityEvents_Category (single, multiple, empty categories)
+  - TestFilterCityEvents_TimeFiltering (future, past, ongoing events)
+  - TestFilterCityEvents_CombinedFilters (all three filters together)
+  - TestFilterCityEvents_EmptyInput (edge case handling)
+- All 12 filter package tests passing
+- Build verified: `just build` successful
+
+**Code Review:**
+- ✅ All acceptance criteria met
+- ✅ Perfect requirements match, comprehensive test coverage
+- ✅ Efficient implementation with proper code reuse
+- ✅ No issues found - production ready
+
+**Next:** Task 7 (Create dual pipeline orchestrator)
+
+---

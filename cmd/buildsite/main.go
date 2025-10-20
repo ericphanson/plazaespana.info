@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ericphanson/madrid-events/internal/config"
 	"github.com/ericphanson/madrid-events/internal/event"
 	"github.com/ericphanson/madrid-events/internal/fetch"
 	"github.com/ericphanson/madrid-events/internal/filter"
@@ -47,30 +47,59 @@ func main() {
 	}()
 
 	// Parse flags
-	jsonURL := flag.String("json-url", "", "Madrid events JSON URL")
-	xmlURL := flag.String("xml-url", "", "Madrid events XML URL (fallback)")
-	csvURL := flag.String("csv-url", "", "Madrid events CSV URL (fallback)")
-	outDir := flag.String("out-dir", "./public", "Output directory for static files")
-	dataDir := flag.String("data-dir", "./data", "Data directory for snapshots")
-	lat := flag.Float64("lat", 40.42338, "Reference latitude (Plaza de España)")
-	lon := flag.Float64("lon", -3.71217, "Reference longitude (Plaza de España)")
-	radiusKm := flag.Float64("radius-km", 2.0, "Filter radius in kilometers")
+	configPath := flag.String("config", "config.toml", "Path to TOML configuration file")
+	jsonURL := flag.String("json-url", "", "Madrid events JSON URL (overrides config)")
+	xmlURL := flag.String("xml-url", "", "Madrid events XML URL (overrides config)")
+	csvURL := flag.String("csv-url", "", "Madrid events CSV URL (overrides config)")
+	esmadridURL := flag.String("esmadrid-url", "", "ESMadrid XML URL (overrides config)")
+	outDir := flag.String("out-dir", "", "Output directory for static files (overrides config)")
+	dataDir := flag.String("data-dir", "", "Data directory for snapshots (overrides config)")
+	lat := flag.Float64("lat", 0, "Reference latitude (overrides config)")
+	lon := flag.Float64("lon", 0, "Reference longitude (overrides config)")
+	radiusKm := flag.Float64("radius-km", 0, "Filter radius in kilometers (overrides config)")
 	timezone := flag.String("timezone", "Europe/Madrid", "Timezone for event times")
 
 	flag.Parse()
 
-	// Capture output directory for deferred report writing
-	outputDir = *outDir
-
-	if *jsonURL == "" {
-		log.Fatal("Missing required flag: -json-url")
+	// Load configuration from TOML file
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Use URLs directly (no server-side filtering)
-	// Server-side filters return minimal schema and are not usable
-	finalJSONURL := *jsonURL
-	finalXMLURL := *xmlURL
-	finalCSVURL := *csvURL
+	// Override config with CLI flags if provided
+	if *jsonURL != "" {
+		cfg.CulturalEvents.JSONURL = *jsonURL
+	}
+	if *xmlURL != "" {
+		cfg.CulturalEvents.XMLURL = *xmlURL
+	}
+	if *csvURL != "" {
+		cfg.CulturalEvents.CSVURL = *csvURL
+	}
+	if *esmadridURL != "" {
+		cfg.CityEvents.XMLURL = *esmadridURL
+	}
+	if *lat != 0 {
+		cfg.Filter.Latitude = *lat
+	}
+	if *lon != 0 {
+		cfg.Filter.Longitude = *lon
+	}
+	if *radiusKm != 0 {
+		cfg.Filter.RadiusKm = *radiusKm
+	}
+	if *outDir != "" {
+		// Update both HTML and JSON paths to use new output directory
+		cfg.Output.HTMLPath = filepath.Join(*outDir, "index.html")
+		cfg.Output.JSONPath = filepath.Join(*outDir, "events.json")
+	}
+	if *dataDir != "" {
+		cfg.Snapshot.DataDir = *dataDir
+	}
+
+	// Capture output directory for deferred report writing
+	outputDir = filepath.Dir(cfg.Output.HTMLPath)
 
 	// Load timezone
 	loc, err := time.LoadLocation(*timezone)
@@ -80,10 +109,10 @@ func main() {
 
 	// Initialize components
 	client := fetch.NewClient(30 * time.Second)
-	snapMgr := snapshot.NewManager(*dataDir)
+	snapMgr := snapshot.NewManager(cfg.Snapshot.DataDir)
 
-	// Create pipeline for multi-source fetching (use final URLs with distrito filter if applied)
-	pipe := pipeline.NewPipeline(finalJSONURL, finalXMLURL, finalCSVURL, client, loc)
+	// Create pipeline for multi-source fetching (cultural events from datos.madrid.es)
+	pipe := pipeline.NewPipeline(cfg.CulturalEvents.JSONURL, cfg.CulturalEvents.XMLURL, cfg.CulturalEvents.CSVURL, client, loc)
 
 	// Fetch from all three sources independently
 	log.Println("Fetching from all three sources (JSON, XML, CSV)...")
@@ -91,10 +120,10 @@ func main() {
 	pipeResult := pipe.FetchAll()
 	buildReport.Fetching.TotalDuration = time.Since(fetchStart)
 
-	// Track individual fetch results (use final URLs for reporting)
-	buildReport.Fetching.JSON = createFetchAttempt("JSON", finalJSONURL, pipeResult.JSONEvents, pipeResult.JSONErrors)
-	buildReport.Fetching.XML = createFetchAttempt("XML", finalXMLURL, pipeResult.XMLEvents, pipeResult.XMLErrors)
-	buildReport.Fetching.CSV = createFetchAttempt("CSV", finalCSVURL, pipeResult.CSVEvents, pipeResult.CSVErrors)
+	// Track individual fetch results
+	buildReport.Fetching.JSON = createFetchAttempt("JSON", cfg.CulturalEvents.JSONURL, pipeResult.JSONEvents, pipeResult.JSONErrors)
+	buildReport.Fetching.XML = createFetchAttempt("XML", cfg.CulturalEvents.XMLURL, pipeResult.XMLEvents, pipeResult.XMLErrors)
+	buildReport.Fetching.CSV = createFetchAttempt("CSV", cfg.CulturalEvents.CSVURL, pipeResult.CSVEvents, pipeResult.CSVErrors)
 
 	log.Printf("JSON: %d events, %d errors", len(pipeResult.JSONEvents), len(pipeResult.JSONErrors))
 	log.Printf("XML: %d events, %d errors", len(pipeResult.XMLEvents), len(pipeResult.XMLErrors))
@@ -145,15 +174,18 @@ func main() {
 		}
 	}
 
-	// Filter by location and time
+	// =====================================================================
+	// CULTURAL EVENTS PIPELINE: Filter by location and time
+	// =====================================================================
+	log.Println("\n=== Cultural Events Pipeline ===")
 	now := time.Now().In(loc)
 	geoStart := time.Now()
 	var filteredEvents []event.CulturalEvent
 
-	// Target districts near Plaza de España
-	targetDistricts := map[string]bool{
-		"CENTRO":          true,
-		"MONCLOA-ARAVACA": true,
+	// Target districts from config
+	targetDistricts := make(map[string]bool)
+	for _, distrito := range cfg.Filter.Distritos {
+		targetDistricts[distrito] = true
 	}
 
 	// Location keywords for text-based fallback (when no distrito or coords)
@@ -185,7 +217,7 @@ func main() {
 			}
 		} else if evt.Latitude != 0 && evt.Longitude != 0 {
 			// Priority 2: GPS coordinates available, use radius
-			if filter.WithinRadius(*lat, *lon, evt.Latitude, evt.Longitude, *radiusKm) {
+			if filter.WithinRadius(cfg.Filter.Latitude, cfg.Filter.Longitude, evt.Latitude, evt.Longitude, cfg.Filter.RadiusKm) {
 				byRadius++
 				missingDistr++
 			} else {
@@ -204,10 +236,10 @@ func main() {
 			}
 		}
 
-		// Filter out events that started more than 2 weeks ago
+		// Filter out events that started more than N weeks ago
 		// (Even if still ongoing, we don't care about old exhibitions)
-		twoWeeksAgo := now.AddDate(0, 0, -14)
-		if evt.StartTime.Before(twoWeeksAgo) {
+		cutoffWeeksAgo := now.AddDate(0, 0, -7*cfg.Filter.PastEventsWeeks)
+		if evt.StartTime.Before(cutoffWeeksAgo) {
 			pastEvents++
 			continue
 		}
@@ -220,9 +252,9 @@ func main() {
 	// Record geo filter stats
 	geoDuration := time.Since(geoStart)
 	buildReport.Processing.GeoFilter = report.GeoFilterStats{
-		RefLat:        *lat,
-		RefLon:        *lon,
-		Radius:        *radiusKm,
+		RefLat:        cfg.Filter.Latitude,
+		RefLon:        cfg.Filter.Longitude,
+		Radius:        cfg.Filter.RadiusKm,
 		Input:         len(merged),
 		MissingCoords: missingBoth,
 		OutsideRadius: outsideAll,
@@ -249,16 +281,70 @@ func main() {
 	// Add warnings if needed
 	if len(filteredEvents) < len(merged)/100 { // Less than 1%
 		buildReport.AddWarning("Geographic radius very restrictive (%.2fkm) - only %.1f%% of events kept",
-			*radiusKm, float64(len(filteredEvents))*100/float64(len(merged)))
-		buildReport.AddRecommendation("Consider increasing -radius-km to 1.0-2.0 for better coverage")
+			cfg.Filter.RadiusKm, float64(len(filteredEvents))*100/float64(len(merged)))
+		buildReport.AddRecommendation("Consider increasing filter.radius_km to 1.0-2.0 for better coverage")
 	}
 
-	log.Printf("After filtering: %d events", len(filteredEvents))
+	log.Printf("Cultural events after filtering: %d events", len(filteredEvents))
 
 	// Sort events by start time (upcoming events first)
 	sort.Slice(filteredEvents, func(i, j int) bool {
 		return filteredEvents[i].StartTime.Before(filteredEvents[j].StartTime)
 	})
+
+	// =====================================================================
+	// CITY EVENTS PIPELINE: Fetch and filter esmadrid.com events
+	// =====================================================================
+	log.Println("\n=== City Events Pipeline ===")
+	cityStart := time.Now()
+
+	// Fetch ESMadrid XML events
+	log.Printf("Fetching ESMadrid events from: %s", cfg.CityEvents.XMLURL)
+	esmadridServices, err := fetch.FetchEsmadridEvents(cfg.CityEvents.XMLURL)
+	if err != nil {
+		log.Printf("Warning: Failed to fetch ESMadrid events: %v", err)
+		esmadridServices = []fetch.EsmadridService{} // Continue with empty list
+	} else {
+		log.Printf("Fetched %d ESMadrid services", len(esmadridServices))
+	}
+
+	// Convert to CityEvent structs
+	var cityEvents []event.CityEvent
+	parseErrors := 0
+	for _, svc := range esmadridServices {
+		cityEvent, err := svc.ToCityEvent()
+		if err != nil {
+			parseErrors++
+			continue
+		}
+		cityEvents = append(cityEvents, *cityEvent)
+	}
+	log.Printf("Parsed %d city events (%d parse errors)", len(cityEvents), parseErrors)
+
+	// Filter city events by GPS radius and time
+	// No category filtering for now (empty slice = allow all categories)
+	filteredCityEvents := filter.FilterCityEvents(
+		cityEvents,
+		cfg.Filter.Latitude,
+		cfg.Filter.Longitude,
+		cfg.Filter.RadiusKm,
+		nil, // No category filtering
+		cfg.Filter.PastEventsWeeks,
+	)
+	log.Printf("City events after filtering: %d events", len(filteredCityEvents))
+
+	// Sort city events by start date
+	sort.Slice(filteredCityEvents, func(i, j int) bool {
+		return filteredCityEvents[i].StartDate.Before(filteredCityEvents[j].StartDate)
+	})
+
+	cityDuration := time.Since(cityStart)
+	log.Printf("City events pipeline completed in %v", cityDuration)
+
+	// =====================================================================
+	// RENDERING: For now, only render cultural events
+	// =====================================================================
+	log.Println("\n=== Rendering Output ===")
 
 	// Convert to template format
 	var templateEvents []render.TemplateEvent
@@ -284,7 +370,8 @@ func main() {
 	}
 
 	// Render outputs
-	if err := os.MkdirAll(*outDir, 0755); err != nil {
+	outDirPath := filepath.Dir(cfg.Output.HTMLPath)
+	if err := os.MkdirAll(outDirPath, 0755); err != nil {
 		log.Fatalf("Failed to create output directory: %v", err)
 	}
 
@@ -293,11 +380,11 @@ func main() {
 	htmlRenderer := render.NewHTMLRenderer("templates/index.tmpl.html")
 	htmlData := render.TemplateData{
 		Lang:        "es",
-		CSSHash:     readCSSHash(*outDir),
+		CSSHash:     readCSSHash(outDirPath),
 		LastUpdated: now.Format("2006-01-02 15:04 MST"),
 		Events:      templateEvents,
 	}
-	htmlPath := fmt.Sprintf("%s/index.html", *outDir)
+	htmlPath := cfg.Output.HTMLPath
 	htmlErr := htmlRenderer.Render(htmlData, htmlPath)
 	htmlDuration := time.Since(htmlStart)
 
@@ -323,7 +410,7 @@ func main() {
 	// Render JSON
 	jsonRenderStart := time.Now()
 	jsonRenderer := render.NewJSONRenderer()
-	jsonPath := fmt.Sprintf("%s/events.json", *outDir)
+	jsonPath := cfg.Output.JSONPath
 	jsonErr := jsonRenderer.Render(jsonEvents, jsonPath)
 	jsonRenderDuration := time.Since(jsonRenderStart)
 
@@ -349,6 +436,12 @@ func main() {
 	// Record final event count
 	buildReport.EventsCount = len(filteredEvents)
 
+	// Final summary
+	log.Println("\n=== Build Summary ===")
+	log.Printf("Cultural events: %d (datos.madrid.es)", len(filteredEvents))
+	log.Printf("City events: %d (esmadrid.com)", len(filteredCityEvents))
+	log.Printf("Total events available: %d", len(filteredEvents)+len(filteredCityEvents))
+	log.Printf("Rendered: %d cultural events only (city events in future tasks)", len(filteredEvents))
 	log.Println("Build complete!")
 }
 

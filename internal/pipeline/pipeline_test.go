@@ -176,9 +176,9 @@ func TestPipeline_Merge_HandlesFailures(t *testing.T) {
 
 	client := fetch.NewClient(10 * time.Second)
 	pipeline := NewPipeline(
-		"file:///nonexistent/json.json",                        // Will fail
+		"file:///nonexistent/json.json",                         // Will fail
 		"file:///workspace/testdata/fixtures/madrid-events.xml", // Will succeed
-		"file:///nonexistent/csv.csv",                          // Will fail
+		"file:///nonexistent/csv.csv",                           // Will fail
 		client,
 		loc,
 	)
