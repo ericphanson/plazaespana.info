@@ -199,5 +199,44 @@ These are essentially unfilterable with current approach. Options:
 ✅ **No events AT Plaza de España are being lost**
 ⚠️ **Time filter might be too aggressive for long exhibitions** (optional fix)
 ❌ **Tagging system not critical** (filters already accurate)
+🔄 **UPDATED**: Changed to inclusive filter for incomplete data
 
-**Action**: Keep current approach, optionally refine time filter to use end dates instead of start dates.
+## Decision: Be Inclusive, Not Exclusive
+
+### Change Made
+
+**Problem**: 93 events filtered out simply because they had no structured location data (no distrito, no coords).
+
+**Issue**: Some of these ARE relevant! Examples:
+- "Actividades mensuales de los centros de mayores del distrito Centro" (CENTRO district!)
+- "Jardines escondidos. De Ópera hasta Atocha" (Ópera is near Plaza de España)
+- Walking tours, neighborhood events, etc.
+
+**Solution**: **Changed filter to be INCLUSIVE by default**
+
+```go
+// OLD: Filter out events with no location match
+if !matchesLocation {
+    continue  // EXCLUDED
+}
+
+// NEW: Keep events even if location data is incomplete
+// Rationale: Incomplete data ≠ irrelevant event
+missingBoth++
+// Keep event by NOT filtering it out
+```
+
+### Impact
+
+- **Before**: 137 cultural events
+- **After**: 219 cultural events
+- **Gain**: +82 events (60% increase!)
+
+### Rationale
+
+1. **Incomplete data doesn't mean irrelevant** - Event might still be in our area
+2. **Better to show too many than too few** - Users can decide relevance
+3. **Data quality issues upstream** - Not our problem to solve by exclusion
+4. **Some clearly relevant events were excluded** - Walking tours, CENTRO district activities
+
+**Action**: **Implemented** - Be inclusive about incomplete location data.

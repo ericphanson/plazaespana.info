@@ -265,15 +265,14 @@ func main() {
 				continue
 			}
 		} else {
-			// Priority 3: No distrito, no coords - try text matching
+			// Priority 3: No distrito, no coords - INCLUDE by default (be inclusive)
+			// Rationale: Incomplete data doesn't mean irrelevant event
+			missingBoth++
+			// Still track text matches for reporting
 			if filter.MatchesLocation(evt.VenueName, evt.Address, evt.Description, locationKeywords) {
 				byTextMatch++
-				missingBoth++
-			} else {
-				missingBoth++
-				outsideAll++
-				continue
 			}
+			// Note: We used to filter out non-matching events here, but now we keep everything
 		}
 
 		// Filter out events that started more than N weeks ago
