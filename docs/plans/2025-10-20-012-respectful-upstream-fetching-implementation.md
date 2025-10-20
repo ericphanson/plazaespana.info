@@ -17,6 +17,67 @@
 
 ---
 
+## Additional Requirements
+
+### Logging During Delays/Retries
+
+**Requirement:** User must know why build is taking time.
+
+**Implementation:**
+- Log messages when throttle delays occur: `"Waiting 2s before next request to datos.madrid.es (respectful delay)"`
+- Log messages when using cached data: `"Using cached data for URL (age: 5m, saving bandwidth)"`
+- Log messages on rate limit: `"Rate limited by upstream (429), will retry in 5m"`
+- All logs visible in console output
+
+### Build Report Integration
+
+**Requirement:** Report fetch timing and behavior in build report.
+
+**Add to BuildReport:**
+```go
+type FetchAttempt struct {
+    // ... existing fields ...
+
+    // New fields
+    CacheHit      bool          `json:"cache_hit"`
+    CacheAge      time.Duration `json:"cache_age_seconds,omitempty"`
+    ThrottleDelay time.Duration `json:"throttle_delay_ms,omitempty"`
+    RateLimited   bool          `json:"rate_limited"`
+}
+```
+
+**Display in HTML report:**
+- Show cache hit rate per pipeline
+- Show total throttle delays
+- Show any rate limit incidents
+- Color-code: green for cache hits, yellow for delays, red for rate limits
+
+### Justfile Integration
+
+**Requirement:** Default `just` commands should be respectful.
+
+**Update justfile:**
+```bash
+# Development mode (default for local testing)
+dev:
+    ./build/buildsite -config config.toml -mode development
+    python3 -m http.server 8080 --directory public
+
+# Build site (development mode for testing)
+build:
+    go build -o build/buildsite ./cmd/buildsite
+    ./build/buildsite -config config.toml -mode development
+
+# Production mode (explicit)
+build-prod:
+    go build -o build/buildsite ./cmd/buildsite
+    ./build/buildsite -config config.toml -mode production
+```
+
+**Rationale:** Developers run `just dev` and `just build` frequently during development. These should default to development mode to avoid hitting upstream APIs unnecessarily.
+
+---
+
 ## Architecture: Request Throttling System
 
 ### New Components
