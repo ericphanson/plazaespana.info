@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -203,13 +204,10 @@ func main() {
 			}
 		}
 
-		// Check if event is in the future
-		endTime := evt.EndTime
-		if endTime.IsZero() {
-			endTime = evt.StartTime
-		}
-
-		if !filter.IsInFuture(endTime, now) {
+		// Filter out events that started more than 2 weeks ago
+		// (Even if still ongoing, we don't care about old exhibitions)
+		twoWeeksAgo := now.AddDate(0, 0, -14)
+		if evt.StartTime.Before(twoWeeksAgo) {
 			pastEvents++
 			continue
 		}
@@ -256,6 +254,11 @@ func main() {
 	}
 
 	log.Printf("After filtering: %d events", len(filteredEvents))
+
+	// Sort events by start time (upcoming events first)
+	sort.Slice(filteredEvents, func(i, j int) bool {
+		return filteredEvents[i].StartTime.Before(filteredEvents[j].StartTime)
+	})
 
 	// Convert to template format
 	var templateEvents []render.TemplateEvent
