@@ -57,8 +57,33 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         build-essential \
         procps \
         direnv \
+        python3 \
+        python3-pip \
+        python3-venv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Playwright browser dependencies for shot-scraper
+# These are the system libraries needed for Chromium to run
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  libnss3 \
+  libnspr4 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libdbus-1-3 \
+  libxkbcommon0 \
+  libatspi2.0-0 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxfixes3 \
+  libxrandr2 \
+  libgbm1 \
+  libpango-1.0-0 \
+  libcairo2 \
+  libasound2 \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Pin specific gh CLI version to prevent drift
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -71,6 +96,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
     wget "https://github.com/dandavison/delta/releases/download/${GIT_DELTA_VERSION}/git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
     dpkg -i "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
     rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
+
+
+# Install shot-scraper (system-wide for all users)
+RUN pip3 install --break-system-packages shot-scraper && \
+  shot-scraper --version
 
 # Install just (command runner)
 RUN ARCH=$(dpkg --print-architecture) && \
