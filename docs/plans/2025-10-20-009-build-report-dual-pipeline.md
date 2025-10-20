@@ -36,6 +36,7 @@ type PipelineReport struct {
     Name     string // "Cultural Events" or "City Events"
     Source   string // "datos.madrid.es" or "esmadrid.com"
     Fetching PipelineFetchReport
+    Merging  *MergeStats // Only for cultural events (3 sources)
     Filtering PipelineFilterReport
     EventCount int
     Duration time.Duration
@@ -85,10 +86,7 @@ type BuildReport struct {
     CulturalPipeline PipelineReport
     CityPipeline     PipelineReport
 
-    // Legacy fields (keep for backward compat during transition)
-    EventsCount int // Total events
-    Fetching    FetchReport // Deprecated - use CulturalPipeline.Fetching
-    Processing  ProcessingReport // Deprecated - use pipeline-specific filtering
+    TotalEvents int // Sum of both pipelines
 
     DataQuality []DataQualityIssue
     Output      OutputReport
@@ -97,6 +95,13 @@ type BuildReport struct {
     Recommendations []string
 }
 ```
+
+**Remove old types:**
+- Remove `FetchReport` (replaced by `PipelineFetchReport`)
+- Remove `ProcessingReport` (replaced by `PipelineFilterReport`)
+- Remove `MergeStats` (move to `CulturalPipelineReport` specific field)
+- Remove `DeduplicationStats` (unused)
+- Keep `GeoFilterStats`, `TimeFilterStats` (used in `PipelineFilterReport`)
 
 ### 2. Update HTML Rendering (`internal/report/html.go`)
 
@@ -302,17 +307,14 @@ buildReport.CityPipeline = report.PipelineReport{
 
 ## Backward Compatibility
 
-**Approach 1: Keep Legacy Fields (Recommended)**
-- Keep `EventsCount`, `Fetching`, `Processing` fields populated
-- Add new `CulturalPipeline`, `CityPipeline` fields
-- HTML renderer checks for new fields first, falls back to legacy
-- Allows gradual migration
+**Decision: ❌ BREAK COMPATIBILITY**
 
-**Approach 2: Break Compatibility (Not Recommended)**
-- Remove legacy fields immediately
-- Simpler code but breaks any external tools reading old reports
+- Remove all legacy fields (`EventsCount`, `Fetching`, `Processing`, `MergeStats`, etc.)
+- Replace with clean dual pipeline structure
+- Simpler, cleaner code
+- No migration path needed
 
-**Decision:** Use Approach 1 for safety.
+**Requirement:** Just ensure `just build` works - that's all we need!
 
 ---
 
@@ -344,10 +346,10 @@ buildReport.CityPipeline = report.PipelineReport{
 
 ## Notes
 
-- Current build report HTML is at `/workspace/public/build-report.html` (if generated)
-- Build report is optional (only generated if `-defer` flag used in old code, or if build fails)
-- In current implementation, build report is written to file but path logic may need checking
-- Consider adding `-report` flag to always generate report for debugging
+- **Build report should ALWAYS be generated** - not behind a flag
+- Output path: `/workspace/public/build-report.html`
+- Report is written alongside HTML/JSON output every build
+- Useful for debugging and understanding pipeline performance
 
 ---
 
