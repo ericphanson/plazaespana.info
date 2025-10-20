@@ -143,21 +143,35 @@ func main() {
 	geoStart := time.Now()
 	var filteredEvents []event.CanonicalEvent
 
+	// Location keywords for text-based fallback
+	locationKeywords := []string{
+		"plaza de españa",
+		"plaza españa",
+		"templo de debod",
+		"parque del oeste",
+	}
+
 	missingCoords := 0
+	missingCoordsKept := 0
 	outsideRadius := 0
 	pastEvents := 0
 
 	for _, evt := range merged {
-		// Skip if missing coordinates
+		// Text-based fallback if missing coordinates
 		if evt.Latitude == 0 || evt.Longitude == 0 {
-			missingCoords++
-			continue
-		}
-
-		// Check geographic proximity
-		if !filter.WithinRadius(*lat, *lon, evt.Latitude, evt.Longitude, *radiusKm) {
-			outsideRadius++
-			continue
+			if filter.MatchesLocation(evt.VenueName, evt.Address, evt.Description, locationKeywords) {
+				missingCoordsKept++
+				// Skip geo check but continue to time filter
+			} else {
+				missingCoords++
+				continue
+			}
+		} else {
+			// Check geographic proximity
+			if !filter.WithinRadius(*lat, *lon, evt.Latitude, evt.Longitude, *radiusKm) {
+				outsideRadius++
+				continue
+			}
 		}
 
 		// Check if event is in the future
@@ -185,6 +199,11 @@ func main() {
 		OutsideRadius: outsideRadius,
 		Kept:          len(filteredEvents) + pastEvents, // Events that passed geo filter
 		Duration:      geoDuration,
+	}
+
+	// Log text-based fallback results
+	if missingCoordsKept > 0 {
+		log.Printf("Text-based location matching: kept %d events without coordinates", missingCoordsKept)
 	}
 
 	// Record time filter stats
@@ -218,6 +237,7 @@ func main() {
 			StartHuman:        evt.StartTime.Format("02/01/2006 15:04"),
 			NombreInstalacion: evt.VenueName,
 			ContentURL:        evt.DetailsURL,
+			Description:       render.TruncateText(evt.Description, 150),
 		})
 
 		jsonEvents = append(jsonEvents, render.JSONEvent{

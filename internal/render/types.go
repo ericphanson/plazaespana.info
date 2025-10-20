@@ -15,6 +15,7 @@ type TemplateEvent struct {
 	StartHuman        string
 	NombreInstalacion string
 	ContentURL        string
+	Description       string // Truncated description
 }
 
 // JSONEvent represents an event in the machine-readable JSON output.

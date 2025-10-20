@@ -68,6 +68,13 @@ article h2 {
   margin: 0.25rem 0;
 }
 
+.description {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0.25rem;
+  line-height: 1.6;
+}
+
 a {
   color: var(--link);
 }

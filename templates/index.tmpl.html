@@ -18,6 +18,7 @@
       <h2>{{.Titulo}}</h2>
       <p class="when">{{.StartHuman}}</p>
       {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+      {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
       {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
     </article>
     {{else}}
