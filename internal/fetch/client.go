@@ -51,6 +51,11 @@ func (c *Client) Auditor() *RequestAuditor {
 	return c.auditor
 }
 
+// Config returns the client's mode configuration.
+func (c *Client) Config() ModeConfig {
+	return c.config
+}
+
 // FetchJSON fetches and decodes JSON from the given URL.
 // Returns ParseResult with successful events and individual parse errors.
 func (c *Client) FetchJSON(url string, loc *time.Location) event.ParseResult {

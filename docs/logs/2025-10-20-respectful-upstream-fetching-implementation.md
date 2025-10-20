@@ -329,3 +329,75 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 - Mode-based configuration (production/development)
 
 ---
+
+## Phase 3: Pipeline Integration
+
+### Task 3.1 & 3.2: Pipeline Delays and Logging (Combined)
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Modified:**
+- `internal/fetch/client.go` - Add Config() method
+- `internal/pipeline/pipeline.go` - Add delays and logging
+
+**Changes:**
+
+1. **Added Client.Config() method**:
+   - Exposes client's ModeConfig for pipeline to use
+   - Allows pipeline to access MinDelay and other settings
+
+2. **Updated Pipeline struct**:
+   - Added minDelay field (from client config)
+   - Added fetchMode field (for logging)
+   - NewPipeline extracts config from client
+
+3. **Updated FetchAll() with delays**:
+   - Explicit time.Sleep(minDelay) between format fetches
+   - Sleep after JSON, sleep after XML
+   - Prevents overwhelming upstream with rapid successive requests
+
+4. **Added comprehensive pipeline logging**:
+   - Log before each format fetch: "[Pipeline] Fetching JSON..."
+   - Log results: "[Pipeline] JSON: X events, Y errors"
+   - Log delays: "[Pipeline] Waiting 5s before fetching next format (respectful delay)..."
+   - User always knows what's happening and why builds take time
+
+**Behavior:**
+- Development mode: 5s delays between JSON→XML→CSV
+- Production mode: 2s delays between JSON→XML→CSV
+- Both modes: Double protection (pipeline sleep + fetch throttle)
+
+**Example output:**
+```
+[Pipeline] Fetching JSON from datos.madrid.es...
+[Pipeline] JSON: 1055 events, 0 errors
+[Pipeline] Waiting 5s before fetching next format (respectful delay)...
+[Pipeline] Fetching XML from datos.madrid.es...
+[Pipeline] XML: 1001 events, 0 errors
+[Pipeline] Waiting 5s before fetching next format (respectful delay)...
+[Pipeline] Fetching CSV from datos.madrid.es...
+[Pipeline] CSV: 1055 events, 0 errors
+```
+
+**Tests:** All pipeline tests passing (test duration: 61s due to delays)
+
+**Result:** Pipeline implements respectful sequential fetching with clear logging
+
+---
+
+## Phase 3: Complete ✅
+
+**Summary:**
+- 2 tasks completed (combined into one commit)
+- Pipeline now has explicit delays between format fetches
+- Comprehensive logging shows progress and delays
+- All tests passing
+
+**Key Features:**
+- Explicit time.Sleep() between formats
+- Clear [Pipeline] logging prefix
+- User always knows why build is delayed
+- Double protection: pipeline sleep + fetch throttle
+
+---

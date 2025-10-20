@@ -2,29 +2,35 @@ package pipeline
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ericphanson/madrid-events/internal/event"
 	"github.com/ericphanson/madrid-events/internal/fetch"
 )
 
-// Pipeline coordinates parallel data source fetching.
+// Pipeline coordinates sequential data source fetching with respectful delays.
 type Pipeline struct {
-	jsonURL string
-	xmlURL  string
-	csvURL  string
-	client  *fetch.Client
-	loc     *time.Location
+	jsonURL   string
+	xmlURL    string
+	csvURL    string
+	client    *fetch.Client
+	loc       *time.Location
+	minDelay  time.Duration // Minimum delay between format fetches
+	fetchMode string        // For logging ("production" or "development")
 }
 
 // NewPipeline creates a new pipeline with the given URLs and client.
 func NewPipeline(jsonURL, xmlURL, csvURL string, client *fetch.Client, loc *time.Location) *Pipeline {
+	config := client.Config()
 	return &Pipeline{
-		jsonURL: jsonURL,
-		xmlURL:  xmlURL,
-		csvURL:  csvURL,
-		client:  client,
-		loc:     loc,
+		jsonURL:   jsonURL,
+		xmlURL:    xmlURL,
+		csvURL:    csvURL,
+		client:    client,
+		loc:       loc,
+		minDelay:  config.MinDelay,
+		fetchMode: string(config.Mode),
 	}
 }
 
@@ -39,19 +45,38 @@ type PipelineResult struct {
 	CSVErrors  []event.ParseError
 }
 
-// FetchAll fetches from all three sources sequentially.
+// FetchAll fetches from all three sources sequentially with respectful delays.
 // Each source is isolated - errors in one don't affect others.
+// Delays between formats prevent overwhelming upstream servers.
 func (p *Pipeline) FetchAll() PipelineResult {
 	var result PipelineResult
 
 	// Fetch JSON (isolated - errors captured, don't crash)
+	log.Printf("[Pipeline] Fetching JSON from datos.madrid.es...")
 	result.JSONEvents, result.JSONErrors = p.fetchJSONIsolated()
+	log.Printf("[Pipeline] JSON: %d events, %d errors", len(result.JSONEvents), len(result.JSONErrors))
+
+	// Wait before next format (respectful to upstream)
+	if p.minDelay > 0 {
+		log.Printf("[Pipeline] Waiting %v before fetching next format (respectful delay)...", p.minDelay)
+		time.Sleep(p.minDelay)
+	}
 
 	// Fetch XML (isolated - JSON failure doesn't prevent this)
+	log.Printf("[Pipeline] Fetching XML from datos.madrid.es...")
 	result.XMLEvents, result.XMLErrors = p.fetchXMLIsolated()
+	log.Printf("[Pipeline] XML: %d events, %d errors", len(result.XMLEvents), len(result.XMLErrors))
+
+	// Wait before next format (respectful to upstream)
+	if p.minDelay > 0 {
+		log.Printf("[Pipeline] Waiting %v before fetching next format (respectful delay)...", p.minDelay)
+		time.Sleep(p.minDelay)
+	}
 
 	// Fetch CSV (isolated - previous failures don't prevent this)
+	log.Printf("[Pipeline] Fetching CSV from datos.madrid.es...")
 	result.CSVEvents, result.CSVErrors = p.fetchCSVIsolated()
+	log.Printf("[Pipeline] CSV: %d events, %d errors", len(result.CSVEvents), len(result.CSVErrors))
 
 	return result
 }
