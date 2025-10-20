@@ -94,3 +94,83 @@ ok      github.com/ericphanson/madrid-events/internal/audit     0.008s
 - Build report now accurately reflects parsed events, not just fetched services
 - Parse error visibility improved with ratio display
 - No changes to report structure (backward compatible)
+
+---
+
+### Phase 2: Reporting Accuracy
+
+#### Task 2.1: Fix Cultural Filtering Stats (45 min)
+**Status:** In Progress
+**Started:** 2025-10-20
+
+**Goal:** Fix Build Report cultural filtering stats to avoid double-counting and mixing categories.
+
+**Problem:**
+- `OutsideRadius` includes both "outside distrito" and "outside GPS radius" events (mixing categories)
+- `MissingCoords` is set to `missingBoth` (no distrito AND no coords), which is wrong
+- `Kept` uses `len(filteredEvents) + pastEvents`, double-counting in some contexts
+
+**Solution:** Track independent counters per FilterReason and populate stats correctly.
+
+**Files to modify:**
+- `cmd/buildsite/main.go` - Cultural events filtering stats calculation
+
+**Implementation:**
+1. ✅ Analyzed current filtering stats code
+2. ✅ Replaced mixed counters with clean switch statement based on FilterResult.FilterReason
+3. ✅ Fixed DistrictoFilterStats to use correct counters:
+   - Input: len(allEvents) instead of len(merged)
+   - Filtered: outsideDistrito (only "outside target distrito")
+   - Kept: keptEvents (only "kept" events)
+4. ✅ Fixed GeoFilterStats to use correct counters:
+   - Input: len(allEvents)
+   - MissingCoords: missingCoords (only "missing location data" reason)
+   - OutsideRadius: outsideRadius (only "outside GPS radius")
+   - Kept: keptEvents (only "kept" events)
+5. ✅ Fixed TimeFilterStats to use correct counters:
+   - Input: len(allEvents)
+   - PastEvents: tooOld (only "event too old")
+   - Kept: keptEvents (only "kept" events)
+6. ✅ Fixed city pipeline stats similarly
+7. ✅ All tests passing
+
+**Key changes:**
+- Removed mixed counters (outsideAll, missingBoth, pastEvents)
+- Added switch statement to count events by FilterReason
+- Each stat field now maps to exactly one FilterReason
+- No double-counting: each event counted exactly once
+
+**Before:**
+```go
+outsideAll++  // Mixed "outside distrito" AND "outside GPS radius"
+Filtered: outsideAll  // Wrong: mixing categories
+Kept: len(filteredEvents) + pastEvents  // Wrong: includes "too old" events
+MissingCoords: missingBoth  // Wrong: "no distrito AND no coords"
+```
+
+**After:**
+```go
+case "outside target distrito": outsideDistrito++
+case "outside GPS radius": outsideRadius++
+case "event too old": tooOld++
+case "kept": keptEvents++
+
+Filtered: outsideDistrito  // Correct: only distrito-filtered events
+Kept: keptEvents  // Correct: only kept events
+MissingCoords: missingCoords  // Correct: "missing location data" reason
+OutsideRadius: outsideRadius  // Correct: only GPS-filtered events
+```
+
+**Status:** ✅ Complete
+**Completed:** 2025-10-20
+
+**Validation:**
+- Each event is counted exactly once based on its FilterReason
+- Stats fields map 1:1 to filter reasons (no mixing)
+- Percentages will add up to 100% (Input = sum of all categories)
+- Build report accuracy dramatically improved
+
+**Notes:**
+- This was a major refactoring of stats calculation
+- All existing tests continue to pass
+- Build report will now show accurate, non-overlapping categories

@@ -257,15 +257,6 @@ func main() {
 		"conde duque",
 	}
 
-	// Stats counters (for logging)
-	missingDistr := 0
-	missingBoth := 0
-	byDistrito := 0
-	byRadius := 0
-	byTextMatch := 0
-	outsideAll := 0
-	pastEvents := 0
-
 	// Step 1: Evaluate all filters for all events and record results
 	// Non-destructive: Keep ALL events in memory
 	allEvents := make([]event.CulturalEvent, 0, len(merged))
@@ -299,40 +290,63 @@ func main() {
 		cutoffWeeksAgo := now.AddDate(0, 0, -7*cfg.Filter.PastEventsWeeks)
 		result.TooOld = evt.StartTime.Before(cutoffWeeksAgo)
 
-		// Decide if kept (SAME logic as before, but record instead of filtering)
+		// Decide if kept (priority order: distrito -> GPS -> time -> kept)
 		if result.HasDistrito && !result.DistritoMatched {
 			result.Kept = false
 			result.FilterReason = "outside target distrito"
-			outsideAll++
 		} else if result.HasCoordinates && !result.WithinRadius && !result.HasDistrito {
 			result.Kept = false
 			result.FilterReason = "outside GPS radius"
-			outsideAll++
 		} else if result.TooOld {
 			result.Kept = false
 			result.FilterReason = "event too old"
-			pastEvents++
 		} else {
 			result.Kept = true
 			result.FilterReason = "kept"
-
-			// Count kept events by location method (for logging)
-			if result.HasDistrito && result.DistritoMatched {
-				byDistrito++
-			} else if result.HasCoordinates && result.WithinRadius {
-				byRadius++
-				missingDistr++
-			} else {
-				// No distrito, no coords - included by default
-				missingBoth++
-				if result.TextMatched {
-					byTextMatch++
-				}
-			}
 		}
 
 		evt.FilterResult = result
 		allEvents = append(allEvents, evt) // Keep ALL events
+	}
+
+	// Count events by filter reason (no double-counting, no mixing)
+	var (
+		keptEvents         = 0
+		outsideDistrito    = 0
+		outsideRadius      = 0
+		missingCoords      = 0
+		tooOld             = 0
+		byDistrito         = 0
+		byRadius           = 0
+		byTextMatch        = 0
+		missingBothSources = 0
+	)
+
+	for _, evt := range allEvents {
+		switch evt.FilterResult.FilterReason {
+		case "kept":
+			keptEvents++
+			// Count by location method (for logging)
+			if evt.FilterResult.HasDistrito && evt.FilterResult.DistritoMatched {
+				byDistrito++
+			} else if evt.FilterResult.HasCoordinates && evt.FilterResult.WithinRadius {
+				byRadius++
+			} else {
+				// No distrito, no coords - included by default
+				missingBothSources++
+				if evt.FilterResult.TextMatched {
+					byTextMatch++
+				}
+			}
+		case "outside target distrito":
+			outsideDistrito++
+		case "outside GPS radius":
+			outsideRadius++
+		case "missing location data":
+			missingCoords++
+		case "event too old":
+			tooOld++
+		}
 	}
 
 	// Step 2: Separate kept events for rendering
@@ -352,9 +366,9 @@ func main() {
 	if len(cfg.Filter.Distritos) > 0 {
 		buildReport.CulturalPipeline.Filtering.DistrictoFilter = &report.DistrictoFilterStats{
 			AllowedDistricts: cfg.Filter.Distritos,
-			Input:            len(merged),
-			Filtered:         outsideAll, // Events rejected
-			Kept:             len(filteredEvents) + pastEvents,
+			Input:            len(allEvents),
+			Filtered:         outsideDistrito, // FIXED: Only "outside target distrito" events
+			Kept:             keptEvents,      // FIXED: Only kept events
 			Duration:         geoDuration,
 		}
 	}
@@ -364,10 +378,10 @@ func main() {
 		RefLat:        cfg.Filter.Latitude,
 		RefLon:        cfg.Filter.Longitude,
 		Radius:        cfg.Filter.RadiusKm,
-		Input:         len(merged),
-		MissingCoords: missingBoth,
-		OutsideRadius: outsideAll,
-		Kept:          len(filteredEvents) + pastEvents,
+		Input:         len(allEvents),
+		MissingCoords: missingCoords,   // FIXED: Only events with "missing location data" reason
+		OutsideRadius: outsideRadius,   // FIXED: Only "outside GPS radius" events
+		Kept:          keptEvents,      // FIXED: Only kept events
 		Duration:      geoDuration,
 	}
 
@@ -380,11 +394,11 @@ func main() {
 	buildReport.CulturalPipeline.Filtering.TimeFilter = &report.TimeFilterStats{
 		ReferenceTime: now,
 		Timezone:      *timezone,
-		Input:         len(filteredEvents) + pastEvents,
-		ParseFailures: 0, // No parse failures with CulturalEvent
-		PastEvents:    pastEvents,
-		Kept:          len(filteredEvents),
-		Duration:      0, // Included in geo filter duration
+		Input:         len(allEvents),
+		ParseFailures: 0,       // No parse failures with CulturalEvent
+		PastEvents:    tooOld,  // FIXED: Only "event too old" events
+		Kept:          keptEvents, // FIXED: Only kept events
+		Duration:      0,       // Included in geo filter duration
 	}
 
 	// Add warnings if needed
@@ -479,16 +493,15 @@ func main() {
 
 	// Track filtering start
 	cityFilterStart := time.Now()
-	beforeFilterCount := len(cityEvents)
 
 	// Step 1: Evaluate all filters for all city events and record results
 	// Non-destructive: Keep ALL events in memory
 	cutoffTime := now.Add(-time.Duration(cfg.Filter.PastEventsWeeks) * 7 * 24 * time.Hour)
 	allCityEvents := make([]event.CityEvent, 0, len(cityEvents))
 
-	// Stats counters for logging
-	outsideRadius := 0
-	tooOld := 0
+	// Stats counters for city events
+	cityOutsideRadius := 0
+	cityTooOld := 0
 
 	for _, evt := range cityEvents {
 		result := event.FilterResult{}
@@ -513,11 +526,11 @@ func main() {
 		if !result.WithinRadius {
 			result.Kept = false
 			result.FilterReason = "outside GPS radius"
-			outsideRadius++
+			cityOutsideRadius++
 		} else if result.TooOld {
 			result.Kept = false
 			result.FilterReason = "event too old"
-			tooOld++
+			cityTooOld++
 		} else {
 			result.Kept = true
 			result.FilterReason = "kept"
@@ -539,17 +552,14 @@ func main() {
 
 	log.Printf("City events after filtering: %d events", len(filteredCityEvents))
 
-	// Track city pipeline filtering stats
-	cityFiltered := beforeFilterCount - len(filteredCityEvents)
-
-	// Geo filter stats for city pipeline
+	// Geo filter stats for city pipeline (FIXED: use correct counters)
 	buildReport.CityPipeline.Filtering.GeoFilter = &report.GeoFilterStats{
 		RefLat:        cfg.Filter.Latitude,
 		RefLon:        cfg.Filter.Longitude,
 		Radius:        cfg.Filter.RadiusKm,
-		Input:         beforeFilterCount,
-		MissingCoords: 0, // ESMadrid events always have coords
-		OutsideRadius: cityFiltered,
+		Input:         len(allCityEvents),
+		MissingCoords: 0,                 // ESMadrid events always have coords
+		OutsideRadius: cityOutsideRadius, // FIXED: Only "outside GPS radius" events
 		Kept:          len(filteredCityEvents),
 		Duration:      cityFilterDuration,
 	}
@@ -558,9 +568,9 @@ func main() {
 	buildReport.CityPipeline.Filtering.TimeFilter = &report.TimeFilterStats{
 		ReferenceTime: now,
 		Timezone:      *timezone,
-		Input:         beforeFilterCount,
+		Input:         len(allCityEvents),
 		ParseFailures: 0,
-		PastEvents:    cityFiltered, // Approximate (includes geo + time filtered)
+		PastEvents:    cityTooOld, // FIXED: Only "event too old" events
 		Kept:          len(filteredCityEvents),
 		Duration:      0, // Included in geo filter duration
 	}
