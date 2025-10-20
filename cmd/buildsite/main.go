@@ -81,7 +81,7 @@ func main() {
 	// Try JSON
 	log.Println("Fetching JSON from:", *jsonURL)
 	jsonStart := time.Now()
-	jsonResp, err := client.FetchJSON(*jsonURL)
+	jsonResult := client.FetchJSON(*jsonURL, loc)
 	jsonDuration := time.Since(jsonStart)
 
 	jsonAttempt := report.FetchAttempt{
@@ -90,24 +90,42 @@ func main() {
 		Duration: jsonDuration,
 	}
 
-	if err == nil && jsonResp != nil {
-		rawEvents = jsonResp.Graph
+	if len(jsonResult.Events) > 0 {
+		// Convert CanonicalEvents back to RawEvents (temporary until Task 7)
+		for _, sourced := range jsonResult.Events {
+			evt := sourced.Event
+			rawEvents = append(rawEvents, fetch.RawEvent{
+				IDEvento:          evt.ID,
+				Titulo:            evt.Title,
+				Descripcion:       evt.Description,
+				Fecha:             evt.StartTime.Format("2006-01-02"),
+				Hora:              evt.StartTime.Format("15:04"),
+				NombreInstalacion: evt.VenueName,
+				ContentURL:        evt.DetailsURL,
+				Lat:               evt.Latitude,
+				Lon:               evt.Longitude,
+			})
+		}
 		jsonAttempt.Status = "SUCCESS"
 		jsonAttempt.EventCount = len(rawEvents)
-		jsonAttempt.HTTPStatus = 200 // Assume success
+		jsonAttempt.HTTPStatus = 200
 		buildReport.Fetching.SourceUsed = "JSON"
 		log.Printf("Fetched %d events from JSON", len(rawEvents))
 	} else {
-		fetchErr = err
+		fetchErr = fmt.Errorf("no events parsed from JSON")
 		jsonAttempt.Status = "FAILED"
-		jsonAttempt.Error = err.Error()
-		log.Printf("JSON fetch failed: %v", err)
+		if len(jsonResult.Errors) > 0 {
+			jsonAttempt.Error = jsonResult.Errors[0].Error.Error()
+		} else {
+			jsonAttempt.Error = "no events parsed"
+		}
+		log.Printf("JSON fetch failed: %v", fetchErr)
 
 		// Try XML
 		if *xmlURL != "" {
 			log.Println("Falling back to XML:", *xmlURL)
 			xmlStart := time.Now()
-			xmlEvents, err := client.FetchXML(*xmlURL)
+			xmlResult := client.FetchXML(*xmlURL, loc)
 			xmlDuration := time.Since(xmlStart)
 
 			xmlAttempt := report.FetchAttempt{
@@ -116,9 +134,23 @@ func main() {
 				Duration: xmlDuration,
 			}
 
-			if err == nil {
+			if len(xmlResult.Events) > 0 {
 				fetchErr = nil
-				rawEvents = xmlEvents
+				rawEvents = nil // Clear JSON events
+				for _, sourced := range xmlResult.Events {
+					evt := sourced.Event
+					rawEvents = append(rawEvents, fetch.RawEvent{
+						IDEvento:          evt.ID,
+						Titulo:            evt.Title,
+						Descripcion:       evt.Description,
+						Fecha:             evt.StartTime.Format("2006-01-02"),
+						Hora:              evt.StartTime.Format("15:04"),
+						NombreInstalacion: evt.VenueName,
+						ContentURL:        evt.DetailsURL,
+						Lat:               evt.Latitude,
+						Lon:               evt.Longitude,
+					})
+				}
 				xmlAttempt.Status = "SUCCESS"
 				xmlAttempt.EventCount = len(rawEvents)
 				xmlAttempt.HTTPStatus = 200
@@ -126,8 +158,12 @@ func main() {
 				log.Printf("Fetched %d events from XML", len(rawEvents))
 			} else {
 				xmlAttempt.Status = "FAILED"
-				xmlAttempt.Error = err.Error()
-				log.Printf("XML fetch failed: %v", err)
+				if len(xmlResult.Errors) > 0 {
+					xmlAttempt.Error = xmlResult.Errors[0].Error.Error()
+				} else {
+					xmlAttempt.Error = "no events parsed"
+				}
+				log.Printf("XML fetch failed: no events parsed")
 			}
 			buildReport.Fetching.Attempts = append(buildReport.Fetching.Attempts, xmlAttempt)
 		}
@@ -136,7 +172,7 @@ func main() {
 		if fetchErr != nil && *csvURL != "" {
 			log.Println("Falling back to CSV:", *csvURL)
 			csvStart := time.Now()
-			csvEvents, err := client.FetchCSV(*csvURL)
+			csvResult := client.FetchCSV(*csvURL, loc)
 			csvDuration := time.Since(csvStart)
 
 			csvAttempt := report.FetchAttempt{
@@ -145,9 +181,23 @@ func main() {
 				Duration: csvDuration,
 			}
 
-			if err == nil {
+			if len(csvResult.Events) > 0 {
 				fetchErr = nil
-				rawEvents = csvEvents
+				rawEvents = nil // Clear previous events
+				for _, sourced := range csvResult.Events {
+					evt := sourced.Event
+					rawEvents = append(rawEvents, fetch.RawEvent{
+						IDEvento:          evt.ID,
+						Titulo:            evt.Title,
+						Descripcion:       evt.Description,
+						Fecha:             evt.StartTime.Format("2006-01-02"),
+						Hora:              evt.StartTime.Format("15:04"),
+						NombreInstalacion: evt.VenueName,
+						ContentURL:        evt.DetailsURL,
+						Lat:               evt.Latitude,
+						Lon:               evt.Longitude,
+					})
+				}
 				csvAttempt.Status = "SUCCESS"
 				csvAttempt.EventCount = len(rawEvents)
 				csvAttempt.HTTPStatus = 200
@@ -155,8 +205,12 @@ func main() {
 				log.Printf("Fetched %d events from CSV", len(rawEvents))
 			} else {
 				csvAttempt.Status = "FAILED"
-				csvAttempt.Error = err.Error()
-				log.Printf("CSV fetch failed: %v", err)
+				if len(csvResult.Errors) > 0 {
+					csvAttempt.Error = csvResult.Errors[0].Error.Error()
+				} else {
+					csvAttempt.Error = "no events parsed"
+				}
+				log.Printf("CSV fetch failed: no events parsed")
 			}
 			buildReport.Fetching.Attempts = append(buildReport.Fetching.Attempts, csvAttempt)
 		}

@@ -64,8 +64,8 @@ func TestXMLEvent_ToCanonical(t *testing.T) {
 					t.Errorf("Longitude = %f, want %f", canonical.Longitude, -3.71217)
 				}
 
-				// Check time parsing - XML has date with fractional seconds, time separate
-				expectedStart := time.Date(2025, 10, 25, 0, 0, 0, 0, loc)
+				// Check time parsing - XML has date with fractional seconds, HORA applied
+				expectedStart := time.Date(2025, 10, 25, 19, 0, 0, 0, loc)
 				if !canonical.StartTime.Equal(expectedStart) {
 					t.Errorf("StartTime = %v, want %v", canonical.StartTime, expectedStart)
 				}

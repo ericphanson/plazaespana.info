@@ -182,3 +182,59 @@
 **Next:** Commit Phase 1, code review, then Task 5 (pipeline orchestrator)
 
 ---
+
+## Code Review Fixes
+
+### Fix 1: XML HORA Time Parsing Bug
+
+**Status:** COMPLETED
+**Completed:** 2025-10-20 03:15:00
+
+**Issue:** Code review identified that `parseXMLTime()` was not applying the HORA field when date string included time portion (e.g., "2025-10-27 00:00:00.0" with HORA "19:00").
+
+**Root Cause:** Function returned immediately after successfully parsing date, never checking if HORA should override the time portion.
+
+**Fix Applied** in `internal/fetch/types.go` (lines 252-266):
+```go
+// If we have a separate time string, check if we should override the time portion
+// This handles XML where FECHA has "00:00:00" but HORA has the actual time
+if timeStr != "" {
+    // Check if the parsed time is midnight (likely placeholder)
+    if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
+        // Parse time in HH:MM format
+        timeOnlyFormat := "15:04"
+        timeVal, timeErr := time.Parse(timeOnlyFormat, timeStr)
+        if timeErr == nil {
+            // Combine date with actual time from HORA field
+            t = time.Date(t.Year(), t.Month(), t.Day(),
+                timeVal.Hour(), timeVal.Minute(), 0, 0, loc)
+        }
+    }
+}
+```
+
+**Test Update:** Updated `internal/fetch/xml_test.go` line 68 to expect 19:00 instead of 00:00.
+
+**Verification:** All XML tests passing (1001/1001 events from fixture)
+
+---
+
+### Fix 2: Make main.go Compile (Temporary Shim)
+
+**Status:** COMPLETED
+**Completed:** 2025-10-20 03:18:00
+
+**Issue:** `just test` failing because main.go still used old fetch signatures (missing `*time.Location` parameter).
+
+**Solution:** Added temporary shim layer to convert new `event.ParseResult` back to old `[]fetch.RawEvent` format. This allows tests to pass while deferring full integration until Task 7.
+
+**Changes in `cmd/buildsite/main.go`:**
+- Pass `loc` parameter to FetchJSON/FetchXML/FetchCSV
+- Convert `ParseResult.Events` (CanonicalEvent) back to RawEvent format
+- Handle new error structure (check `len(result.Events) > 0` instead of `err == nil`)
+
+**Test Results:** All 22 tests passing across 5 packages
+
+**Note:** This is a temporary bridge solution. Task 7 will remove RawEvent entirely and work directly with CanonicalEvent.
+
+---

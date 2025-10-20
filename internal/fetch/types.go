@@ -249,15 +249,19 @@ func parseXMLTime(dateStr, timeStr string, loc *time.Location) (time.Time, error
 	for _, format := range formats {
 		t, err := time.ParseInLocation(format, dateStr, loc)
 		if err == nil {
-			// If we have a separate time string and it's just a date, add the time
-			if timeStr != "" && (format == "2006-01-02") {
-				// Parse time in HH:MM format
-				timeOnlyFormat := "15:04"
-				timeVal, timeErr := time.Parse(timeOnlyFormat, timeStr)
-				if timeErr == nil {
-					// Combine date and time
-					t = time.Date(t.Year(), t.Month(), t.Day(),
-						timeVal.Hour(), timeVal.Minute(), 0, 0, loc)
+			// If we have a separate time string, check if we should override the time portion
+			// This handles XML where FECHA has "00:00:00" but HORA has the actual time
+			if timeStr != "" {
+				// Check if the parsed time is midnight (likely placeholder)
+				if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 {
+					// Parse time in HH:MM format
+					timeOnlyFormat := "15:04"
+					timeVal, timeErr := time.Parse(timeOnlyFormat, timeStr)
+					if timeErr == nil {
+						// Combine date with actual time from HORA field
+						t = time.Date(t.Year(), t.Month(), t.Day(),
+							timeVal.Hour(), timeVal.Minute(), 0, 0, loc)
+					}
 				}
 			}
 			return t, nil
