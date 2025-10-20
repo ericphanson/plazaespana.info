@@ -162,5 +162,117 @@ City events after filtering: N events (X by geo, Y by Plaza de España text matc
 
 ### Phase 5: Testing
 
-**Status:** In Progress
+#### Task 5.1: Add Integration Tests (30 min)
+**Status:** ✅ Completed
 **Started:** 2025-10-20
+**Completed:** 2025-10-20
+
+**Goal:** Verify multi-venue filtering works correctly with comprehensive test cases.
+
+**Files created:**
+- `cmd/buildsite/multivenue_filter_test.go` - Comprehensive filtering tests (7 test cases)
+
+**Test Cases:**
+1. ✅ City event within radius → kept by geo (not multi-venue)
+2. ✅ City event outside radius + text match → kept as multi-venue
+3. ✅ City event outside radius + no text → excluded
+4. ✅ City event with text match but too old → excluded
+5. ✅ City event no coords + text match → kept as multi-venue
+6. ✅ City event no coords + no text → excluded
+7. ✅ City event with abbreviated "Pza. España" → kept as multi-venue
+
+**Test Results:**
+```
+=== RUN   TestMultiVenueFiltering
+=== RUN   TestMultiVenueFiltering/city_event_within_radius_kept_by_geo
+=== RUN   TestMultiVenueFiltering/city_event_outside_radius_with_text_match_kept
+=== RUN   TestMultiVenueFiltering/city_event_outside_radius_no_text_match_excluded
+=== RUN   TestMultiVenueFiltering/city_event_text_match_but_too_old_excluded
+=== RUN   TestMultiVenueFiltering/city_event_no_coords_with_text_match_kept
+=== RUN   TestMultiVenueFiltering/city_event_no_coords_no_text_match_excluded
+=== RUN   TestMultiVenueFiltering/city_event_abbreviated_pza_espana_kept
+--- PASS: TestMultiVenueFiltering (0.00s)
+PASS
+```
+
+**Coverage:**
+- All filtering decision branches tested
+- Edge cases covered (missing coords, old events, abbreviations)
+- Full test suite passes (no regressions)
+
+**Notes:**
+- Tests validate the complete filtering logic from Phase 3
+- Each test case checks: Kept, MultiVenueKept, PlazaEspanaText, FilterReason
+- Tests use realistic event data matching implementation plan scenarios
+
+---
+
+## Implementation Summary
+
+**Status:** ✅ **COMPLETE**
+**Date Completed:** 2025-10-20
+**Total Time:** ~2.5 hours (as estimated)
+
+### All Phases Completed
+
+**Phase 1: Text Matching Infrastructure** ✅
+- Added normalizeText(), plazaEspanaVariants(), MatchesPlazaEspana()
+- 16 test cases (normalization + variants + matching)
+
+**Phase 2: FilterResult Extension** ✅
+- Added PlazaEspanaText and MultiVenueKept fields
+- Backward compatible (omitempty tags)
+
+**Phase 3: City Events Filtering Logic** ✅
+- Updated filtering decision tree in main.go
+- Added cityMultiVenueKept counter
+- Logging shows geo vs text breakdown
+
+**Phase 4: Build Report Integration** ✅
+- Extended GeoFilterStats with MultiVenueKept field
+- Populated in build report
+- JSON output includes multi-venue count
+
+**Phase 5: Testing** ✅
+- 7 comprehensive test cases
+- All scenarios validated
+- Full test suite passing
+
+### Success Criteria Verification
+
+- ✅ Events within 350m radius continue to be kept via geo
+- ✅ City events mentioning "Plaza de España" kept even if outside radius
+- ✅ Cultural events NOT included via text matching (city events only)
+- ✅ Audit file will show `multi_venue_kept: true` for text-matched events
+- ✅ Build report shows count of multi-venue kept events
+- ✅ Filter reason clearly indicates "kept (multi-venue: Plaza de España)"
+- ✅ All existing tests continue to pass (no regressions)
+
+### Files Modified/Created
+
+**Modified:**
+- `internal/filter/text.go` - Added 3 new functions
+- `internal/filter/text_test.go` - Added 3 test functions
+- `internal/event/types.go` - Extended FilterResult struct
+- `cmd/buildsite/main.go` - Updated filtering logic + logging + stats
+- `internal/report/types.go` - Extended GeoFilterStats
+
+**Created:**
+- `cmd/buildsite/multivenue_filter_test.go` - 7 comprehensive tests
+- `docs/logs/2025-10-20-multivenue-plaza-espana-implementation.md` - This log
+
+### Commits
+
+1. `d7086eb` - Phase 1: Text matching infrastructure
+2. `5d22029` - Phase 2: FilterResult extension
+3. `f2a65d2` - Phase 3: City events filtering logic
+4. `c1b4777` - Phase 4: Build report integration
+5. (pending) - Phase 5: Testing
+
+### Next Steps
+
+1. Commit Phase 5 tests
+2. Build FreeBSD binary for deployment
+3. Deploy to production
+4. Monitor build report for multi-venue count
+5. Verify audit file shows expected IDs (93553, 71133) when in time window
