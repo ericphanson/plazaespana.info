@@ -15,7 +15,8 @@ func (r *BuildReport) WriteMarkdown(w io.Writer) error {
 	b.WriteString(fmt.Sprintf("**Build Time:** %s  \n", r.BuildTime.Format("2006-01-02 15:04:05 MST")))
 	b.WriteString(fmt.Sprintf("**Duration:** %.2fs  \n", r.Duration.Seconds()))
 	b.WriteString(fmt.Sprintf("**Exit Status:** %s  \n", statusEmoji(r.ExitStatus)+" "+r.ExitStatus))
-	b.WriteString(fmt.Sprintf("**Events Generated:** %d\n\n", r.EventsCount))
+	b.WriteString(fmt.Sprintf("**Events Generated:** %d (cultural) + %d (city) = %d total\n\n",
+		r.CulturalPipeline.EventCount, r.CityPipeline.EventCount, r.TotalEvents))
 
 	// Build pipeline diagram
 	b.WriteString("## Build Pipeline\n\n")
@@ -26,23 +27,37 @@ func (r *BuildReport) WriteMarkdown(w io.Writer) error {
 	b.WriteString("    C --> D[Time Filter]\n")
 	b.WriteString("    D --> E[Render HTML]\n")
 	b.WriteString("    D --> F[Render JSON]\n")
-	b.WriteString(fmt.Sprintf("    A -.-> A1[%d total events]\n", r.Processing.Merge.TotalBeforeMerge))
-	b.WriteString(fmt.Sprintf("    B -.-> B1[%d unique]\n", r.Processing.Merge.UniqueEvents))
-	b.WriteString(fmt.Sprintf("    C -.-> C1[%d events]\n", r.Processing.GeoFilter.Kept))
-	b.WriteString(fmt.Sprintf("    D -.-> D1[%d events]\n", r.Processing.TimeFilter.Kept))
+	totalBefore := 0
+	uniqueEvents := 0
+	geoKept := 0
+	timeKept := 0
+	if r.CulturalPipeline.Merging != nil {
+		totalBefore = r.CulturalPipeline.Merging.TotalBeforeMerge
+		uniqueEvents = r.CulturalPipeline.Merging.UniqueEvents
+	}
+	if r.CulturalPipeline.Filtering.GeoFilter != nil {
+		geoKept = r.CulturalPipeline.Filtering.GeoFilter.Kept
+	}
+	if r.CulturalPipeline.Filtering.TimeFilter != nil {
+		timeKept = r.CulturalPipeline.Filtering.TimeFilter.Kept
+	}
+	b.WriteString(fmt.Sprintf("    A -.-> A1[%d total events]\n", totalBefore))
+	b.WriteString(fmt.Sprintf("    B -.-> B1[%d unique]\n", uniqueEvents))
+	b.WriteString(fmt.Sprintf("    C -.-> C1[%d events]\n", geoKept))
+	b.WriteString(fmt.Sprintf("    D -.-> D1[%d events]\n", timeKept))
 	b.WriteString(fmt.Sprintf("    E -.-> E1[%s]\n", r.Output.HTML.Status))
 	b.WriteString(fmt.Sprintf("    F -.-> F1[%s]\n", r.Output.JSON.Status))
 	b.WriteString("```\n\n")
 
 	// Data Fetching
 	b.WriteString("## 1. Data Fetching (Multi-Source)\n\n")
-	b.WriteString(fmt.Sprintf("**Total Duration:** %.2fs\n\n", r.Fetching.TotalDuration.Seconds()))
+	b.WriteString(fmt.Sprintf("**Total Duration:** %.2fs\n\n", r.CulturalPipeline.Fetching.TotalDuration.Seconds()))
 	b.WriteString("**Strategy:** Fetch all three sources (JSON, XML, CSV) independently, then merge and deduplicate.\n\n")
 
 	// Show all three sources in a table
 	b.WriteString("| Source | Status | Events | Duration | Details |\n")
 	b.WriteString("|--------|--------|--------|----------|----------|\n")
-	for _, attempt := range []FetchAttempt{r.Fetching.JSON, r.Fetching.XML, r.Fetching.CSV} {
+	for _, attempt := range r.CulturalPipeline.Fetching.Attempts {
 		if attempt.Source == "" {
 			continue
 		}
@@ -62,7 +77,7 @@ func (r *BuildReport) WriteMarkdown(w io.Writer) error {
 	b.WriteString("\n")
 
 	// Detailed view for each source
-	for _, attempt := range []FetchAttempt{r.Fetching.JSON, r.Fetching.XML, r.Fetching.CSV} {
+	for _, attempt := range r.CulturalPipeline.Fetching.Attempts {
 		if attempt.Source == "" {
 			continue
 		}
@@ -122,107 +137,112 @@ func (r *BuildReport) WriteMarkdown(w io.Writer) error {
 	b.WriteString("## 2. Data Processing\n\n")
 
 	// Merge and Deduplication
-	if r.Processing.Merge.TotalBeforeMerge > 0 {
+	if r.CulturalPipeline.Merging != nil && r.CulturalPipeline.Merging.TotalBeforeMerge > 0 {
+		merge := r.CulturalPipeline.Merging
 		b.WriteString("### Multi-Source Merge & Deduplication\n\n")
 
 		b.WriteString("**Input Events:**\n\n")
 		b.WriteString("| Source | Events |\n")
 		b.WriteString("|--------|--------|\n")
-		b.WriteString(fmt.Sprintf("| JSON | %d |\n", r.Processing.Merge.JSONEvents))
-		b.WriteString(fmt.Sprintf("| XML | %d |\n", r.Processing.Merge.XMLEvents))
-		b.WriteString(fmt.Sprintf("| CSV | %d |\n", r.Processing.Merge.CSVEvents))
-		b.WriteString(fmt.Sprintf("| **Total** | **%d** |\n", r.Processing.Merge.TotalBeforeMerge))
+		b.WriteString(fmt.Sprintf("| JSON | %d |\n", merge.JSONEvents))
+		b.WriteString(fmt.Sprintf("| XML | %d |\n", merge.XMLEvents))
+		b.WriteString(fmt.Sprintf("| CSV | %d |\n", merge.CSVEvents))
+		b.WriteString(fmt.Sprintf("| **Total** | **%d** |\n", merge.TotalBeforeMerge))
 		b.WriteString("\n")
 
 		b.WriteString("**Deduplication Results:**\n\n")
 		b.WriteString("| Metric | Count |\n")
 		b.WriteString("|--------|-------|\n")
-		b.WriteString(fmt.Sprintf("| Unique Events | %d |\n", r.Processing.Merge.UniqueEvents))
+		b.WriteString(fmt.Sprintf("| Unique Events | %d |\n", merge.UniqueEvents))
 		b.WriteString(fmt.Sprintf("| Duplicates Removed | %d (%.1f%%) |\n",
-			r.Processing.Merge.Duplicates,
-			percent(r.Processing.Merge.Duplicates, r.Processing.Merge.TotalBeforeMerge)))
-		b.WriteString(fmt.Sprintf("| Duration | %.3fs |\n", r.Processing.Merge.Duration.Seconds()))
+			merge.Duplicates,
+			percent(merge.Duplicates, merge.TotalBeforeMerge)))
+		b.WriteString(fmt.Sprintf("| Duration | %.3fs |\n", merge.Duration.Seconds()))
 		b.WriteString("\n")
 
 		b.WriteString("**Source Coverage** (how many sources had each event):\n\n")
 		b.WriteString("| Coverage | Events | Percentage |\n")
 		b.WriteString("|----------|--------|------------|\n")
 		b.WriteString(fmt.Sprintf("| All 3 sources | %d | %.1f%% |\n",
-			r.Processing.Merge.InAllThree,
-			percent(r.Processing.Merge.InAllThree, r.Processing.Merge.UniqueEvents)))
+			merge.InAllThree,
+			percent(merge.InAllThree, merge.UniqueEvents)))
 		b.WriteString(fmt.Sprintf("| 2 sources | %d | %.1f%% |\n",
-			r.Processing.Merge.InTwoSources,
-			percent(r.Processing.Merge.InTwoSources, r.Processing.Merge.UniqueEvents)))
+			merge.InTwoSources,
+			percent(merge.InTwoSources, merge.UniqueEvents)))
 		b.WriteString(fmt.Sprintf("| 1 source only | %d | %.1f%% |\n",
-			r.Processing.Merge.InOneSource,
-			percent(r.Processing.Merge.InOneSource, r.Processing.Merge.UniqueEvents)))
+			merge.InOneSource,
+			percent(merge.InOneSource, merge.UniqueEvents)))
 		b.WriteString("\n")
 
 		// Pie chart for source coverage
-		if r.Processing.Merge.UniqueEvents > 0 {
+		if merge.UniqueEvents > 0 {
 			b.WriteString("```mermaid\n")
 			b.WriteString("pie title Source Coverage\n")
 			b.WriteString(fmt.Sprintf("    \"All 3 sources (%d)\" : %d\n",
-				r.Processing.Merge.InAllThree, r.Processing.Merge.InAllThree))
+				merge.InAllThree, merge.InAllThree))
 			b.WriteString(fmt.Sprintf("    \"2 sources (%d)\" : %d\n",
-				r.Processing.Merge.InTwoSources, r.Processing.Merge.InTwoSources))
+				merge.InTwoSources, merge.InTwoSources))
 			b.WriteString(fmt.Sprintf("    \"1 source (%d)\" : %d\n",
-				r.Processing.Merge.InOneSource, r.Processing.Merge.InOneSource))
+				merge.InOneSource, merge.InOneSource))
 			b.WriteString("```\n\n")
 		}
 	}
 
 	// Geographic filtering
-	b.WriteString("### Geographic Filtering (Haversine Distance)\n\n")
-	b.WriteString("**Reference Point:** Plaza de España  \n")
-	b.WriteString(fmt.Sprintf("**Coordinates:** (%.5f, %.5f)  \n", r.Processing.GeoFilter.RefLat, r.Processing.GeoFilter.RefLon))
-	b.WriteString(fmt.Sprintf("**Radius:** %.2f km\n\n", r.Processing.GeoFilter.Radius))
+	if geo := r.CulturalPipeline.Filtering.GeoFilter; geo != nil {
+		b.WriteString("### Geographic Filtering (Haversine Distance)\n\n")
+		b.WriteString("**Reference Point:** Plaza de España  \n")
+		b.WriteString(fmt.Sprintf("**Coordinates:** (%.5f, %.5f)  \n", geo.RefLat, geo.RefLon))
+		b.WriteString(fmt.Sprintf("**Radius:** %.2f km\n\n", geo.Radius))
 
-	b.WriteString("| Filter Result | Count | Percentage |\n")
-	b.WriteString("|---------------|-------|------------|\n")
-	b.WriteString(fmt.Sprintf("| Input | %d | 100.0%% |\n", r.Processing.GeoFilter.Input))
-	b.WriteString(fmt.Sprintf("| Missing Coordinates | %d | %.1f%% |\n",
-		r.Processing.GeoFilter.MissingCoords,
-		percent(r.Processing.GeoFilter.MissingCoords, r.Processing.GeoFilter.Input)))
-	b.WriteString(fmt.Sprintf("| Outside Radius | %d | %.1f%% |\n",
-		r.Processing.GeoFilter.OutsideRadius,
-		percent(r.Processing.GeoFilter.OutsideRadius, r.Processing.GeoFilter.Input)))
-	b.WriteString(fmt.Sprintf("| **Kept** | **%d** | **%.1f%%** |\n",
-		r.Processing.GeoFilter.Kept,
-		percent(r.Processing.GeoFilter.Kept, r.Processing.GeoFilter.Input)))
-	b.WriteString(fmt.Sprintf("| Duration | %.3fs | - |\n", r.Processing.GeoFilter.Duration.Seconds()))
-	b.WriteString("\n")
+		b.WriteString("| Filter Result | Count | Percentage |\n")
+		b.WriteString("|---------------|-------|------------|\n")
+		b.WriteString(fmt.Sprintf("| Input | %d | 100.0%% |\n", geo.Input))
+		b.WriteString(fmt.Sprintf("| Missing Coordinates | %d | %.1f%% |\n",
+			geo.MissingCoords,
+			percent(geo.MissingCoords, geo.Input)))
+		b.WriteString(fmt.Sprintf("| Outside Radius | %d | %.1f%% |\n",
+			geo.OutsideRadius,
+			percent(geo.OutsideRadius, geo.Input)))
+		b.WriteString(fmt.Sprintf("| **Kept** | **%d** | **%.1f%%** |\n",
+			geo.Kept,
+			percent(geo.Kept, geo.Input)))
+		b.WriteString(fmt.Sprintf("| Duration | %.3fs | - |\n", geo.Duration.Seconds()))
+		b.WriteString("\n")
 
-	// Add visualization of geographic filtering
-	keptPct := int(percent(r.Processing.GeoFilter.Kept, r.Processing.GeoFilter.Input))
-	filteredPct := 100 - keptPct
-	if keptPct > 0 {
-		b.WriteString("**Distribution:**\n\n")
-		b.WriteString("```mermaid\n")
-		b.WriteString("pie title Geographic Filter Results\n")
-		b.WriteString(fmt.Sprintf("    \"Kept (%d events)\" : %d\n", r.Processing.GeoFilter.Kept, keptPct))
-		b.WriteString(fmt.Sprintf("    \"Filtered Out\" : %d\n", filteredPct))
-		b.WriteString("```\n\n")
+		// Add visualization of geographic filtering
+		keptPct := int(percent(geo.Kept, geo.Input))
+		filteredPct := 100 - keptPct
+		if keptPct > 0 {
+			b.WriteString("**Distribution:**\n\n")
+			b.WriteString("```mermaid\n")
+			b.WriteString("pie title Geographic Filter Results\n")
+			b.WriteString(fmt.Sprintf("    \"Kept (%d events)\" : %d\n", geo.Kept, keptPct))
+			b.WriteString(fmt.Sprintf("    \"Filtered Out\" : %d\n", filteredPct))
+			b.WriteString("```\n\n")
+		}
 	}
 
 	// Time filtering
-	b.WriteString("### Time Filtering (Future Events)\n\n")
-	b.WriteString(fmt.Sprintf("**Reference Time:** %s  \n", r.Processing.TimeFilter.ReferenceTime.Format("2006-01-02 15:04:05 MST")))
-	b.WriteString(fmt.Sprintf("**Timezone:** %s\n\n", r.Processing.TimeFilter.Timezone))
+	if timeFilter := r.CulturalPipeline.Filtering.TimeFilter; timeFilter != nil {
+		b.WriteString("### Time Filtering (Future Events)\n\n")
+		b.WriteString(fmt.Sprintf("**Reference Time:** %s  \n", timeFilter.ReferenceTime.Format("2006-01-02 15:04:05 MST")))
+		b.WriteString(fmt.Sprintf("**Timezone:** %s\n\n", timeFilter.Timezone))
 
-	b.WriteString("| Filter Result | Count | Percentage |\n")
-	b.WriteString("|---------------|-------|------------|\n")
-	b.WriteString(fmt.Sprintf("| Input | %d | 100.0%% |\n", r.Processing.TimeFilter.Input))
-	b.WriteString(fmt.Sprintf("| Parse Failures | %d | %.1f%% |\n",
-		r.Processing.TimeFilter.ParseFailures,
-		percent(r.Processing.TimeFilter.ParseFailures, r.Processing.TimeFilter.Input)))
-	b.WriteString(fmt.Sprintf("| Past Events | %d | %.1f%% |\n",
-		r.Processing.TimeFilter.PastEvents,
-		percent(r.Processing.TimeFilter.PastEvents, r.Processing.TimeFilter.Input)))
-	b.WriteString(fmt.Sprintf("| **Kept** | **%d** | **%.1f%%** |\n",
-		r.Processing.TimeFilter.Kept,
-		percent(r.Processing.TimeFilter.Kept, r.Processing.TimeFilter.Input)))
-	b.WriteString("\n")
+		b.WriteString("| Filter Result | Count | Percentage |\n")
+		b.WriteString("|---------------|-------|------------|\n")
+		b.WriteString(fmt.Sprintf("| Input | %d | 100.0%% |\n", timeFilter.Input))
+		b.WriteString(fmt.Sprintf("| Parse Failures | %d | %.1f%% |\n",
+			timeFilter.ParseFailures,
+			percent(timeFilter.ParseFailures, timeFilter.Input)))
+		b.WriteString(fmt.Sprintf("| Past Events | %d | %.1f%% |\n",
+			timeFilter.PastEvents,
+			percent(timeFilter.PastEvents, timeFilter.Input)))
+		b.WriteString(fmt.Sprintf("| **Kept** | **%d** | **%.1f%%** |\n",
+			timeFilter.Kept,
+			percent(timeFilter.Kept, timeFilter.Input)))
+		b.WriteString("\n")
+	}
 
 	// Data Quality Issues
 	if len(r.DataQuality) > 0 {
@@ -293,44 +313,52 @@ func (r *BuildReport) WriteMarkdown(w io.Writer) error {
 	b.WriteString(fmt.Sprintf("**Build Status:** %s %s\n\n", statusSymbol, r.ExitStatus))
 
 	// Events pipeline flow
-	b.WriteString("### Events Pipeline\n\n")
+	b.WriteString("### Events Pipeline (Cultural)\n\n")
 	b.WriteString("```\n")
-	b.WriteString(fmt.Sprintf("Fetched:           %4d (JSON) + %4d (XML) + %4d (CSV) = %4d total\n",
-		r.Processing.Merge.JSONEvents,
-		r.Processing.Merge.XMLEvents,
-		r.Processing.Merge.CSVEvents,
-		r.Processing.Merge.TotalBeforeMerge))
-	b.WriteString(fmt.Sprintf("   ↓ merge & dedup\n"))
-	b.WriteString(fmt.Sprintf("After Merge:       %4d (-%d duplicates)\n",
-		r.Processing.Merge.UniqueEvents,
-		r.Processing.Merge.Duplicates))
-	b.WriteString(fmt.Sprintf("   ↓ geo filter (%.2fkm)\n", r.Processing.GeoFilter.Radius))
-	b.WriteString(fmt.Sprintf("After Geo Filter:  %4d (-%d outside radius, -%d missing coords)\n",
-		r.Processing.GeoFilter.Kept,
-		r.Processing.GeoFilter.OutsideRadius,
-		r.Processing.GeoFilter.MissingCoords))
-	b.WriteString(fmt.Sprintf("   ↓ time filter\n"))
-	b.WriteString(fmt.Sprintf("After Time Filter: %4d (-%d past, -%d parse errors)\n",
-		r.Processing.TimeFilter.Kept,
-		r.Processing.TimeFilter.PastEvents,
-		r.Processing.TimeFilter.ParseFailures))
+	if merge := r.CulturalPipeline.Merging; merge != nil {
+		b.WriteString(fmt.Sprintf("Fetched:           %4d (JSON) + %4d (XML) + %4d (CSV) = %4d total\n",
+			merge.JSONEvents,
+			merge.XMLEvents,
+			merge.CSVEvents,
+			merge.TotalBeforeMerge))
+		b.WriteString(fmt.Sprintf("   ↓ merge & dedup\n"))
+		b.WriteString(fmt.Sprintf("After Merge:       %4d (-%d duplicates)\n",
+			merge.UniqueEvents,
+			merge.Duplicates))
+	}
+	if geo := r.CulturalPipeline.Filtering.GeoFilter; geo != nil {
+		b.WriteString(fmt.Sprintf("   ↓ geo filter (%.2fkm)\n", geo.Radius))
+		b.WriteString(fmt.Sprintf("After Geo Filter:  %4d (-%d outside radius, -%d missing coords)\n",
+			geo.Kept,
+			geo.OutsideRadius,
+			geo.MissingCoords))
+	}
+	if timeFilter := r.CulturalPipeline.Filtering.TimeFilter; timeFilter != nil {
+		b.WriteString(fmt.Sprintf("   ↓ time filter\n"))
+		b.WriteString(fmt.Sprintf("After Time Filter: %4d (-%d past, -%d parse errors)\n",
+			timeFilter.Kept,
+			timeFilter.PastEvents,
+			timeFilter.ParseFailures))
+	}
 	b.WriteString(fmt.Sprintf("   ↓ render\n"))
-	b.WriteString(fmt.Sprintf("Final Output:      %4d events\n", r.EventsCount))
+	b.WriteString(fmt.Sprintf("Final Output:      %4d cultural + %4d city = %4d total events\n",
+		r.CulturalPipeline.EventCount, r.CityPipeline.EventCount, r.TotalEvents))
 	b.WriteString("```\n\n")
 
 	// Performance metrics
 	b.WriteString("### Performance Metrics\n\n")
-	fetchPct := r.Fetching.TotalDuration.Seconds() / r.Duration.Seconds() * 100
-	processPct := (r.Processing.Merge.Duration.Seconds() +
-		r.Processing.GeoFilter.Duration.Seconds()) / r.Duration.Seconds() * 100
+
+	culturalPct := r.CulturalPipeline.Duration.Seconds() / r.Duration.Seconds() * 100
+	cityPct := r.CityPipeline.Duration.Seconds() / r.Duration.Seconds() * 100
 	renderPct := (r.Output.HTML.Duration.Seconds() +
 		r.Output.JSON.Duration.Seconds()) / r.Duration.Seconds() * 100
 
 	b.WriteString("| Phase | Duration | % of Total |\n")
 	b.WriteString("|-------|----------|------------|\n")
-	b.WriteString(fmt.Sprintf("| Fetching (all 3 sources) | %.2fs | %.1f%% |\n", r.Fetching.TotalDuration.Seconds(), fetchPct))
-	b.WriteString(fmt.Sprintf("| Processing (merge+filter) | %.2fs | %.1f%% |\n",
-		r.Processing.Merge.Duration.Seconds()+r.Processing.GeoFilter.Duration.Seconds(), processPct))
+	b.WriteString(fmt.Sprintf("| Cultural Pipeline | %.2fs | %.1f%% |\n",
+		r.CulturalPipeline.Duration.Seconds(), culturalPct))
+	b.WriteString(fmt.Sprintf("| City Pipeline | %.2fs | %.1f%% |\n",
+		r.CityPipeline.Duration.Seconds(), cityPct))
 	b.WriteString(fmt.Sprintf("| Rendering | %.2fs | %.1f%% |\n",
 		r.Output.HTML.Duration.Seconds()+r.Output.JSON.Duration.Seconds(), renderPct))
 	b.WriteString(fmt.Sprintf("| **Total** | **%.2fs** | **100.0%%** |\n", r.Duration.Seconds()))

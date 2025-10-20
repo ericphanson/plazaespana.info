@@ -142,6 +142,11 @@ func main() {
 	client := fetch.NewClient(30 * time.Second)
 	snapMgr := snapshot.NewManager(cfg.Snapshot.DataDir)
 
+	// Initialize cultural pipeline report
+	buildReport.CulturalPipeline.Name = "Cultural Events"
+	buildReport.CulturalPipeline.Source = "datos.madrid.es"
+	culturalStart := time.Now()
+
 	// Create pipeline for multi-source fetching (cultural events from datos.madrid.es)
 	pipe := pipeline.NewPipeline(cfg.CulturalEvents.JSONURL, cfg.CulturalEvents.XMLURL, cfg.CulturalEvents.CSVURL, client, loc)
 
@@ -149,12 +154,14 @@ func main() {
 	log.Println("Fetching from all three sources (JSON, XML, CSV)...")
 	fetchStart := time.Now()
 	pipeResult := pipe.FetchAll()
-	buildReport.Fetching.TotalDuration = time.Since(fetchStart)
+	buildReport.CulturalPipeline.Fetching.TotalDuration = time.Since(fetchStart)
 
-	// Track individual fetch results
-	buildReport.Fetching.JSON = createFetchAttempt("JSON", cfg.CulturalEvents.JSONURL, pipeResult.JSONEvents, pipeResult.JSONErrors)
-	buildReport.Fetching.XML = createFetchAttempt("XML", cfg.CulturalEvents.XMLURL, pipeResult.XMLEvents, pipeResult.XMLErrors)
-	buildReport.Fetching.CSV = createFetchAttempt("CSV", cfg.CulturalEvents.CSVURL, pipeResult.CSVEvents, pipeResult.CSVErrors)
+	// Track individual fetch attempts
+	buildReport.CulturalPipeline.Fetching.Attempts = []report.FetchAttempt{
+		createFetchAttempt("JSON", cfg.CulturalEvents.JSONURL, pipeResult.JSONEvents, pipeResult.JSONErrors),
+		createFetchAttempt("XML", cfg.CulturalEvents.XMLURL, pipeResult.XMLEvents, pipeResult.XMLErrors),
+		createFetchAttempt("CSV", cfg.CulturalEvents.CSVURL, pipeResult.CSVEvents, pipeResult.CSVErrors),
+	}
 
 	log.Printf("JSON: %d events, %d errors", len(pipeResult.JSONEvents), len(pipeResult.JSONErrors))
 	log.Printf("XML: %d events, %d errors", len(pipeResult.XMLEvents), len(pipeResult.XMLErrors))
@@ -165,8 +172,8 @@ func main() {
 	merged := pipe.Merge(pipeResult)
 	mergeDuration := time.Since(mergeStart)
 
-	// Calculate merge stats
-	buildReport.Processing.Merge = report.MergeStats{
+	// Calculate merge stats for cultural pipeline
+	mergeStats := report.MergeStats{
 		JSONEvents:       len(pipeResult.JSONEvents),
 		XMLEvents:        len(pipeResult.XMLEvents),
 		CSVEvents:        len(pipeResult.CSVEvents),
@@ -180,18 +187,20 @@ func main() {
 	for _, evt := range merged {
 		switch len(evt.Sources) {
 		case 3:
-			buildReport.Processing.Merge.InAllThree++
+			mergeStats.InAllThree++
 		case 2:
-			buildReport.Processing.Merge.InTwoSources++
+			mergeStats.InTwoSources++
 		case 1:
-			buildReport.Processing.Merge.InOneSource++
+			mergeStats.InOneSource++
 		}
 	}
 
+	buildReport.CulturalPipeline.Merging = &mergeStats
+
 	log.Printf("After merge: %d unique events from %d total (%.1f%% deduplication)",
 		len(merged),
-		buildReport.Processing.Merge.TotalBeforeMerge,
-		float64(buildReport.Processing.Merge.Duplicates)*100.0/float64(buildReport.Processing.Merge.TotalBeforeMerge))
+		mergeStats.TotalBeforeMerge,
+		float64(mergeStats.Duplicates)*100.0/float64(mergeStats.TotalBeforeMerge))
 
 	// Handle snapshot fallback if ALL sources failed
 	if len(merged) == 0 && allSourcesFailed(pipeResult) {
@@ -280,16 +289,29 @@ func main() {
 
 	log.Printf("Filtered by distrito: %d, by radius: %d, by text: %d", byDistrito, byRadius, byTextMatch)
 
-	// Record geo filter stats
+	// Record filtering stats for cultural pipeline
 	geoDuration := time.Since(geoStart)
-	buildReport.Processing.GeoFilter = report.GeoFilterStats{
+
+	// Distrito filter stats (most events have distrito)
+	if len(cfg.Filter.Distritos) > 0 {
+		buildReport.CulturalPipeline.Filtering.DistrictoFilter = &report.DistrictoFilterStats{
+			AllowedDistricts: cfg.Filter.Distritos,
+			Input:            len(merged),
+			Filtered:         outsideAll, // Events rejected
+			Kept:             len(filteredEvents) + pastEvents,
+			Duration:         geoDuration,
+		}
+	}
+
+	// Geo filter stats (for events without distrito)
+	buildReport.CulturalPipeline.Filtering.GeoFilter = &report.GeoFilterStats{
 		RefLat:        cfg.Filter.Latitude,
 		RefLon:        cfg.Filter.Longitude,
 		Radius:        cfg.Filter.RadiusKm,
 		Input:         len(merged),
 		MissingCoords: missingBoth,
 		OutsideRadius: outsideAll,
-		Kept:          len(filteredEvents) + pastEvents, // Events that passed geo filter
+		Kept:          len(filteredEvents) + pastEvents,
 		Duration:      geoDuration,
 	}
 
@@ -298,8 +320,8 @@ func main() {
 		log.Printf("Text-based location matching: kept %d events", byTextMatch)
 	}
 
-	// Record time filter stats
-	buildReport.Processing.TimeFilter = report.TimeFilterStats{
+	// Time filter stats for cultural pipeline
+	buildReport.CulturalPipeline.Filtering.TimeFilter = &report.TimeFilterStats{
 		ReferenceTime: now,
 		Timezone:      *timezone,
 		Input:         len(filteredEvents) + pastEvents,
@@ -323,21 +345,47 @@ func main() {
 		return filteredEvents[i].StartTime.Before(filteredEvents[j].StartTime)
 	})
 
+	// Set cultural pipeline totals
+	buildReport.CulturalPipeline.EventCount = len(filteredEvents)
+	buildReport.CulturalPipeline.Duration = time.Since(culturalStart)
+
 	// =====================================================================
 	// CITY EVENTS PIPELINE: Fetch and filter esmadrid.com events
 	// =====================================================================
 	log.Println("\n=== City Events Pipeline ===")
+
+	// Initialize city pipeline report
+	buildReport.CityPipeline.Name = "City Events"
+	buildReport.CityPipeline.Source = "esmadrid.com"
 	cityStart := time.Now()
 
 	// Fetch ESMadrid XML events
 	log.Printf("Fetching ESMadrid events from: %s", cfg.CityEvents.XMLURL)
+	cityFetchStart := time.Now()
 	esmadridServices, err := fetch.FetchEsmadridEvents(cfg.CityEvents.XMLURL)
+	cityFetchDuration := time.Since(cityFetchStart)
+
+	// Track city events fetch attempt
+	cityFetchAttempt := report.FetchAttempt{
+		Source:   "XML",
+		URL:      cfg.CityEvents.XMLURL,
+		Duration: cityFetchDuration,
+	}
+
 	if err != nil {
 		log.Printf("Warning: Failed to fetch ESMadrid events: %v", err)
 		esmadridServices = []fetch.EsmadridService{} // Continue with empty list
+		cityFetchAttempt.Status = "FAILED"
+		cityFetchAttempt.Error = err.Error()
 	} else {
 		log.Printf("Fetched %d ESMadrid services", len(esmadridServices))
+		cityFetchAttempt.Status = "SUCCESS"
+		cityFetchAttempt.HTTPStatus = 200
+		cityFetchAttempt.EventCount = len(esmadridServices)
 	}
+
+	buildReport.CityPipeline.Fetching.Attempts = []report.FetchAttempt{cityFetchAttempt}
+	buildReport.CityPipeline.Fetching.TotalDuration = cityFetchDuration
 
 	// Convert to CityEvent structs
 	var cityEvents []event.CityEvent
@@ -352,6 +400,10 @@ func main() {
 	}
 	log.Printf("Parsed %d city events (%d parse errors)", len(cityEvents), parseErrors)
 
+	// Track filtering start
+	cityFilterStart := time.Now()
+	beforeFilterCount := len(cityEvents)
+
 	// Filter city events by GPS radius and time
 	// No category filtering for now (empty slice = allow all categories)
 	filteredCityEvents := filter.FilterCityEvents(
@@ -362,15 +414,48 @@ func main() {
 		nil, // No category filtering
 		cfg.Filter.PastEventsWeeks,
 	)
+	cityFilterDuration := time.Since(cityFilterStart)
+
 	log.Printf("City events after filtering: %d events", len(filteredCityEvents))
+
+	// Track city pipeline filtering stats
+	cityFiltered := beforeFilterCount - len(filteredCityEvents)
+
+	// Geo filter stats for city pipeline
+	buildReport.CityPipeline.Filtering.GeoFilter = &report.GeoFilterStats{
+		RefLat:        cfg.Filter.Latitude,
+		RefLon:        cfg.Filter.Longitude,
+		Radius:        cfg.Filter.RadiusKm,
+		Input:         beforeFilterCount,
+		MissingCoords: 0, // ESMadrid events always have coords
+		OutsideRadius: cityFiltered,
+		Kept:          len(filteredCityEvents),
+		Duration:      cityFilterDuration,
+	}
+
+	// Time filter stats for city pipeline (included in geo filter duration)
+	buildReport.CityPipeline.Filtering.TimeFilter = &report.TimeFilterStats{
+		ReferenceTime: now,
+		Timezone:      *timezone,
+		Input:         beforeFilterCount,
+		ParseFailures: 0,
+		PastEvents:    cityFiltered, // Approximate (includes geo + time filtered)
+		Kept:          len(filteredCityEvents),
+		Duration:      0, // Included in geo filter duration
+	}
+
+	// Category filter stats (currently disabled, but track for completeness)
+	// buildReport.CityPipeline.Filtering.CategoryFilter would go here if enabled
 
 	// Sort city events by start date
 	sort.Slice(filteredCityEvents, func(i, j int) bool {
 		return filteredCityEvents[i].StartDate.Before(filteredCityEvents[j].StartDate)
 	})
 
-	cityDuration := time.Since(cityStart)
-	log.Printf("City events pipeline completed in %v", cityDuration)
+	// Set city pipeline totals
+	buildReport.CityPipeline.EventCount = len(filteredCityEvents)
+	buildReport.CityPipeline.Duration = time.Since(cityStart)
+	log.Printf("City events pipeline completed in %v", buildReport.CityPipeline.Duration)
 
 	// =====================================================================
 	// RENDERING: Render both cultural and city events
@@ -485,8 +570,8 @@ func main() {
 	}
 	log.Println("Generated:", jsonPath)
 
-	// Record final event count (total of both types)
-	buildReport.EventsCount = len(filteredEvents) + len(filteredCityEvents)
+	// Record final event count (total of both pipelines)
+	buildReport.TotalEvents = len(filteredEvents) + len(filteredCityEvents)
 
 	// Final summary
 	log.Println("\n=== Build Summary ===")

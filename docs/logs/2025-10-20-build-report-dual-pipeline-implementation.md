@@ -77,4 +77,41 @@ Update HTML build report to track both cultural events pipeline (datos.madrid.es
 
 ---
 
+### Task 3: Update Population Logic
+
+**Status**: ✅ Complete
+**Time**: 2025-10-20 14:18 - 14:25
+
+**Goal**: Update main.go to populate new dual pipeline structures
+
+**Changes Made**:
+
+**Cultural Pipeline Tracking**:
+- Initialize pipeline name and source (lines 145-147)
+- Track fetch attempts in `CulturalPipeline.Fetching.Attempts[]` (lines 160-164)
+- Track merge stats in `CulturalPipeline.Merging` (lines 176-198)
+- Track distrito filtering in `CulturalPipeline.Filtering.DistrictoFilter` (lines 297-303)
+- Track geo filtering in `CulturalPipeline.Filtering.GeoFilter` (lines 307-316)
+- Track time filtering in `CulturalPipeline.Filtering.TimeFilter` (lines 324-332)
+- Set event count and duration (lines 349-350)
+
+**City Pipeline Tracking**:
+- Initialize pipeline name and source (lines 357-359)
+- Track fetch attempt in `CityPipeline.Fetching.Attempts[]` (lines 369-388)
+- Track geo filtering in `CityPipeline.Filtering.GeoFilter` (lines 425-434)
+- Track time filtering in `CityPipeline.Filtering.TimeFilter` (lines 437-445)
+- Set event count and duration (lines 456-458)
+
+**Global Report Fields**:
+- Updated `TotalEvents` to sum both pipelines (line 574)
+
+**Compatibility Fix**:
+- Updated `internal/report/markdown.go` to use new structure
+- All field references now point to `CulturalPipeline` and `CityPipeline`
+- Added nil checks for optional fields (Merging, GeoFilter, TimeFilter)
+
+**Result**: Complete dual pipeline tracking with separate metrics for cultural and city events
+
+---
+
 *Log will be updated as tasks are completed*
