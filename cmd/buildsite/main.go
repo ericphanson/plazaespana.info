@@ -439,16 +439,60 @@ func main() {
 	cityFilterStart := time.Now()
 	beforeFilterCount := len(cityEvents)
 
-	// Filter city events by GPS radius and time
-	// No category filtering for now (empty slice = allow all categories)
-	filteredCityEvents := filter.FilterCityEvents(
-		cityEvents,
-		cfg.Filter.Latitude,
-		cfg.Filter.Longitude,
-		cfg.Filter.RadiusKm,
-		nil, // No category filtering
-		cfg.Filter.PastEventsWeeks,
-	)
+	// Step 1: Evaluate all filters for all city events and record results
+	// Non-destructive: Keep ALL events in memory
+	cutoffTime := now.Add(-time.Duration(cfg.Filter.PastEventsWeeks) * 7 * 24 * time.Hour)
+	allCityEvents := make([]event.CityEvent, 0, len(cityEvents))
+
+	// Stats counters for logging
+	outsideRadius := 0
+	tooOld := 0
+
+	for _, evt := range cityEvents {
+		result := event.FilterResult{}
+
+		// City events always have coordinates
+		result.HasCoordinates = true
+		result.GPSDistanceKm = filter.HaversineDistance(
+			cfg.Filter.Latitude, cfg.Filter.Longitude,
+			evt.Latitude, evt.Longitude)
+		result.WithinRadius = (result.GPSDistanceKm <= cfg.Filter.RadiusKm)
+
+		// City events don't have distrito
+		result.HasDistrito = false
+
+		// Time filter
+		result.StartDate = evt.StartDate
+		result.EndDate = evt.EndDate
+		result.DaysOld = int(now.Sub(evt.EndDate).Hours() / 24)
+		result.TooOld = evt.EndDate.Before(cutoffTime)
+
+		// Decide if kept (same logic as filter.FilterCityEvents)
+		if !result.WithinRadius {
+			result.Kept = false
+			result.FilterReason = "outside GPS radius"
+			outsideRadius++
+		} else if result.TooOld {
+			result.Kept = false
+			result.FilterReason = "event too old"
+			tooOld++
+		} else {
+			result.Kept = true
+			result.FilterReason = "kept"
+		}
+
+		evt.FilterResult = result
+		allCityEvents = append(allCityEvents, evt) // Keep ALL events
+	}
+
+	// Step 2: Separate kept events for rendering
+	var filteredCityEvents []event.CityEvent
+	for _, evt := range allCityEvents {
+		if evt.FilterResult.Kept {
+			filteredCityEvents = append(filteredCityEvents, evt)
+		}
+	}
+
 	cityFilterDuration := time.Since(cityFilterStart)
 
 	log.Printf("City events after filtering: %d events", len(filteredCityEvents))

@@ -121,3 +121,42 @@ Implement comprehensive audit trail system that tracks all events through the fi
 **Result**: Cultural events filtering now tags instead of removes, ready for audit export
 
 ---
+
+### Task 4: Refactor City Events Filtering
+
+**Status**: ✅ Complete
+**Time**: 2025-10-20
+
+**Goal**: Change city events filtering from destructive to non-destructive (tag events)
+
+**Changes Made**:
+1. Updated `cmd/buildsite/main.go` (lines 438-496):
+   - Replaced `filter.FilterCityEvents()` call with inline filtering
+   - **Step 1**: Evaluate all filters for all city events
+     - GPS filter (hasCoordinates, gpsDistanceKm, withinRadius)
+     - Time filter (startDate, endDate, daysOld, tooOld)
+     - Record decision (kept, filterReason)
+   - **Step 2**: Separate kept events for rendering
+   - Removed external filter function dependency
+   - Record FilterResult for each event
+   - Keep all events in `allCityEvents` slice
+
+2. Preserved existing behavior:
+   - Same filter logic (GPS → time)
+   - No category filtering (as before)
+   - Same stats counting for logging
+   - Same final output (19 city events)
+
+**Key Improvements**:
+- Non-destructive: All city events kept in memory
+- Complete audit trail: Every event has FilterResult
+- No data loss: Can see why each event was filtered
+- Consistent with cultural events approach
+
+**Verification**:
+- ✅ Build successful: `go build ./cmd/buildsite`
+- ✅ All tests pass: `go test ./...` (10 packages)
+
+**Result**: City events filtering now tags instead of removes, ready for audit export
+
+---
