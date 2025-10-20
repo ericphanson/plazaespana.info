@@ -2,10 +2,12 @@ package render
 
 // TemplateData holds data for HTML template rendering.
 type TemplateData struct {
-	Lang        string
-	CSSHash     string
-	LastUpdated string
-	Events      []TemplateEvent
+	Lang           string
+	CSSHash        string
+	LastUpdated    string
+	CulturalEvents []TemplateEvent
+	CityEvents     []TemplateEvent
+	TotalEvents    int
 }
 
 // TemplateEvent represents an event for template rendering.

@@ -350,16 +350,16 @@ func main() {
 	log.Printf("City events pipeline completed in %v", cityDuration)
 
 	// =====================================================================
-	// RENDERING: For now, only render cultural events
+	// RENDERING: Render both cultural and city events
 	// =====================================================================
 	log.Println("\n=== Rendering Output ===")
 
-	// Convert to template format
-	var templateEvents []render.TemplateEvent
+	// Convert cultural events to template format
+	var culturalTemplateEvents []render.TemplateEvent
 	var jsonEvents []render.JSONEvent
 
 	for _, evt := range filteredEvents {
-		templateEvents = append(templateEvents, render.TemplateEvent{
+		culturalTemplateEvents = append(culturalTemplateEvents, render.TemplateEvent{
 			IDEvento:          evt.ID,
 			Titulo:            evt.Title,
 			StartHuman:        evt.StartTime.Format("02/01/2006 15:04"),
@@ -377,20 +377,44 @@ func main() {
 		})
 	}
 
+	// Convert city events to template format
+	var cityTemplateEvents []render.TemplateEvent
+	for _, evt := range filteredCityEvents {
+		cityTemplateEvents = append(cityTemplateEvents, render.TemplateEvent{
+			IDEvento:          evt.ID,
+			Titulo:            evt.Title,
+			StartHuman:        evt.StartDate.Format("02/01/2006"),
+			NombreInstalacion: evt.Venue,
+			ContentURL:        evt.WebURL,
+			Description:       render.TruncateText(evt.Description, 150),
+		})
+
+		// Add city events to JSON output as well
+		jsonEvents = append(jsonEvents, render.JSONEvent{
+			ID:         evt.ID,
+			Title:      evt.Title,
+			StartTime:  evt.StartDate.Format(time.RFC3339),
+			VenueName:  evt.Venue,
+			DetailsURL: evt.WebURL,
+		})
+	}
+
 	// Render outputs
 	outDirPath := filepath.Dir(cfg.Output.HTMLPath)
 	if err := os.MkdirAll(outDirPath, 0755); err != nil {
 		log.Fatalf("Failed to create output directory: %v", err)
 	}
 
-	// Render HTML
+	// Render HTML with both event types
 	htmlStart := time.Now()
 	htmlRenderer := render.NewHTMLRenderer("templates/index.tmpl.html")
 	htmlData := render.TemplateData{
-		Lang:        "es",
-		CSSHash:     readCSSHash(outDirPath),
-		LastUpdated: now.Format("2006-01-02 15:04 MST"),
-		Events:      templateEvents,
+		Lang:           "es",
+		CSSHash:        readCSSHash(outDirPath),
+		LastUpdated:    now.Format("2006-01-02 15:04 MST"),
+		CulturalEvents: culturalTemplateEvents,
+		CityEvents:     cityTemplateEvents,
+		TotalEvents:    len(culturalTemplateEvents) + len(cityTemplateEvents),
 	}
 	htmlPath := cfg.Output.HTMLPath
 	htmlErr := htmlRenderer.Render(htmlData, htmlPath)
@@ -441,15 +465,14 @@ func main() {
 	}
 	log.Println("Generated:", jsonPath)
 
-	// Record final event count
-	buildReport.EventsCount = len(filteredEvents)
+	// Record final event count (total of both types)
+	buildReport.EventsCount = len(filteredEvents) + len(filteredCityEvents)
 
 	// Final summary
 	log.Println("\n=== Build Summary ===")
 	log.Printf("Cultural events: %d (datos.madrid.es)", len(filteredEvents))
 	log.Printf("City events: %d (esmadrid.com)", len(filteredCityEvents))
-	log.Printf("Total events available: %d", len(filteredEvents)+len(filteredCityEvents))
-	log.Printf("Rendered: %d cultural events only (city events in future tasks)", len(filteredEvents))
+	log.Printf("Total events rendered: %d", len(filteredEvents)+len(filteredCityEvents))
 	log.Println("Build complete!")
 }
 

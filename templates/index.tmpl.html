@@ -10,19 +10,56 @@
   <header>
     <h1>{{if eq .Lang "es"}}Eventos en Plaza de España (Madrid){{else}}Events at Plaza de España (Madrid){{end}}</h1>
     <p class="stamp">Última actualización: {{.LastUpdated}}</p>
+    {{if gt .TotalEvents 0}}
+    <p class="stamp">Total: {{.TotalEvents}} eventos</p>
+    {{end}}
   </header>
 
   <main>
-    {{range .Events}}
-    <article id="ev-{{.IDEvento}}">
-      <h2>{{.Titulo}}</h2>
-      <p class="when">{{.StartHuman}}</p>
-      {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
-      {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-      {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
-    </article>
-    {{else}}
-    <p>No hay eventos próximos.</p>
+    {{if gt (len .CulturalEvents) 0}}
+    <section class="event-section cultural-section">
+      <h2 class="section-header">
+        <span class="section-icon">🎭</span>
+        {{if eq .Lang "es"}}Eventos Culturales{{else}}Cultural Events{{end}}
+        <span class="event-count">{{len .CulturalEvents}}</span>
+      </h2>
+
+      {{range .CulturalEvents}}
+      <article class="event-card cultural" id="ev-{{.IDEvento}}">
+        <span class="event-badge cultural-badge">Cultural</span>
+        <h3>{{.Titulo}}</h3>
+        <p class="when">{{.StartHuman}}</p>
+        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+      </article>
+      {{end}}
+    </section>
+    {{end}}
+
+    {{if gt (len .CityEvents) 0}}
+    <section class="event-section city-section">
+      <h2 class="section-header">
+        <span class="section-icon">🎉</span>
+        {{if eq .Lang "es"}}Festivales y Eventos de la Ciudad{{else}}City Festivals & Special Events{{end}}
+        <span class="event-count">{{len .CityEvents}}</span>
+      </h2>
+
+      {{range .CityEvents}}
+      <article class="event-card city" id="ev-{{.IDEvento}}">
+        <span class="event-badge city-badge">Evento Ciudad</span>
+        <h3>{{.Titulo}}</h3>
+        <p class="when">{{.StartHuman}}</p>
+        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+      </article>
+      {{end}}
+    </section>
+    {{end}}
+
+    {{if and (eq (len .CulturalEvents) 0) (eq (len .CityEvents) 0)}}
+    <p class="no-events">No hay eventos próximos.</p>
     {{end}}
   </main>
 

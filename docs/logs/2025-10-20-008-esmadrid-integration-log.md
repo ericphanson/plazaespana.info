@@ -206,8 +206,8 @@
 
 ### Task 7: Create Dual Pipeline Orchestrator
 **Status:** ✅ Complete
-**Commit:** 57085f4
-**Files:** cmd/buildsite/main.go
+**Commits:** 57085f4, 4212ca6 (backward compatibility fix)
+**Files:** cmd/buildsite/main.go, internal/config/config.go
 
 **Implementation:**
 - Added `-config` flag for TOML configuration file (default: config.toml)
@@ -248,9 +248,9 @@
 - ✅ Excellent architecture with clean pipeline separation
 - ✅ Comprehensive logging and observability
 - ✅ Both pipelines work correctly (Cultural: 137, City: 19)
-- 🔴 **Critical issue:** Config file required - breaks backward compatibility
-- Need to fix: Make config file optional with defaults
+- ✅ **Critical issue fixed:** Made config file optional with DefaultConfig() (commit 4212ca6)
+- ✅ Backward compatibility verified: CLI-only flags work without config.toml
 
-**Fix in progress:** Making config file optional for backward compatibility
+**Next:** Task 8 (Update HTML rendering for both event types)
 
 ---

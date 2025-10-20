@@ -8,6 +8,10 @@
   --radius: 14px;
   --shadow: 0 1px 4px rgba(0,0,0,.06);
   --max: 900px;
+  --cultural-accent: #7c3aed;
+  --city-accent: #ea580c;
+  --badge-bg: rgba(124, 58, 237, 0.1);
+  --badge-city-bg: rgba(234, 88, 12, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +22,10 @@
     --card: #1a1d24;
     --link: #8ab4f8;
     --accent: #8ab4f8;
+    --cultural-accent: #a78bfa;
+    --city-accent: #fb923c;
+    --badge-bg: rgba(167, 139, 250, 0.15);
+    --badge-city-bg: rgba(251, 146, 60, 0.15);
   }
 }
 
@@ -50,18 +58,95 @@ header, main, footer {
 
 main {
   display: grid;
+  gap: 2rem;
+}
+
+.event-section {
+  display: grid;
   gap: 1rem;
 }
 
-article {
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  border-bottom: 2px solid var(--muted);
+  padding-bottom: 0.5rem;
+}
+
+.section-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.event-count {
+  margin-left: auto;
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: var(--muted);
+  background: var(--card);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+}
+
+.cultural-section .section-header {
+  color: var(--cultural-accent);
+  border-color: var(--cultural-accent);
+}
+
+.city-section .section-header {
+  color: var(--city-accent);
+  border-color: var(--city-accent);
+}
+
+.event-card {
   background: var(--card);
   border-radius: var(--radius);
   padding: 1rem;
   box-shadow: var(--shadow);
+  position: relative;
 }
 
-article h2 {
+.event-card.cultural {
+  border-left: 4px solid var(--cultural-accent);
+}
+
+.event-card.city {
+  border-left: 4px solid var(--city-accent);
+}
+
+.event-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.cultural-badge {
+  background: var(--badge-bg);
+  color: var(--cultural-accent);
+}
+
+.city-badge {
+  background: var(--badge-city-bg);
+  color: var(--city-accent);
+}
+
+.event-card h3 {
   margin: 0.2rem 0 0.4rem;
+  font-size: 1.25rem;
+}
+
+.no-events {
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem;
 }
 
 .when, .where {
