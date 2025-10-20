@@ -17,7 +17,9 @@ type FilterResult struct {
 	WithinRadius   bool    `json:"within_radius"`
 
 	// Location filtering - text matching (fallback)
-	TextMatched bool `json:"text_matched"`
+	TextMatched     bool `json:"text_matched"`
+	PlazaEspanaText bool `json:"plaza_espana_text,omitempty"` // specifically matched Plaza de España mention
+	MultiVenueKept  bool `json:"multi_venue_kept,omitempty"`  // kept due to multi-venue Plaza de España mention
 
 	// Time filtering
 	StartDate time.Time `json:"start_date,omitempty"`

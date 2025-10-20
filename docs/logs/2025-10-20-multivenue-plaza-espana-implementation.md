@@ -58,5 +58,26 @@ PASS
 
 ### Phase 2: FilterResult Extension
 
+#### Task 2.1: Extend FilterResult with Text Matching Fields (15 min)
+**Status:** ✅ Completed
+**Started:** 2025-10-20
+**Completed:** 2025-10-20
+
+**Goal:** Add fields to track text-based Plaza de España matching.
+
+**Files modified:**
+- `internal/event/types.go` - Extended FilterResult struct with two new fields:
+  - `PlazaEspanaText bool` - Tracks Plaza de España text mentions
+  - `MultiVenueKept bool` - Indicates event kept via text (not geo)
+
+**Notes:**
+- Fields added to "Location filtering - text matching" section
+- Both fields use `omitempty` JSON tags for cleaner audit output
+- Backward compatible (additive change only)
+
+---
+
+### Phase 3: City Events Filtering Logic
+
 **Status:** In Progress
 **Started:** 2025-10-20
