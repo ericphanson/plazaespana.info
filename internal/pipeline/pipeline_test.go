@@ -14,7 +14,11 @@ func TestPipeline_FetchAll_Sequential(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := fetch.NewClient(10 * time.Second)
+	config := fetch.DefaultDevelopmentConfig()
+	client, err := fetch.NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	pipeline := NewPipeline(
 		"file:///workspace/testdata/fixtures/madrid-events.json",
 		"file:///workspace/testdata/fixtures/madrid-events.xml",
@@ -48,7 +52,11 @@ func TestPipeline_FetchAll_ErrorIsolation(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := fetch.NewClient(10 * time.Second)
+	config := fetch.DefaultDevelopmentConfig()
+	client, err := fetch.NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	pipeline := NewPipeline(
 		"file:///nonexistent/json.json", // Will fail
 		"file:///workspace/testdata/fixtures/madrid-events.xml",
@@ -87,7 +95,11 @@ func TestPipeline_Merge_Deduplication(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := fetch.NewClient(10 * time.Second)
+	config := fetch.DefaultDevelopmentConfig()
+	client, err := fetch.NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	pipeline := NewPipeline(
 		"file:///workspace/testdata/fixtures/madrid-events.json",
 		"file:///workspace/testdata/fixtures/madrid-events.xml",
@@ -123,7 +135,11 @@ func TestPipeline_Merge_SourceTracking(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := fetch.NewClient(10 * time.Second)
+	config := fetch.DefaultDevelopmentConfig()
+	client, err := fetch.NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	pipeline := NewPipeline(
 		"file:///workspace/testdata/fixtures/madrid-events.json",
 		"file:///workspace/testdata/fixtures/madrid-events.xml",
@@ -174,7 +190,11 @@ func TestPipeline_Merge_HandlesFailures(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := fetch.NewClient(10 * time.Second)
+	config := fetch.DefaultDevelopmentConfig()
+	client, err := fetch.NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	pipeline := NewPipeline(
 		"file:///nonexistent/json.json",                         // Will fail
 		"file:///workspace/testdata/fixtures/madrid-events.xml", // Will succeed
@@ -208,7 +228,11 @@ func TestPipeline_Merge_EmptyResult(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := fetch.NewClient(10 * time.Second)
+	config := fetch.DefaultDevelopmentConfig()
+	client, err := fetch.NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	pipeline := NewPipeline(
 		"file:///nonexistent/json.json",
 		"file:///nonexistent/xml.xml",

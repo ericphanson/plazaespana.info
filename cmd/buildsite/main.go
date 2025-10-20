@@ -75,6 +75,7 @@ func main() {
 	lon := flag.Float64("lon", 0, "Reference longitude in decimal degrees (overrides config)")
 	radiusKm := flag.Float64("radius-km", 0, "Filter radius in kilometers (overrides config)")
 	timezone := flag.String("timezone", "Europe/Madrid", "Timezone for event times")
+	fetchMode := flag.String("fetch-mode", "development", "Fetch mode: production or development (affects caching/throttling)")
 
 	flag.Parse()
 
@@ -140,7 +141,25 @@ func main() {
 	}
 
 	// Initialize components
-	client := fetch.NewClient(30 * time.Second)
+	// Parse fetch mode and get config
+	mode := fetch.ParseMode(*fetchMode)
+	var modeConfig fetch.ModeConfig
+	if mode == fetch.ProductionMode {
+		modeConfig = fetch.DefaultProductionConfig()
+	} else {
+		modeConfig = fetch.DefaultDevelopmentConfig()
+	}
+
+	// Create HTTP cache directory
+	cacheDir := filepath.Join(cfg.Snapshot.DataDir, "http-cache")
+
+	// Create client with respectful fetching support
+	client, err := fetch.NewClient(30*time.Second, modeConfig, cacheDir)
+	if err != nil {
+		log.Fatalf("Failed to create fetch client: %v", err)
+	}
+	log.Printf("Fetch mode: %s (cache TTL: %v, min delay: %v)", mode, modeConfig.CacheTTL, modeConfig.MinDelay)
+
 	snapMgr := snapshot.NewManager(cfg.Snapshot.DataDir)
 
 	// Initialize cultural pipeline report
@@ -669,6 +688,14 @@ func main() {
 
 	// Record final event count (total of both pipelines)
 	buildReport.TotalEvents = len(filteredEvents) + len(filteredCityEvents)
+
+	// Export request audit trail
+	requestAuditPath := filepath.Join(cfg.Snapshot.DataDir, "request-audit.json")
+	if err = client.Auditor().Export(requestAuditPath); err != nil {
+		log.Printf("Warning: failed to export audit trail: %v", err)
+	} else {
+		log.Printf("Request audit exported to: %s", requestAuditPath)
+	}
 
 	// Final summary
 	log.Println("\n=== Build Summary ===")

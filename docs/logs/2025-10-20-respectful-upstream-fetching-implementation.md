@@ -270,3 +270,62 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 **Result:** fetch() method fully implements respectful fetching
 
 ---
+
+### Task 2.4: Export Request Audit
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Modified:**
+- `cmd/buildsite/main.go` - Add mode flag, update client creation, export audit
+- `internal/pipeline/pipeline_test.go` - Update NewClient calls
+
+**Changes:**
+
+1. **Added `-fetch-mode` flag**:
+   - Default: "development"
+   - Values: "production" or "development"
+   - Affects caching TTL and throttling delays
+
+2. **Updated client creation** (line 144-161):
+   - Parse fetch mode from flag
+   - Get appropriate ModeConfig
+   - Create cache directory: `{dataDir}/http-cache`
+   - Pass config and cache dir to NewClient
+   - Log fetch mode settings on startup
+
+3. **Added audit export** (line 692-698):
+   - Export to `{dataDir}/request-audit.json`
+   - Log success/warning message
+   - Runs after all pipeline work completes
+
+4. **Fixed test files**:
+   - Updated pipeline_test.go with new NewClient signature
+
+**Output:**
+- Console log: `Fetch mode: development (cache TTL: 1h, min delay: 5s)`
+- Audit file: `data/request-audit.json` with all HTTP request details
+
+**Tests:** All tests passing (including pipeline tests)
+
+**Result:** Audit trail export integrated, Phase 2 complete
+
+---
+
+## Phase 2: Complete ✅
+
+**Summary:**
+- 3 tasks completed (Task 2.2 & 2.3 combined)
+- Client fully integrated with cache, throttle, and auditor
+- fetch() method implements comprehensive respectful fetching
+- Audit trail exported to data directory
+- All tests passing (38 total)
+
+**Key Features:**
+- HTTP caching with If-Modified-Since headers
+- Per-host throttling with user-visible delays
+- Rate limit detection (429/403/503)
+- Request auditing for all fetches
+- Mode-based configuration (production/development)
+
+---
