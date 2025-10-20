@@ -61,6 +61,117 @@
 
 ## Data Structures
 
+### Task 0: Create Test Fixtures (30 min)
+
+**Goal:** Download real Madrid data once for testing, avoid hammering servers
+
+**Files:**
+- `testdata/fixtures/madrid-events.json` (downloaded once)
+- `testdata/fixtures/madrid-events.xml`
+- `testdata/fixtures/madrid-events.csv`
+
+**Script:** `scripts/fetch-fixtures.sh`
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+FIXTURES_DIR="testdata/fixtures"
+mkdir -p "$FIXTURES_DIR"
+
+echo "Fetching Madrid event data fixtures..."
+
+# JSON
+echo "  - Downloading JSON..."
+curl -s "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json" \
+  > "$FIXTURES_DIR/madrid-events.json"
+
+# XML
+echo "  - Downloading XML..."
+curl -s "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml" \
+  > "$FIXTURES_DIR/madrid-events.xml"
+
+# CSV
+echo "  - Downloading CSV..."
+curl -s "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv" \
+  > "$FIXTURES_DIR/madrid-events.csv"
+
+echo "✓ Fixtures downloaded to $FIXTURES_DIR/"
+echo "  JSON: $(wc -l < "$FIXTURES_DIR/madrid-events.json") lines"
+echo "  XML:  $(wc -l < "$FIXTURES_DIR/madrid-events.xml") lines"
+echo "  CSV:  $(wc -l < "$FIXTURES_DIR/madrid-events.csv") lines"
+```
+
+**CLI Flags:** Update `cmd/buildsite/main.go`
+
+```go
+// Add new flags
+useFixtures := flag.Bool("use-fixtures", false, "Use local test fixtures instead of live URLs")
+fixturesDir := flag.String("fixtures-dir", "./testdata/fixtures", "Directory containing test fixtures")
+
+// After flag parsing
+if *useFixtures {
+    *jsonURL = "file://" + filepath.Join(*fixturesDir, "madrid-events.json")
+    *xmlURL = "file://" + filepath.Join(*fixturesDir, "madrid-events.xml")
+    *csvURL = "file://" + filepath.Join(*fixturesDir, "madrid-events.csv")
+    log.Println("Using test fixtures from:", *fixturesDir)
+}
+```
+
+**Update HTTP Client:** Support `file://` URLs
+
+```go
+func (c *Client) fetch(url string) ([]byte, error) {
+    if strings.HasPrefix(url, "file://") {
+        // Read from local file
+        path := strings.TrimPrefix(url, "file://")
+        return os.ReadFile(path)
+    }
+
+    // Normal HTTP fetch
+    req, err := http.NewRequest("GET", url, nil)
+    // ... existing code ...
+}
+```
+
+**.gitignore Update:**
+
+```
+# Test fixtures (too large to commit)
+testdata/fixtures/madrid-events.json
+testdata/fixtures/madrid-events.xml
+testdata/fixtures/madrid-events.csv
+
+# Keep directory structure
+!testdata/fixtures/.gitkeep
+```
+
+**Justfile:**
+
+```makefile
+# Fetch test fixtures (run once, then cached)
+fixtures:
+    ./scripts/fetch-fixtures.sh
+
+# Dev with fixtures (faster, no network)
+dev-fixtures: build fixtures
+    ./build/buildsite \
+      -use-fixtures \
+      -out-dir ./public \
+      -data-dir ./data \
+      -lat 40.42338 -lon -3.71217 -radius-km 2.0 \
+      -timezone Europe/Madrid
+```
+
+**Benefits:**
+- ✅ Tests run without network (fast, reliable)
+- ✅ Don't spam Madrid's servers during development
+- ✅ Reproducible test data (same fixtures every run)
+- ✅ Can test with known-bad data for error handling
+- ✅ CI/CD friendly (no external dependencies)
+
+---
+
 ### Task 1: Create Canonical Event Type (30 min)
 
 **File:** `internal/event/event.go` (new package)
@@ -654,6 +765,9 @@ Clean up temporary debug code from:
 
 ## Implementation Order
 
+**Phase 0: Test Infrastructure (30 min)**
+0. Task 0: Create test fixtures and file:// URL support ✓
+
 **Phase 1: Foundation (2.5 hours)**
 1. Task 1: Create canonical event type + ParseResult ✓
 2. Task 10: Add data quality validation ✓
@@ -673,7 +787,7 @@ Clean up temporary debug code from:
 10. Task 9: Update tests (including data quality tests) ✓
 11. Task 11: Remove debug logging ✓
 
-**Total Estimated Time:** 8.5 hours
+**Total Estimated Time:** 9 hours
 
 ---
 
