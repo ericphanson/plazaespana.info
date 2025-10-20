@@ -1,14 +1,16 @@
-# Implementation Plan 001: Maximum Server-Side Filtering
+# Implementation Plan 001: District-Based Server-Side Filtering
 
 **Date:** 2025-10-20
 **Plan ID:** 2025-10-20-001
-**Status:** Not Started (Blocked - Network Access Issues)
+**Status:** ✅ Network Access Resolved - Ready to Implement
 
-**Goal:** Leverage Madrid's API capabilities to minimize client-side work and create a true "Plaza de España feed" that's essentially a pass-through from Madrid's API.
+**Goal:** Use Madrid's distrito filter to reduce data transfer by 96.8% while maintaining full event data.
 
-**Philosophy:** Let the server do the heavy lifting. We just format and present.
+**Philosophy:** Let the server do coarse filtering (distrito), we handle precision (radius).
 
-**Important Note:** NFSN deployment is out of scope for this plan. We need to resolve network/firewall issues in the development environment to test API filtering capabilities. This is acceptable - we can adjust firewall/network settings locally.
+**Critical Discovery:** Radius API returns minimal schema (only 3 fields - no dates/times/descriptions). District filter is the right approach. See `docs/radius-api-investigation.md` for details.
+
+**Network Issue:** ✅ RESOLVED - Fixed DNS CNAME resolution in init-firewall.sh
 
 ---
 
@@ -47,101 +49,60 @@ Problems:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Madrid API (Filtered at Source)                        │
-│ ?latitud=40.42338&longitud=-3.71217&distancia=350     │
-│ Returns: ~15-20 events (ONLY Plaza de España area)     │
+│ Madrid API (Distrito-Filtered)                         │
+│ ?distrito_nombre=MONCLOA-ARAVACA                       │
+│ Returns: 34 events (MONCLOA-ARAVACA district only)     │
+│ Schema: FULL (dates, times, descriptions, etc.)        │
 └─────────────────────────────────────────────────────────┘
-                        ↓ (tiny download)
+                        ↓ (small download - 96.8% reduction)
 ┌─────────────────────────────────────────────────────────┐
-│ Our Server: Minimal Processing                         │
-│ - Parse ONLY relevant events                           │
-│ - Merge & deduplicate (~60 → ~15 events)               │
-│ - Optional: Verify within radius (safety check)        │
+│ Our Server: Targeted Processing                        │
+│ - Parse district events (34 events)                    │
+│ - Merge & deduplicate across formats                   │
+│ - Filter by 0.35km radius (34 → ~13 events)            │
 │ - Enrich with descriptions                             │
 │ - Generate HTML/JSON                                   │
 └─────────────────────────────────────────────────────────┘
                         ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Output: ~15 events (nearly 100% of downloaded data)    │
+│ Output: ~13 events (same as current, but faster)       │
 └─────────────────────────────────────────────────────────┘
 
 Benefits:
-✅ Download ~15 events, use ~15 (95%+ efficiency)
-✅ Parse ~60 events total (vs 3000+)
-✅ Server does GPS filtering
-✅ Fast builds (5-10x faster)
+✅ Download 34 events, use ~13 (38% efficiency vs 1.2%)
+✅ Parse ~102 events total (34×3 formats vs 3000+)
+✅ 96.8% data reduction (1055 → 34)
+✅ Full event schema (no secondary API calls needed)
+✅ Fast builds (3-5x faster)
 ✅ Low memory usage
-✅ Essentially a "Madrid API proxy with formatting"
+✅ Same functionality, better performance
 ```
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Resolve Network Access (REQUIRED)
+### Phase 1: Network Access ✅ COMPLETE
 
 **Goal:** Fix network/firewall issues to test API filtering
 
-**Current Issue:** Container cannot reach datos.madrid.es
-- All curl/wget attempts result in 0-byte files or timeouts
-- HTTP 302/307 redirects but no data received
-- Likely firewall/network configuration issue
+**Issue:** datos.madrid.es uses CNAME records that weren't being followed by DNS resolution in init-firewall.sh
 
-#### Task 1.1: Diagnose Network Issue
-**Location:** Development environment (container/host)
+**Solution:** Changed `dig +noall +answer A` to `dig +short A` to follow CNAME chains
+- datos.madrid.es → madridw.edgekey.net → e101210.dscb.akamaiedge.net → [2.18.188.31, 2.18.188.10]
 
-**Steps:**
-```bash
-# 1. Test from host machine (outside container)
-curl -I "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json"
+**Result:** ✅ API access working
+- District filter tested: 34 events
+- Radius filter tested: 1 event (minimal schema - unusable)
 
-# 2. Check DNS resolution
-nslookup datos.madrid.es
-dig datos.madrid.es
+**Files Changed:** `.devcontainer/init-firewall.sh`
+**Documentation:** `docs/radius-api-investigation.md`
 
-# 3. Test with different tools
-wget --spider "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json"
+**Estimated Time:** ✅ 1 hour (completed)
 
-# 4. Check for proxy/firewall
-echo $HTTP_PROXY $HTTPS_PROXY
-env | grep -i proxy
-```
+**Next:** Rebuild container for firewall changes to take effect permanently
 
-**Success Criteria:** Identify why container can't reach datos.madrid.es
-
-**Estimated Time:** 30 minutes
-
-#### Task 1.2: Fix Network/Firewall Configuration
-**Potential Solutions:**
-
-**Option A: Adjust container network settings**
-```yaml
-# .devcontainer/devcontainer.json
-{
-  "runArgs": ["--network=host"],  // Use host network
-  // or
-  "runArgs": ["--dns=8.8.8.8", "--dns=8.8.4.4"]  // Use Google DNS
-}
-```
-
-**Option B: Configure proxy/firewall rules**
-```bash
-# If behind corporate firewall
-export HTTP_PROXY=http://proxy.example.com:8080
-export HTTPS_PROXY=http://proxy.example.com:8080
-```
-
-**Option C: Test from host machine directly**
-```bash
-# Run curl from host, not container
-# Then proceed with implementation
-```
-
-**Success Criteria:** Can successfully download from datos.madrid.es
-
-**Estimated Time:** 30-60 minutes
-
-#### Task 1.3: Test Radius Search API
+#### Task 1.1: Test Distrito Filter API ✅ COMPLETE
 **Location:** Once network access works
 
 **Test A: Radius Search (Primary)**
