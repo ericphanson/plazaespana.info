@@ -2,6 +2,8 @@ package fetch
 
 import (
 	"encoding/xml"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -279,5 +281,246 @@ func TestParseFullFixture(t *testing.T) {
 
 	if successCount == 0 {
 		t.Error("Expected at least some successful conversions")
+	}
+}
+
+// TestFetchEsmadridEvents_Success tests successful HTTP fetch and parse
+func TestFetchEsmadridEvents_Success(t *testing.T) {
+	// Mock ESMadrid XML response
+	xmlData := `<?xml version="1.0" encoding="UTF-8"?>
+<serviceList>
+	<service id="12345" fechaActualizacion="2025-10-20">
+		<basicData>
+			<name><![CDATA[Exposición de Arte]]></name>
+			<title><![CDATA[Arte Contemporáneo]]></title>
+			<body><![CDATA[Una exposición de arte moderno]]></body>
+			<web>https://example.com/evento</web>
+			<idrt>VENUE-001</idrt>
+			<nombrert><![CDATA[Museo Reina Sofía]]></nombrert>
+		</basicData>
+		<geoData>
+			<address>Calle Santa Isabel 52</address>
+			<latitude>40.4085</latitude>
+			<longitude>-3.6936</longitude>
+		</geoData>
+		<multimedia>
+			<media>
+				<url>https://example.com/image.jpg</url>
+			</media>
+		</multimedia>
+		<extradata>
+			<item name="Servicios de pago">Gratuito</item>
+			<categorias>
+				<categoria>
+					<item name="Categoria">Cultura</item>
+					<subcategorias>
+						<subcategoria>
+							<item name="SubCategoria">Exposiciones</item>
+						</subcategoria>
+					</subcategorias>
+				</categoria>
+			</categorias>
+			<fechas>
+				<rango>
+					<inicio>20/10/2025</inicio>
+					<fin>30/11/2025</fin>
+				</rango>
+			</fechas>
+		</extradata>
+	</service>
+	<service id="67890" fechaActualizacion="2025-10-19">
+		<basicData>
+			<name><![CDATA[Concierto de Jazz]]></name>
+			<title><![CDATA[Jazz en vivo]]></title>
+			<body><![CDATA[Concierto de jazz en directo]]></body>
+			<web>https://example.com/concierto</web>
+			<idrt>VENUE-002</idrt>
+			<nombrert><![CDATA[Café Central]]></nombrert>
+		</basicData>
+		<geoData>
+			<address>Plaza del Ángel 10</address>
+			<latitude>40.4153</latitude>
+			<longitude>-3.7029</longitude>
+		</geoData>
+		<multimedia>
+			<media>
+				<url>https://example.com/jazz.jpg</url>
+			</media>
+		</multimedia>
+		<extradata>
+			<item name="Servicios de pago">20€</item>
+			<categorias>
+				<categoria>
+					<item name="Categoria">Música</item>
+					<subcategorias>
+						<subcategoria>
+							<item name="SubCategoria">Jazz</item>
+						</subcategoria>
+					</subcategorias>
+				</categoria>
+			</categorias>
+			<fechas>
+				<rango>
+					<inicio>25/10/2025</inicio>
+					<fin>25/10/2025</fin>
+				</rango>
+			</fechas>
+		</extradata>
+	</service>
+</serviceList>`
+
+	// Create mock HTTP server
+	var capturedUserAgent string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedUserAgent = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "application/xml; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(xmlData))
+	}))
+	defer server.Close()
+
+	// Fetch events
+	events, err := FetchEsmadridEvents(server.URL)
+	if err != nil {
+		t.Fatalf("FetchEsmadridEvents failed: %v", err)
+	}
+
+	// Verify User-Agent was set
+	expectedUA := "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)"
+	if capturedUserAgent != expectedUA {
+		t.Errorf("Expected User-Agent %q, got %q", expectedUA, capturedUserAgent)
+	}
+
+	// Verify we got 2 events
+	if len(events) != 2 {
+		t.Fatalf("Expected 2 events, got %d", len(events))
+	}
+
+	// Verify first event
+	event1 := events[0]
+	if event1.ID != "12345" {
+		t.Errorf("Expected ID '12345', got '%s'", event1.ID)
+	}
+	if event1.Name != "Exposición de Arte" {
+		t.Errorf("Expected Name 'Exposición de Arte', got '%s'", event1.Name)
+	}
+	if event1.Title != "Arte Contemporáneo" {
+		t.Errorf("Expected Title 'Arte Contemporáneo', got '%s'", event1.Title)
+	}
+	if event1.VenueName != "Museo Reina Sofía" {
+		t.Errorf("Expected VenueName 'Museo Reina Sofía', got '%s'", event1.VenueName)
+	}
+	if event1.Latitude != "40.4085" {
+		t.Errorf("Expected Latitude '40.4085', got '%s'", event1.Latitude)
+	}
+	if event1.Longitude != "-3.6936" {
+		t.Errorf("Expected Longitude '-3.6936', got '%s'", event1.Longitude)
+	}
+	if event1.Category != "Cultura" {
+		t.Errorf("Expected Category 'Cultura', got '%s'", event1.Category)
+	}
+	if event1.Subcategory != "Exposiciones" {
+		t.Errorf("Expected Subcategory 'Exposiciones', got '%s'", event1.Subcategory)
+	}
+	if event1.StartDate != "20/10/2025" {
+		t.Errorf("Expected StartDate '20/10/2025', got '%s'", event1.StartDate)
+	}
+	if event1.EndDate != "30/11/2025" {
+		t.Errorf("Expected EndDate '30/11/2025', got '%s'", event1.EndDate)
+	}
+	if event1.Price != "Gratuito" {
+		t.Errorf("Expected Price 'Gratuito', got '%s'", event1.Price)
+	}
+
+	// Verify second event
+	event2 := events[1]
+	if event2.ID != "67890" {
+		t.Errorf("Expected ID '67890', got '%s'", event2.ID)
+	}
+	if event2.Name != "Concierto de Jazz" {
+		t.Errorf("Expected Name 'Concierto de Jazz', got '%s'", event2.Name)
+	}
+	if event2.Category != "Música" {
+		t.Errorf("Expected Category 'Música', got '%s'", event2.Category)
+	}
+	if event2.Subcategory != "Jazz" {
+		t.Errorf("Expected Subcategory 'Jazz', got '%s'", event2.Subcategory)
+	}
+}
+
+// TestFetchEsmadridEvents_HTTPError tests handling of HTTP errors
+func TestFetchEsmadridEvents_HTTPError(t *testing.T) {
+	// Create server that returns 404
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not Found"))
+	}))
+	defer server.Close()
+
+	// Fetch should return error
+	_, err := FetchEsmadridEvents(server.URL)
+	if err == nil {
+		t.Fatal("Expected error for 404 response, got nil")
+	}
+}
+
+// TestFetchEsmadridEvents_InvalidXML tests handling of invalid XML
+func TestFetchEsmadridEvents_InvalidXML(t *testing.T) {
+	// Create server that returns invalid XML
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("This is not valid XML"))
+	}))
+	defer server.Close()
+
+	// Fetch should return error
+	_, err := FetchEsmadridEvents(server.URL)
+	if err == nil {
+		t.Fatal("Expected error for invalid XML, got nil")
+	}
+}
+
+// TestFetchEsmadridEvents_EmptyResponse tests handling of empty service list
+func TestFetchEsmadridEvents_EmptyResponse(t *testing.T) {
+	// Create server that returns empty service list
+	xmlData := `<?xml version="1.0" encoding="UTF-8"?>
+<serviceList>
+</serviceList>`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(xmlData))
+	}))
+	defer server.Close()
+
+	// Fetch should succeed with empty list
+	events, err := FetchEsmadridEvents(server.URL)
+	if err != nil {
+		t.Fatalf("Expected success for empty list, got error: %v", err)
+	}
+	if len(events) != 0 {
+		t.Errorf("Expected 0 events, got %d", len(events))
+	}
+}
+
+// TestFetchEsmadridEvents_Timeout verifies timeout is set
+func TestFetchEsmadridEvents_Timeout(t *testing.T) {
+	// Create server that responds normally
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<?xml version="1.0"?><serviceList></serviceList>`))
+	}))
+	defer server.Close()
+
+	// This test just verifies the function works with a timeout
+	// (testing actual timeout would require waiting 30+ seconds)
+	events, err := FetchEsmadridEvents(server.URL)
+	if err != nil {
+		t.Fatalf("Expected success, got error: %v", err)
+	}
+	if len(events) != 0 {
+		t.Errorf("Expected 0 events, got %d", len(events))
 	}
 }

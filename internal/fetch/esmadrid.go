@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"html"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -248,4 +250,48 @@ func parseEsmadridDate(dateStr string) (time.Time, error) {
 
 	// Create time at midnight in Madrid timezone
 	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, loc), nil
+}
+
+// FetchEsmadridEvents fetches and parses ESMadrid events from the given URL.
+// Returns a slice of EsmadridService structs or an error if fetching/parsing fails.
+func FetchEsmadridEvents(url string) ([]EsmadridService, error) {
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	// Set User-Agent header (matching pattern from client.go)
+	req.Header.Set("User-Agent", "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)")
+
+	// Execute request
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	// Parse XML
+	var serviceList EsmadridServiceList
+	if err := xml.Unmarshal(body, &serviceList); err != nil {
+		return nil, fmt.Errorf("parsing XML: %w", err)
+	}
+
+	return serviceList.Services, nil
 }

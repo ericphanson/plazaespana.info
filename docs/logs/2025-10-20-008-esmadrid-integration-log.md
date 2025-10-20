@@ -94,3 +94,47 @@
 **Next:** Task 4 (Create ESMadrid XML parser)
 
 ---
+
+### Task 4: Create ESMadrid XML Parser
+**Status:** ✅ Complete
+**Commit:** 1cd74da
+**Files:** internal/fetch/esmadrid.go, internal/fetch/esmadrid_test.go
+
+**Implementation:**
+- Created EsmadridService struct matching XML schema
+- Implemented custom UnmarshalXML to extract nested extradata fields
+- Added ToCityEvent() method to convert to event.CityEvent
+- Handles CDATA sections and HTML entity unescaping
+- Parses DD/MM/YYYY date format to time.Time in Europe/Madrid timezone
+- Extracts category/subcategory from nested XML structure
+- Extracts price and date ranges from extradata
+
+**Test Results:**
+- 4 new tests for ESMadrid parsing:
+  - TestParseEsmadridXML: Tests single service parsing from XML
+  - TestToCityEvent: Tests conversion to CityEvent
+  - TestToCityEventMissingFields: Tests handling of optional fields
+  - TestParseFullFixture: Tests parsing complete 1,158-event fixture
+- Successfully parsed 1,158 events from fixture (1,157 converted to CityEvent)
+- 1 event skipped (missing date field - expected edge case)
+- All existing tests continue passing (total: 58 tests)
+- Build verified: `just build` successful
+
+**Key Features:**
+- Nested XML parsing for extradata structure
+- HTML entity unescaping (&aacute; → á, etc.)
+- CDATA handling for description/price fields
+- Robust error handling for missing optional fields
+- Timezone-aware date parsing (Europe/Madrid)
+- Zero external dependencies (stdlib only)
+
+**Code Review:**
+- ✅ All acceptance criteria met
+- ✅ 99.9% success rate on real fixture (1,157/1,158 events)
+- ✅ Sophisticated custom UnmarshalXML for nested extradata
+- ✅ Comprehensive test coverage including full fixture validation
+- Minor notes: timezone test brittleness, error context (non-blocking)
+
+**Next:** Task 5 (Create ESMadrid HTTP client)
+
+---
