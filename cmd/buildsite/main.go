@@ -225,9 +225,58 @@ func main() {
 
 	// Handle snapshot fallback if ALL sources failed
 	if len(merged) == 0 && allSourcesFailed(pipeResult) {
-		log.Println("All sources failed, loading snapshot...")
-		// TODO: Implement snapshot loading with CulturalEvent conversion
-		buildReport.AddWarning("Using stale snapshot data - all fetch attempts failed")
+		log.Println("All sources failed, attempting to load snapshot...")
+
+		// Load snapshot
+		snapshot, err := snapMgr.LoadSnapshot()
+		if err != nil {
+			log.Printf("Warning: Failed to load snapshot: %v", err)
+			buildReport.AddWarning("All fetch sources failed and no snapshot available")
+		} else {
+			log.Printf("Loaded snapshot with %d events", len(snapshot))
+
+			// Convert RawEvent back to CulturalEvent
+			snapshotEvents := make([]event.CulturalEvent, 0, len(snapshot))
+			for _, raw := range snapshot {
+				// Parse times
+				startTime, err := time.ParseInLocation("2006-01-02 15:04", raw.Fecha+" "+raw.Hora, loc)
+				if err != nil {
+					// Try without time if parsing fails
+					startTime, err = time.ParseInLocation("2006-01-02", raw.Fecha, loc)
+					if err != nil {
+						log.Printf("Warning: Failed to parse snapshot event %s time: %v", raw.IDEvento, err)
+						continue
+					}
+				}
+
+				endTime, err := time.ParseInLocation("2006-01-02", raw.FechaFin, loc)
+				if err != nil {
+					// Use start time if end time parsing fails
+					endTime = startTime
+				}
+
+				// Convert to CulturalEvent
+				canonical := event.CulturalEvent{
+					ID:          raw.IDEvento,
+					Title:       raw.Titulo,
+					Description: raw.Descripcion,
+					StartTime:   startTime,
+					EndTime:     endTime,
+					VenueName:   raw.NombreInstalacion,
+					Address:     raw.Direccion,
+					DetailsURL:  raw.ContentURL,
+					Latitude:    raw.Lat,
+					Longitude:   raw.Lon,
+					Sources:     []string{"SNAPSHOT"}, // Mark as from snapshot
+				}
+
+				snapshotEvents = append(snapshotEvents, canonical)
+			}
+
+			log.Printf("Converted %d snapshot events to CulturalEvent", len(snapshotEvents))
+			merged = snapshotEvents
+			buildReport.AddWarning("Using snapshot data - all fetch attempts failed (snapshot has %d events)", len(snapshotEvents))
+		}
 	} else if len(merged) > 0 {
 		// Save successful merge to snapshot
 		if err := snapMgr.SaveSnapshot(convertToRawEvents(merged)); err != nil {

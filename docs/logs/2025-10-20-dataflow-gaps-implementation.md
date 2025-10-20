@@ -380,3 +380,88 @@ evt.Sources = deduplicateStrings(evt.Sources)
 - RFC3339 format consistent with existing StartTime
 - Backward compatible (new field, omitempty for zero values)
 - All tests passing
+
+---
+
+### Phase 5: Resilience
+
+#### Task 5.1: Implement Snapshot Fallback (45 min)
+**Status:** In Progress
+**Started:** 2025-10-20
+
+**Goal:** Load snapshot data when all cultural event sources fail, so site continues to work during upstream outages.
+
+**Problem:**
+- When JSON/XML/CSV all fail, site renders nothing
+- Snapshots exist but aren't loaded as fallback
+- Total outage causes complete site failure
+- TODO comment exists but not implemented
+
+**Solution:** Implement snapshot loading when all sources fail.
+
+**Files to modify:**
+- `cmd/buildsite/main.go` - After FetchAll, check if all sources failed and load snapshot
+
+**Implementation:**
+1. ✅ Replaced TODO with full snapshot loading implementation
+2. ✅ Check if all sources failed using existing allSourcesFailed()
+3. ✅ Call snapMgr.LoadSnapshot() to load []fetch.RawEvent
+4. ✅ Convert RawEvent to CulturalEvent with proper time parsing
+5. ✅ Handle parsing errors gracefully (skip events that can't be parsed)
+6. ✅ Mark all snapshot events with Sources: ["SNAPSHOT"]
+7. ✅ Update build report warning with event count
+8. ✅ Comprehensive logging at each step
+9. ✅ All tests passing, compilation successful
+
+**Changes:**
+- Implemented complete snapshot fallback in main.go
+- Parse times with fallback logic (with/without hours)
+- Convert all RawEvent fields to CulturalEvent
+- Mark snapshot source for audit trail
+- Add detailed warnings to build report
+
+**Implementation details:**
+```go
+// Load snapshot when all sources fail
+snapshot, err := snapMgr.LoadSnapshot()
+if err != nil {
+    // Log and warn, continue with empty
+    buildReport.AddWarning("All fetch sources failed and no snapshot available")
+} else {
+    // Convert RawEvent -> CulturalEvent
+    for _, raw := range snapshot {
+        // Parse times (try with hours, fallback to date only)
+        startTime, _ := time.ParseInLocation("2006-01-02 15:04", raw.Fecha+" "+raw.Hora, loc)
+        // ... full conversion ...
+        canonical := event.CulturalEvent{
+            // Map all fields
+            Sources: []string{"SNAPSHOT"}, // Mark source
+        }
+        snapshotEvents = append(snapshotEvents, canonical)
+    }
+    merged = snapshotEvents
+    buildReport.AddWarning("Using snapshot data - all fetch attempts failed")
+}
+```
+
+**Status:** ✅ Complete
+**Completed:** 2025-10-20
+
+**Impact:**
+- Site continues to work during total upstream outages
+- Snapshot events flow through normal filtering/rendering pipeline
+- Build report clearly indicates snapshot usage
+- Audit file shows "SNAPSHOT" as event source
+- Production resilience dramatically improved
+
+**Error handling:**
+- Snapshot load failure: Continue with empty, log warning
+- Time parsing failure: Try fallback format, skip event if still fails
+- Graceful degradation: Better than complete site failure
+
+**Notes:**
+- This was the final and most complex task
+- Critical for production reliability
+- Comprehensive error handling ensures no crashes
+- Logging provides full visibility into snapshot fallback process
+- All 7 tasks of the dataflow gaps implementation plan now complete!
