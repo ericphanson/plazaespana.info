@@ -1,0 +1,32 @@
+[cultural_events]
+# datos.madrid.es cultural programming
+json_url = "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json"
+xml_url = "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml"
+csv_url = "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv"
+
+[city_events]
+# esmadrid.com tourism/city events
+xml_url = "https://www.esmadrid.com/opendata/agenda_v1_es.xml"
+
+[filter]
+# Plaza de España coordinates
+latitude = 40.42338
+longitude = -3.71217
+radius_km = 0.35
+
+# Distrito filtering
+distritos = ["CENTRO", "MONCLOA-ARAVACA"]
+
+# Time filtering
+past_events_weeks = 2  # Exclude events started >2 weeks ago
+
+[output]
+html_path = "public/index.html"
+json_path = "public/events.json"
+
+[snapshot]
+data_dir = "data"
+
+[server]
+# For development only
+port = 8080
