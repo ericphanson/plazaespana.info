@@ -20,3 +20,4 @@ file build/buildsite 2>/dev/null || echo "  (file command not available)"
 ls -lh build/buildsite
 echo ""
 echo "Ready to deploy to NearlyFreeSpeech.NET"
+echo "Don't forget to upload config.toml along with the binary!"

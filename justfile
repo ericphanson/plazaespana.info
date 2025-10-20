@@ -2,6 +2,10 @@
 default:
     @just --list
 
+# Validate config.toml
+config:
+    ./build/buildsite -config config.toml -validate
+
 # Build the site generator binary
 build:
     go build -o build/buildsite ./cmd/buildsite
@@ -26,15 +30,8 @@ hash-css:
 dev: build hash-css
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "🔨 Building site..."
-    ./build/buildsite \
-      -json-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json \
-      -xml-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml \
-      -csv-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv \
-      -out-dir ./public \
-      -data-dir ./data \
-      -lat 40.42338 -lon -3.71217 -radius-km 2.0 \
-      -timezone Europe/Madrid
+    echo "🔨 Building site with config.toml..."
+    ./build/buildsite -config config.toml
 
     echo ""
     echo "✅ Site generated!"
