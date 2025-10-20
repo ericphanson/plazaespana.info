@@ -45,21 +45,24 @@ func GroupEventsByTime(events []event.CulturalEvent, now time.Time) (groups []Ti
 	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfToday := startOfToday.Add(24 * time.Hour)
 
-	// Find most recent Saturday
-	daysBackToSat := int(now.Weekday())
-	if daysBackToSat == 0 {
-		daysBackToSat = 7 // If today is Sunday, go back 7 days to previous Saturday
+	// Past Weekend: Most recent Sat-Sun that has already passed
+	// If today is Mon-Fri: last Sat-Sun
+	// If today is Sat-Sun: previous Sat-Sun (not current one)
+	var pastWeekendStart, pastWeekendEnd time.Time
+	if now.Weekday() == time.Saturday {
+		// Today is Saturday - "past weekend" is 7 days ago (last Sat-Sun)
+		pastWeekendStart = startOfToday.AddDate(0, 0, -7)
+		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)
+	} else if now.Weekday() == time.Sunday {
+		// Today is Sunday - "past weekend" is 8 days ago for Sat (last Sat-Sun)
+		pastWeekendStart = startOfToday.AddDate(0, 0, -8)
+		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)
 	} else {
-		daysBackToSat = (daysBackToSat + 6) % 7 // Convert to days back to Saturday
+		// Mon-Fri: "past weekend" is most recent Sat-Sun
+		daysToLastSunday := int(now.Weekday()) // Mon=1, Tue=2, etc.
+		pastWeekendStart = startOfToday.AddDate(0, 0, -daysToLastSunday-1) // Go to last Saturday
+		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)               // Sat + Sun
 	}
-	pastWeekendStart := startOfToday.AddDate(0, 0, -daysBackToSat-7) // Go back one more week if needed
-	// Adjust: if today is Mon-Fri, go to last Saturday. If Sat-Sun, go to this Saturday.
-	if now.Weekday() >= time.Saturday {
-		pastWeekendStart = startOfToday.AddDate(0, 0, -int(now.Weekday()-time.Saturday))
-	} else {
-		pastWeekendStart = startOfToday.AddDate(0, 0, -int(now.Weekday())-1)
-	}
-	pastWeekendEnd := pastWeekendStart.Add(48 * time.Hour) // Sat + Sun
 
 	// This weekend: next or current Fri-Sun
 	var thisWeekendStart, thisWeekendEnd time.Time

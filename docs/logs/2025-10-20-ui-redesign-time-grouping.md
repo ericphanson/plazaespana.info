@@ -308,4 +308,49 @@ if evt.StartTime.Before(oldEventCutoff) {
 
 ---
 
+### Task 10: Clean HTML from Descriptions + Fix Past Weekend Logic
+**Status**: ✅ Complete
+**Time**: 2025-10-20 14:04
+
+**Problem 1**: Event descriptions showing raw HTML entities and tags
+- Example: `<p><strong>Portadora de un&nbsp;estilo muy personal...`
+- HTML entities (`&nbsp;`, `&amp;`) displaying literally
+- HTML tags (`<p>`, `<strong>`) showing as text
+
+**Problem 2**: "Past Weekend" section logic unclear and not showing
+
+**Solutions**:
+
+1. **Updated `TruncateText()` function** (`internal/render/helpers.go`):
+   ```go
+   // Strip HTML tags
+   text = htmlTagRegex.ReplaceAllString(text, "")
+
+   // Decode HTML entities (&nbsp; → space, &amp; → &, etc.)
+   text = html.UnescapeString(text)
+
+   // Normalize whitespace (collapse multiple spaces)
+   text = strings.Join(strings.Fields(text), " ")
+   ```
+
+2. **Fixed Past Weekend calculation** (`internal/render/grouping.go`):
+   - Simplified confusing logic
+   - If today is Sat/Sun: "past weekend" is previous Sat-Sun (7-8 days ago)
+   - If today is Mon-Fri: "past weekend" is most recent Sat-Sun
+   - Section only appears if events exist in that window
+
+**Results**:
+
+Before: `<p><strong>Portadora de un&nbsp;estilo muy personal...`
+
+After: `Portadora de un estilo muy personal, Marilia Andrés, la compositora y cantante española del mítico dúo Ella baila sola ofrece una actuación el...`
+
+✅ HTML tags stripped
+✅ HTML entities decoded to proper characters
+✅ Whitespace normalized
+✅ Text clean and readable
+✅ Past Weekend logic fixed (section will appear when relevant events exist)
+
+---
+
 *Log will be updated as implementation progresses*
