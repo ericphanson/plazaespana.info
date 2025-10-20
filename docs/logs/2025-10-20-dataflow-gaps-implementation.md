@@ -174,3 +174,76 @@ OutsideRadius: outsideRadius  // Correct: only GPS-filtered events
 - This was a major refactoring of stats calculation
 - All existing tests continue to pass
 - Build report will now show accurate, non-overlapping categories
+
+---
+
+### Phase 3: City Events Edge Cases
+
+#### Task 3.1: Fix City Coordinates Assumption (30 min)
+**Status:** In Progress
+**Started:** 2025-10-20
+
+**Goal:** Fix city events to properly handle missing coordinates (currently assumes all city events have coordinates).
+
+**Problem:**
+- City event filtering sets `result.HasCoordinates = true` unconditionally (line 511)
+- Events with lat=0, lon=0 are treated as having coordinates
+- These events will almost surely be filtered as "outside GPS radius" due to (0,0) being in the Gulf of Guinea
+- False negatives: valid events with missing coords may be incorrectly dropped
+
+**Solution:** Check for non-zero coordinates before setting HasCoordinates, and mark as "missing location data" if coordinates are missing.
+
+**Files to modify:**
+- `cmd/buildsite/main.go` - City events filtering
+
+**Implementation:**
+1. ✅ Added check for non-zero coordinates: `hasCoords := evt.Latitude != 0.0 && evt.Longitude != 0.0`
+2. ✅ Set HasCoordinates based on actual presence
+3. ✅ Added priority check: missing coords before GPS radius check
+4. ✅ If no coordinates: FilterReason = "missing location data", Kept = false
+5. ✅ Added cityMissingCoords counter
+6. ✅ Updated GeoFilterStats.MissingCoords to use actual count (was hardcoded 0)
+7. ✅ Only calculate GPS distance when coordinates are present
+8. ✅ All tests passing
+
+**Changes:**
+- Check coordinates before calculating distance (avoids false positives from 0,0)
+- Priority order: missing coords -> outside radius -> too old -> kept
+- Track missing coordinates in build report
+
+**Before:**
+```go
+result.HasCoordinates = true  // WRONG: assumes always present
+result.GPSDistanceKm = filter.HaversineDistance(...)  // Would calculate distance to (0,0)
+result.WithinRadius = (result.GPSDistanceKm <= cfg.Filter.RadiusKm)  // Almost certainly false for (0,0)
+// Event filtered as "outside GPS radius" - FALSE NEGATIVE!
+```
+
+**After:**
+```go
+hasCoords := evt.Latitude != 0.0 && evt.Longitude != 0.0
+result.HasCoordinates = hasCoords
+if !hasCoords {
+    result.Kept = false
+    result.FilterReason = "missing location data"
+    cityMissingCoords++
+} else {
+    // Calculate distance only when coordinates are valid
+    result.GPSDistanceKm = filter.HaversineDistance(...)
+    ...
+}
+```
+
+**Status:** ✅ Complete
+**Completed:** 2025-10-20
+
+**Impact:**
+- Prevents false negatives from events with lat=0, lon=0
+- Properly categorizes missing coordinate events
+- Build report shows accurate missing coordinate count
+- No longer treats (0,0) as Gulf of Guinea location
+
+**Notes:**
+- This fix prevents city events from being incorrectly filtered
+- Events with missing coords now have correct filter reason
+- More accurate reporting of data quality issues

@@ -502,16 +502,14 @@ func main() {
 	// Stats counters for city events
 	cityOutsideRadius := 0
 	cityTooOld := 0
+	cityMissingCoords := 0
 
 	for _, evt := range cityEvents {
 		result := event.FilterResult{}
 
-		// City events always have coordinates
-		result.HasCoordinates = true
-		result.GPSDistanceKm = filter.HaversineDistance(
-			cfg.Filter.Latitude, cfg.Filter.Longitude,
-			evt.Latitude, evt.Longitude)
-		result.WithinRadius = (result.GPSDistanceKm <= cfg.Filter.RadiusKm)
+		// Check if coordinates are actually present (not zero)
+		hasCoords := evt.Latitude != 0.0 && evt.Longitude != 0.0
+		result.HasCoordinates = hasCoords
 
 		// City events don't have distrito
 		result.HasDistrito = false
@@ -522,18 +520,31 @@ func main() {
 		result.DaysOld = int(now.Sub(evt.EndDate).Hours() / 24)
 		result.TooOld = evt.EndDate.Before(cutoffTime)
 
-		// Decide if kept (same logic as filter.FilterCityEvents)
-		if !result.WithinRadius {
+		// Decide if kept (priority: missing coords -> outside radius -> too old -> kept)
+		if !hasCoords {
+			// No coordinates - cannot filter by location
 			result.Kept = false
-			result.FilterReason = "outside GPS radius"
-			cityOutsideRadius++
-		} else if result.TooOld {
-			result.Kept = false
-			result.FilterReason = "event too old"
-			cityTooOld++
+			result.FilterReason = "missing location data"
+			cityMissingCoords++
 		} else {
-			result.Kept = true
-			result.FilterReason = "kept"
+			// Have coordinates - calculate distance
+			result.GPSDistanceKm = filter.HaversineDistance(
+				cfg.Filter.Latitude, cfg.Filter.Longitude,
+				evt.Latitude, evt.Longitude)
+			result.WithinRadius = (result.GPSDistanceKm <= cfg.Filter.RadiusKm)
+
+			if !result.WithinRadius {
+				result.Kept = false
+				result.FilterReason = "outside GPS radius"
+				cityOutsideRadius++
+			} else if result.TooOld {
+				result.Kept = false
+				result.FilterReason = "event too old"
+				cityTooOld++
+			} else {
+				result.Kept = true
+				result.FilterReason = "kept"
+			}
 		}
 
 		evt.FilterResult = result
@@ -558,7 +569,7 @@ func main() {
 		RefLon:        cfg.Filter.Longitude,
 		Radius:        cfg.Filter.RadiusKm,
 		Input:         len(allCityEvents),
-		MissingCoords: 0,                 // ESMadrid events always have coords
+		MissingCoords: cityMissingCoords, // FIXED: Track actual missing coordinates
 		OutsideRadius: cityOutsideRadius, // FIXED: Only "outside GPS radius" events
 		Kept:          len(filteredCityEvents),
 		Duration:      cityFilterDuration,
