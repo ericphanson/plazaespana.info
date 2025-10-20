@@ -34,20 +34,12 @@ func main() {
 	defer func() {
 		buildReport.Duration = time.Since(buildReport.BuildTime)
 
-		// Write text report
-		txtPath := filepath.Join(outputDir, "build-report.txt")
-		if f, err := os.Create(txtPath); err == nil {
-			buildReport.WriteText(f)
-			f.Close()
-			log.Println("Text report written to:", txtPath)
-		}
-
 		// Write markdown report
 		mdPath := filepath.Join(outputDir, "build-report.md")
 		if f, err := os.Create(mdPath); err == nil {
 			buildReport.WriteMarkdown(f)
 			f.Close()
-			log.Println("Markdown report written to:", mdPath)
+			log.Println("Build report written to:", mdPath)
 		}
 	}()
 

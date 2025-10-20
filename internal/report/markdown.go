@@ -304,3 +304,11 @@ func statusEmoji(status string) string {
 		return "❓"
 	}
 }
+
+// percent calculates percentage.
+func percent(part, total int) float64 {
+	if total == 0 {
+		return 0
+	}
+	return float64(part) * 100.0 / float64(total)
+}
