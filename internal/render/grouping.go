@@ -95,6 +95,9 @@ func GroupEventsByTime(events []event.CulturalEvent, now time.Time) (groups []Ti
 	laterThisMonth := TimeGroup{Name: "Later This Month", Icon: "📅", Events: []TemplateEvent{}}
 	ongoingEvents := []TemplateEvent{}
 
+	// Hard filter: Don't show events older than 60 days to prevent stale data
+	oldEventCutoff := now.AddDate(0, 0, -60)
+
 	// Filter and group events
 	for _, evt := range events {
 		// Calculate event duration
@@ -106,6 +109,11 @@ func GroupEventsByTime(events []event.CulturalEvent, now time.Time) (groups []Ti
 
 		// Skip events that ended before the past weekend
 		if endTime.Before(pastWeekendStart) {
+			continue
+		}
+
+		// Skip very old events (data quality filter)
+		if evt.StartTime.Before(oldEventCutoff) {
 			continue
 		}
 

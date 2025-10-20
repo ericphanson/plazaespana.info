@@ -198,4 +198,114 @@ Captured screenshots: `screenshots/grouped-v1/`
 
 ---
 
+### Task 8: Grid Layout for Desktop Density
+**Status**: ✅ In Review
+**Time**: 2025-10-20 13:54
+
+User feedback: Desktop shows too few events, too much vertical scroll. Need higher density.
+
+**Solution**: CSS Grid with 2 columns on desktop (768px+)
+
+Modified `assets/site.css`:
+```css
+@media (min-width: 768px) {
+  .event-section {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem 1.5rem; /* row gap, column gap */
+  }
+
+  .event-section .section-header {
+    grid-column: 1 / -1; /* Header spans full width */
+  }
+}
+```
+
+#### Desktop Density Comparison
+
+**Single Column (before):**
+
+![Single Column Desktop](assets/2025-10-20-ui-redesign/single-col-desktop.png)
+
+**2-Column Grid (after):**
+
+![2-Column Grid Desktop](assets/2025-10-20-ui-redesign/grid-2col-desktop.png)
+
+#### Analysis
+
+**Density Improvement:**
+- Viewport (1400x900): Shows 2 events → 3 events (~50% improvement)
+- "Eventos en Curso" section: Now displays 2 cards side-by-side
+- Less vertical scrolling needed
+
+**Mobile:** ✅ Remains single column (grid only applies at 768px+)
+
+**Tablet (768px+):** Also uses 2-column grid
+
+**User Feedback:**
+- Want responsive grid (Option C)
+- Found bug: Events from 2022 showing up (filtering broken)
+
+---
+
+### Task 9: Responsive Grid + Fix Old Event Filter
+**Status**: ✅ Complete
+**Time**: 2025-10-20 14:00
+
+**Bug Fixed**: Events from 2022 were appearing in "Ongoing Events" section
+
+Root cause: No filter for events that started way in the past. An event from 2022 with no end date (or future end date) was classified as "ongoing" and displayed.
+
+**Fix**: Added 60-day cutoff for old events in `internal/render/grouping.go`:
+```go
+// Hard filter: Don't show events older than 60 days to prevent stale data
+oldEventCutoff := now.AddDate(0, 0, -60)
+
+// Skip very old events (data quality filter)
+if evt.StartTime.Before(oldEventCutoff) {
+    continue
+}
+```
+
+**Responsive Grid Implemented** in `assets/site.css`:
+```css
+/* Tablet: 2 columns */
+@media (min-width: 768px) {
+  .event-section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop: 3 columns */
+@media (min-width: 1200px) {
+  .event-section {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+```
+
+#### Final Results
+
+**Desktop (1400px) - 3 columns:**
+
+![3-Column Grid Desktop](assets/2025-10-20-ui-redesign/grid-3col-desktop.png)
+
+**Tablet (768px) - 2 columns:**
+
+![2-Column Grid Tablet](assets/2025-10-20-ui-redesign/grid-2col-tablet.png)
+
+#### Verification
+
+✅ Old events filtered: Event count dropped from 10 → 6 city events
+✅ All visible events are 2025 dates (2022 events gone)
+✅ 3-column grid on desktop shows 3 events in viewport
+✅ 2-column grid on tablet (768px-1199px)
+✅ Single column on mobile (<768px)
+
+**Density Achieved:**
+- Desktop: ~4-5 events visible in viewport
+- Tablet: ~3 events visible
+- Mobile: ~1-2 events visible
+
+---
+
 *Log will be updated as implementation progresses*

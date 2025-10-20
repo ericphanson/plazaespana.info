@@ -66,6 +66,28 @@ main {
   gap: 1.5rem;
 }
 
+/* Responsive grid for event cards */
+/* Tablet: 2 columns */
+@media (min-width: 768px) {
+  .event-section {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem 1.5rem; /* row gap, column gap */
+  }
+
+  /* Section header spans full width */
+  .event-section .section-header {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Desktop: 3 columns */
+@media (min-width: 1200px) {
+  .event-section {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem 1.5rem;
+  }
+}
+
 .section-header {
   display: flex;
   align-items: center;
