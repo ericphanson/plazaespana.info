@@ -24,12 +24,13 @@
    ```
 
 4. **Configure cron (Scheduled Tasks in NFSN web UI):**
-   - Command: `/home/bin/buildsite -config /home/config.toml`
-   - Schedule: Every hour (or `*/10` for 10-minute intervals)
+   - **Command:** `/home/bin/buildsite -config /home/config.toml -fetch-mode production`
+   - **Schedule:** Every hour (or `*/10` for 10-minute intervals)
+   - **IMPORTANT:** Use `-fetch-mode production` for cron jobs (30min cache TTL, 2s delays)
 
    **Alternative (legacy CLI flags):**
    ```bash
-   /home/bin/buildsite -json-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json -xml-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml -csv-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv -out-dir /home/public -data-dir /home/data -lat 40.42338 -lon -3.71217 -radius-km 0.35 -timezone Europe/Madrid
+   /home/bin/buildsite -json-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json -xml-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml -csv-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv -out-dir /home/public -data-dir /home/data -lat 40.42338 -lon -3.71217 -radius-km 0.35 -timezone Europe/Madrid -fetch-mode production
    ```
 
 ## Configuration File
@@ -66,6 +67,12 @@ json_path = "public/events.json"
 [snapshot]
 data_dir = "data"
 
+[fetch]
+# Respectful upstream fetching
+mode = "production"  # Use production mode for cron (30min cache, 2s delays)
+cache_dir = "data/http-cache"
+audit_path = "data/request-audit.json"
+
 [server]
 # For development only
 port = 8080
@@ -76,6 +83,59 @@ port = 8080
 just build
 just config
 ```
+
+## Respectful Upstream Fetching
+
+The site implements comprehensive respectful fetching to prevent overwhelming upstream servers (datos.madrid.es, esmadrid.com).
+
+### Production Mode (for Cron)
+
+**IMPORTANT:** Always use `-fetch-mode production` in cron jobs.
+
+**Settings:**
+- **Cache TTL:** 30 minutes (fresh data)
+- **Min delay:** 2 seconds between requests to same host
+- **Rate limit:** 1 request per hour per URL
+- **Purpose:** Standard respectful behavior for automated systems
+
+**Cron Command:**
+```bash
+/home/bin/buildsite -config /home/config.toml -fetch-mode production
+```
+
+### Features
+
+1. **HTTP Caching:**
+   - Persistent cache in `/home/data/http-cache/`
+   - Uses `If-Modified-Since` headers to minimize bandwidth
+   - Server returns 304 Not Modified → uses cached data (no body transfer)
+
+2. **Request Throttling:**
+   - Per-host delays prevent rapid-fire requests
+   - Enforced delays between JSON → XML → CSV fetches
+
+3. **Rate Limit Detection:**
+   - Detects 429/403/503 status codes
+   - Clear error logging if blocked
+
+4. **Request Auditing:**
+   - All HTTP requests logged to `/home/data/request-audit.json`
+   - Useful for debugging upstream issues
+
+### Directory Structure
+
+After first run, data directory contains:
+```
+/home/data/
+  http-cache/           # Persistent HTTP cache (auto-created)
+    <sha256>.json       # Cached responses
+  request-audit.json    # HTTP request log
+  last_success.json     # Snapshot fallback
+  audit-events.json     # Event audit trail
+  build-report.html     # Build metrics
+```
+
+**Important:** All cache and audit files are automatically managed. No manual cleanup needed.
 
 ## Updates
 

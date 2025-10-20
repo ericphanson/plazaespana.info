@@ -481,3 +481,189 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 - All aspects of respectful fetching documented
 
 ---
+
+## Phase 5: Testing & Validation
+
+### Verification Complete
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Test Results:**
+```
+go test ./...
+ok  	internal/audit	(cached)
+ok  	internal/config	(cached)
+ok  	internal/event	(cached)
+ok  	internal/fetch	2.932s   (31 tests: mode, cache, throttle, audit, client)
+ok  	internal/filter	(cached)
+ok  	internal/pipeline	61.680s  (5 tests with explicit 5s delays)
+ok  	internal/render	(cached)
+ok  	internal/snapshot	(cached)
+ok  	internal/validate	(cached)
+```
+
+**Build Verification:**
+- Binary builds successfully: `buildsite` (11MB)
+- All imports resolve correctly
+- No compilation errors or warnings
+
+**Test Coverage:**
+- **Unit tests**: All new modules tested (mode, cache, throttle, audit)
+  - mode.go: 3 tests (configs and parsing)
+  - cache.go: 5 tests (miss, hit, expiration, atomic writes, multiple URLs)
+  - throttle.go: 5 tests (first request, subsequent, different hosts, delay expired)
+  - audit.go: 4 tests (record, export, concurrent access, errors)
+- **Integration tests**: Pipeline tests verify full workflow with delays
+  - FetchAll() with explicit 5s delays working correctly
+  - Test duration 61s confirms delays are enforced
+- **Client integration**: 31 fetch package tests all passing
+
+**Validation Results:**
+- ✅ All existing tests pass
+- ✅ New respectful fetching tests pass
+- ✅ Pipeline delays working (61s test duration confirms)
+- ✅ Binary compiles successfully
+- ✅ No regressions introduced
+
+**Result:** All tests passing, build verified, respectful fetching validated
+
+---
+
+## Phase 5: Complete ✅
+
+**Summary:**
+- All 38+ tests passing across all packages
+- Pipeline tests confirm 5s delays working (61s duration)
+- Binary builds successfully (11MB)
+- Full test coverage for all new modules
+- No regressions, all existing functionality intact
+
+---
+
+## Phase 6: Deployment Prep
+
+### Task 6.1 & 6.2: Update Deployment Docs and FreeBSD Build
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Modified:**
+- `ops/deploy-notes.md` - Add respectful fetching documentation
+
+**Changes:**
+
+1. **Updated cron command**:
+   - Added `-fetch-mode production` flag to cron command
+   - IMPORTANT note: Always use production mode for cron jobs
+   - Updated both config-based and legacy CLI examples
+
+2. **Updated config.toml example**:
+   - Added [fetch] section with mode, cache_dir, audit_path
+   - Inline comment: "Use production mode for cron (30min cache, 2s delays)"
+
+3. **Added "Respectful Upstream Fetching" section**:
+   - Production mode settings (30min cache, 2s delays, 1 req/hour)
+   - Features: HTTP caching, throttling, rate detection, auditing
+   - Directory structure showing http-cache/ and audit files
+   - Note: All files automatically managed, no cleanup needed
+
+4. **FreeBSD build verification**:
+   - Cross-compilation successful: 8.2MB ELF binary
+   - Command: `GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w"`
+   - Binary verified as ELF format (7f 45 4c 46 header)
+
+**Result:** Deployment docs updated, FreeBSD build verified
+
+---
+
+## Phase 6: Complete ✅
+
+**Summary:**
+- Deployment docs updated with respectful fetching instructions
+- FreeBSD binary builds successfully (8.2MB)
+- Cron command includes `-fetch-mode production`
+- Complete directory structure documented
+- All deployment requirements satisfied
+
+---
+
+## Implementation Complete! 🎉
+
+**Total Time:** 2025-10-20 (single day)
+**Phases:** 6/6 complete
+**Commits:** 10 commits with detailed messages
+**Tests:** All passing (38+ tests)
+
+### Summary of Changes
+
+**Phase 1: Core Infrastructure**
+- Created 4 new modules: mode.go, cache.go, throttle.go, audit.go
+- 17 new tests for respectful fetching components
+- All tests passing
+
+**Phase 2: Client Integration**
+- Updated Client struct and NewClient() signature
+- Integrated cache, throttle, and auditor into fetch() method
+- Added mode flag to main.go
+- Audit trail export to data/request-audit.json
+- Updated all test files (6 files)
+
+**Phase 3: Pipeline Integration**
+- Added explicit delays between format fetches (JSON→XML→CSV)
+- Comprehensive [Pipeline] logging
+- Double protection: pipeline sleep + fetch throttle
+
+**Phase 4: Configuration & Documentation**
+- config.toml: Added [fetch] section
+- .gitignore: Clarified data/ coverage
+- CLAUDE.md: Added 67-line technical documentation
+- README.md: Added 61-line user guide
+
+**Phase 5: Testing & Validation**
+- All 38+ tests passing
+- Binary builds successfully (11MB)
+- Pipeline delays verified (61s test duration)
+- No regressions
+
+**Phase 6: Deployment Prep**
+- ops/deploy-notes.md: Added respectful fetching section
+- FreeBSD build verified (8.2MB)
+- Cron command updated with -fetch-mode production
+
+### Key Features Delivered
+
+1. **HTTP Caching**: Persistent cache with If-Modified-Since, 304 Not Modified support
+2. **Request Throttling**: Per-host delays (5s dev, 2s prod)
+3. **Rate Limit Detection**: 429/403/503 handling
+4. **Request Auditing**: Complete HTTP request tracking
+5. **Dual Modes**: Development (aggressive caching) vs Production (fresh data)
+6. **Clear Logging**: User always knows why build is delayed
+7. **Zero Breaking Changes**: Backward compatible
+
+### Files Created/Modified
+
+**Created (8 files):**
+- internal/fetch/mode.go + mode_test.go
+- internal/fetch/cache.go + cache_test.go
+- internal/fetch/throttle.go + throttle_test.go
+- internal/fetch/audit.go + audit_test.go
+
+**Modified (15 files):**
+- internal/fetch/client.go (fetch() method, Config() accessor)
+- internal/pipeline/pipeline.go (delays and logging)
+- cmd/buildsite/main.go (mode flag, audit export)
+- config.toml ([fetch] section)
+- .gitignore (clarified data/ comment)
+- CLAUDE.md (67-line section)
+- README.md (61-line section)
+- ops/deploy-notes.md (respectful fetching documentation)
+- 7 test files (client_test.go, csv_test.go, json_test.go, xml_test.go, pipeline_test.go, etc.)
+
+### Result
+
+**Safe to run `just dev` 20+ times during testing without risk of being blocked!**
+
+The implementation is complete, tested, documented, and ready for deployment. All respectful fetching features are working as designed.
+
+---
