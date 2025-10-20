@@ -82,6 +82,11 @@ internal/
     json.go                        # JSON API rendering
     json_test.go                   # JSON encoding test
 
+  report/                          # Build metrics and reporting
+    types.go                       # BuildReport, PipelineReport, filter stats
+    html.go                        # HTML build report generation
+    markdown.go                    # Markdown report (legacy, unused)
+
   snapshot/                        # Fallback resilience
     manager.go                     # Save/load snapshots (atomic writes)
     manager_test.go                # 2 tests (save/load cycle)
@@ -126,6 +131,45 @@ justfile                           # Task automation (just command runner)
 - **Atomic writes**: Use temp files + rename to prevent serving incomplete output
 - **Graceful degradation**: Missing fields (e.g., HORA) treated as all-day events
 - **Timezone normalization**: All times parsed to Europe/Madrid
+
+### Build Report
+
+Every build generates an HTML report (`public/build-report.html`) with detailed metrics tracking both data pipelines:
+
+**Dual Pipeline Architecture:**
+- **Cultural Events Pipeline** (datos.madrid.es) - Purple accent 🎭
+  - Fetches from 3 sources (JSON, XML, CSV)
+  - Merges and deduplicates across sources
+  - Filters by distrito (CENTRO, MONCLOA-ARAVACA) + GPS radius + time
+  - Typically yields ~137 events
+
+- **City Events Pipeline** (esmadrid.com) - Orange accent 🎉
+  - Fetches from single XML source
+  - Filters by GPS radius + category + time
+  - Typically yields ~19 events
+
+**Report Structure:**
+```
+internal/report/
+  types.go      # BuildReport, PipelineReport, PipelineFetchReport, PipelineFilterReport
+  html.go       # HTML report rendering with CSS-based styling
+  markdown.go   # Markdown report rendering (unused, legacy)
+```
+
+**Key Metrics Tracked:**
+- Fetch attempts per source (with timing, status, error details)
+- Merge/deduplication stats (total, unique, duplicates, source coverage)
+- Distrito filtering (for cultural events)
+- Geographic filtering (GPS radius, missing coords, outside radius)
+- Time filtering (past events removed, parse failures)
+- Category filtering (for city events, currently disabled)
+- Pipeline durations and event counts
+
+**Design Features:**
+- Responsive grid layouts (auto-fit for mobile/desktop)
+- Dark mode support via `prefers-color-scheme`
+- Color-coded sections (purple for cultural, orange for city)
+- Side-by-side pipeline overview cards
 
 ## Key Implementation Details
 
