@@ -89,3 +89,38 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 **Result:** HTTP caching system ready for integration
 
 ---
+
+### Task 1.3: Create RequestThrottle
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Created:**
+- `internal/fetch/throttle.go` - Per-host rate limiting
+- `internal/fetch/throttle_test.go` - Throttle tests
+
+**Implementation:**
+- RequestThrottle struct with minDelay, lastReq map, mutex
+- NewRequestThrottle() - Creates throttle with configurable delay
+- Wait() - Blocks until enough time has passed since last request to same host
+  - Tracks last request time per host
+  - Returns actual delay waited (for logging)
+  - Thread-safe with mutex
+
+**Features:**
+- Per-host tracking (independent delays for different hosts)
+- Calculates exact wait time needed
+- First request to host has no delay
+- Thread-safe for concurrent use
+- Returns error for invalid URLs
+
+**Tests:** 5 tests, all passing
+- TestRequestThrottle_FirstRequest - No delay on first request
+- TestRequestThrottle_SubsequentRequest - Enforces 100ms delay
+- TestRequestThrottle_DifferentHosts - Independent tracking per host
+- TestRequestThrottle_DelayExpired - No delay after minDelay expires
+- TestRequestThrottle_InvalidURL - Error handling
+
+**Result:** Request throttling ready for integration
+
+---
