@@ -163,6 +163,9 @@ RUN go env && \
 # Switch to non-root user for zsh setup
 USER $USERNAME
 
+# Install shot-scraper browser (Playwright/Chromium) for this user
+RUN shot-scraper install
+
 # Install global npm packages
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
 ENV PATH=$PATH:/usr/local/share/npm-global/bin

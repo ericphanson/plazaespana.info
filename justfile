@@ -50,6 +50,11 @@ serve:
     echo "   Press Ctrl+C to stop"
     cd public && python3 -m http.server 8080
 
+# Kill running dev server
+kill:
+    #!/usr/bin/env bash
+    pkill -f "python3 -m http.server 8080" && echo "✅ Server stopped" || echo "ℹ️  No server running"
+
 # Clean build artifacts
 clean:
     rm -rf build/

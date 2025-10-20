@@ -5,18 +5,21 @@
 
 ## Overview
 
-Establish a systematic workflow for iterating on UI design using shot-scraper to capture screenshots, analyze visual design, identify improvements, and verify changes. This workflow enables rapid UI iteration with visual feedback.
+Establish a systematic workflow for iterating on UI design using shot-scraper to capture screenshots, analyze visual design, identify improvements, and verify changes. This workflow enables rapid UI iteration with visual feedback for the Madrid events listing page.
 
 ## Context
 
 **New capability**: `shot-scraper` is now available in the devcontainer for automated screenshot capture.
 
+**Target**: The static events site displays filtered events near Plaza de España with hand-rolled CSS, dark mode support, and responsive design.
+
 ## Goals
 
-1. **Systematic visual review**: Capture consistent screenshots of all key pages
-2. **Multi-viewport testing**: Desktop, mobile, and full-page views
+1. **Systematic visual review**: Capture consistent screenshots of the events listing page
+2. **Multi-viewport testing**: Desktop, tablet, and mobile views (responsive design verification)
 3. **Iterative improvement**: Screenshot → Review → Change → Verify cycle
 4. **Visual documentation**: Track UI evolution over time
+5. **State testing**: Empty state (no events), populated state (multiple events), and various event types
 
 ## Workflow
 
@@ -24,9 +27,7 @@ Establish a systematic workflow for iterating on UI design using shot-scraper to
 
 **Pages to screenshot**:
 
-- `localhost:8080` - Main page
-- `localhost:8080/build-report.html` - Build report
-
+- `localhost:8080` - Events listing page (main/only page)
 
 **Viewport configurations**:
 
@@ -39,7 +40,7 @@ Establish a systematic workflow for iterating on UI design using shot-scraper to
 
 ```bash
 #!/bin/bash
-# UI Screenshot Capture Script
+# Madrid Events UI Screenshot Capture Script
 # Usage: ./capture.sh [timestamp]
 
 set -e
@@ -48,36 +49,22 @@ TIMESTAMP=${1:-$(date +%Y%m%d-%H%M%S)}
 OUTPUT_DIR="/workspace/screenshots/${TIMESTAMP}"
 mkdir -p "${OUTPUT_DIR}"
 
-BASE_URL="http://localhost:8000"
+BASE_URL="http://localhost:8080"
 
 echo "📸 Capturing screenshots to ${OUTPUT_DIR}"
 
-# Feed views
-echo "  → Feed views..."
-shot-scraper "${BASE_URL}/feed" -o "${OUTPUT_DIR}/feed-desktop.png" --width 1400 --height 900
-shot-scraper "${BASE_URL}/feed" -o "${OUTPUT_DIR}/feed-full.png" --width 1400
-shot-scraper "${BASE_URL}/feed" -o "${OUTPUT_DIR}/feed-mobile.png" --width 375 --height 812
+# Main events page - multiple viewports
+echo "  → Events page (desktop full)..."
+shot-scraper "${BASE_URL}" -o "${OUTPUT_DIR}/events-desktop-full.png" --width 1400
 
-# Smart filters
-echo "  → Smart filters..."
-for filter in reply needs-review my-prs-need-attention waiting-on-others unread quiet; do
-  shot-scraper "${BASE_URL}/smart/${filter}" -o "${OUTPUT_DIR}/smart-${filter}.png" --width 1400 --height 900
-done
+echo "  → Events page (desktop viewport)..."
+shot-scraper "${BASE_URL}" -o "${OUTPUT_DIR}/events-desktop.png" --width 1400 --height 900
 
-# Repo filters (URL-encode the slashes)
-echo "  → Repository filters..."
-shot-scraper "${BASE_URL}/repo/JuliaLang%2Fjulia" -o "${OUTPUT_DIR}/repo-julia.png" --width 1400 --height 900
-shot-scraper "${BASE_URL}/repo/JuliaLang%2FPkg.jl" -o "${OUTPUT_DIR}/repo-pkg.png" --width 1400 --height 900
+echo "  → Events page (tablet)..."
+shot-scraper "${BASE_URL}" -o "${OUTPUT_DIR}/events-tablet.png" --width 768 --height 1024
 
-# Reason filters
-echo "  → Reason filters..."
-shot-scraper "${BASE_URL}/filter/review_requested" -o "${OUTPUT_DIR}/filter-review.png" --width 1400 --height 900
-shot-scraper "${BASE_URL}/filter/mention" -o "${OUTPUT_DIR}/filter-mention.png" --width 1400 --height 900
-
-# System pages
-echo "  → System pages..."
-shot-scraper "${BASE_URL}/metrics/ui" -o "${OUTPUT_DIR}/metrics-ui.png" --width 1400 --height 900
-shot-scraper "${BASE_URL}/settings" -o "${OUTPUT_DIR}/settings.png" --width 1400 --height 900
+echo "  → Events page (mobile)..."
+shot-scraper "${BASE_URL}" -o "${OUTPUT_DIR}/events-mobile.png" --width 375 --height 812
 
 echo "✅ Screenshots captured: $(ls -1 ${OUTPUT_DIR}/*.png | wc -l) files"
 echo "📁 Location: ${OUTPUT_DIR}"
@@ -90,28 +77,33 @@ ls -lh "${OUTPUT_DIR}" | grep "\.png$"
 
 1. **Open screenshots** using `Read` tool to view images
 2. **Analyze each page** for:
-   - Visual hierarchy (does the eye flow naturally?)
-   - Color usage (appropriate contrast, not too harsh?)
-   - Spacing & density (enough breathing room?)
-   - Typography (readable, consistent sizing?)
-   - Badge/indicator clarity (too many? too few?)
-   - Responsive behavior (mobile/tablet views work?)
-   - Accessibility concerns (contrast, focus states)
+   - Visual hierarchy (event title → date/time → venue → link flow naturally?)
+   - Color usage (appropriate contrast, especially in dark mode?)
+   - Spacing & density (cards have breathing room? not too cramped?)
+   - Typography (event titles prominent, metadata readable, consistent sizing?)
+   - Event card layout (information clear at a glance?)
+   - Date/time formatting (concise but unambiguous?)
+   - Responsive behavior (mobile/tablet views work? cards stack properly?)
+   - Accessibility concerns (contrast ratios, link underlines, focus states)
+   - Attribution footer (visible but not intrusive?)
 
 3. **Document findings** in a review checklist:
    ```markdown
    ## UI Review - [TIMESTAMP]
 
-   ### Feed Page
-   - ✅ Visual hierarchy clear
-   - ⚠️  Badge density high on some items
-   - ❌ Mobile: timestamp wrapping awkwardly
+   ### Events Listing Page - Desktop
+   - ✅ Event cards have clear visual hierarchy
+   - ⚠️  Date formatting could be more concise
+   - ❌ Long venue names overflow container
 
-   ### Smart Filters
-   - ✅ Empty state clear ("All caught up!")
-   - ⚠️  Navigation could be more prominent
+   ### Events Listing Page - Mobile
+   - ✅ Cards stack nicely
+   - ⚠️  Event time wrapping awkwardly on small screens
+   - ✅ Attribution footer readable
 
-   [... continue for each page ...]
+   ### Overall
+   - ✅ Dark mode works well
+   - ⚠️  Spacing between cards could be more consistent
    ```
 
 ### Phase 3: Identify & Prioritize Improvements
@@ -135,12 +127,13 @@ ls -lh "${OUTPUT_DIR}" | grep "\.png$"
 
 **Iteration cycle**:
 
-1. **Make CSS changes** to `/workspace/public/css/app.css`
-2. **Rebuild site** `just kill && just dev`
-3. **Capture new screenshots** (same script, new timestamp)
-4. **Compare before/after** using `Read` tool on both sets
-5. **Verify improvement** - did it fix the issue without creating new ones?
-6. **Commit if satisfied** or iterate further
+1. **Make CSS changes** to `/workspace/assets/site.css`
+2. **Rebuild site** with `just hash-css && just build` (to regenerate CSS hash)
+3. **Restart dev server** if needed: `just dev`
+4. **Capture new screenshots** (same script, new timestamp)
+5. **Compare before/after** using `Read` tool on both sets
+6. **Verify improvement** - did it fix the issue without creating new ones?
+7. **Commit if satisfied** or iterate further
 
 **Comparison technique**:
 
@@ -149,14 +142,17 @@ ls -lh "${OUTPUT_DIR}" | grep "\.png$"
 ./capture.sh baseline
 
 # Make CSS changes
-vim /workspace/public/css/app.css
+vim /workspace/assets/site.css
 
-# Capture after changes (server hot-reloads)
+# Regenerate hashed CSS and rebuild
+just hash-css && just build
+
+# Capture after changes
 ./capture.sh iteration-1
 
 # View side-by-side in Claude Code
-# Read screenshots/baseline/feed-desktop.png
-# Read screenshots/iteration-1/feed-desktop.png
+# Read screenshots/baseline/events-desktop.png
+# Read screenshots/iteration-1/events-desktop.png
 ```
 
 ### Phase 5: Document & Commit
@@ -171,7 +167,7 @@ vim /workspace/public/css/app.css
 
 2. **Commit changes**:
    ```bash
-   git add public/css/app.css
+   git add assets/site.css public/
    git commit -m "refactor(ui): [description of changes]"
    ```
 
@@ -184,38 +180,42 @@ vim /workspace/public/css/app.css
 
 ```
 /workspace/screenshots/
-├── capture.sh              # Screenshot capture script
-├── baseline/               # Initial screenshots before changes
-│   ├── feed-desktop.png
-│   ├── feed-mobile.png
-│   └── ...
-├── iteration-1/            # After first round of changes
-├── iteration-2/            # After second round
-└── final/                  # Final approved version (symlink or copy)
+├── capture.sh                  # Screenshot capture script
+├── baseline/                   # Initial screenshots before changes
+│   ├── events-desktop-full.png
+│   ├── events-desktop.png
+│   ├── events-tablet.png
+│   └── events-mobile.png
+├── iteration-1/                # After first round of changes
+├── iteration-2/                # After second round
+└── final/                      # Final approved version (symlink or copy)
 ```
 
 ## Usage Examples
 
-### Example 1: Badge Density Review
+### Example 1: Event Card Spacing Review
 
 ```bash
 # Capture current state
 cd /workspace/screenshots
 ./capture.sh baseline
 
-# Review feed page
-# Notice: too many badges create visual noise
+# Review events page
+# Notice: Event cards feel cramped, need more breathing room
 
-# Change: Hide "subscribed" badge (already done in retro 032)
-# Change: Reduce badge font-size from 11px to 10px
-vim /workspace/public/css/app.css
+# Change: Increase margin between cards
+# Change: Add more padding inside each card
+vim /workspace/assets/site.css
+
+# Rebuild with hashed CSS
+just hash-css && just build
 
 # Capture after change
-./capture.sh less-badges
+./capture.sh more-spacing
 
 # Compare
-# Read screenshots/baseline/feed-desktop.png
-# Read screenshots/less-badges/feed-desktop.png
+# Read screenshots/baseline/events-desktop.png
+# Read screenshots/more-spacing/events-desktop.png
 
 # If good, commit; if not, revert and try different approach
 ```
@@ -226,32 +226,53 @@ vim /workspace/public/css/app.css
 # Capture mobile views
 ./capture.sh mobile-check
 
-# Review all *-mobile.png files
-# Notice: activity sentence wrapping awkwardly
+# Review mobile screenshots
+# Notice: Event dates wrapping awkwardly on small screens
+# Notice: Venue names too long, pushing times off screen
 
-# Change: Adjust flex layout and max-width for mobile
-vim /workspace/public/css/app.css
+# Change: Use more compact date format for mobile
+# Change: Truncate venue names with ellipsis
+# Change: Stack time below venue on narrow screens
+vim /workspace/assets/site.css
+
+# Rebuild
+just hash-css && just build
 
 # Capture again
 ./capture.sh mobile-fixed
 
 # Compare mobile screenshots
+# Read screenshots/mobile-check/events-mobile.png
+# Read screenshots/mobile-fixed/events-mobile.png
 ```
 
-### Example 3: Metrics Dashboard Redesign
+### Example 3: Dark Mode Color Refinement
 
 ```bash
-# Current metrics page
-./capture.sh metrics-before
+# Current dark mode
+./capture.sh dark-mode-before
 
-# Redesign: Change grid layout, add section dividers, improve card styling
+# Redesign: Adjust background colors for better contrast
+# Change: Soften link colors to reduce eye strain
+# Change: Improve event card borders for dark theme
+
+vim /workspace/assets/site.css
 
 # Capture after each major change
-./capture.sh metrics-grid
-./capture.sh metrics-dividers
-./capture.sh metrics-final
+just hash-css && just build
+./capture.sh dark-mode-contrast
 
-# Pick best iteration, commit
+# More adjustments to link colors
+vim /workspace/assets/site.css
+just hash-css && just build
+./capture.sh dark-mode-links
+
+# Final adjustments
+vim /workspace/assets/site.css
+just hash-css && just build
+./capture.sh dark-mode-final
+
+# Review all iterations, pick best version, commit
 ```
 
 ## Best Practices
@@ -260,8 +281,8 @@ vim /workspace/public/css/app.css
 2. **Use timestamps**: Avoids overwriting previous iterations
 3. **Focus on one area at a time**: Don't try to fix everything at once
 4. **Test multiple viewports**: Desktop changes can break mobile
-5. **Review empty states**: Capture pages with no data (smart filters when empty)
-6. **Check loaded states**: Capture pages with data (feed with many notifications)
+5. **Review empty states**: Capture page when no events match filters (rare, but possible)
+6. **Check loaded states**: Capture page with multiple events (typical state)
 7. **Watch disk space**: Delete intermediate iterations, keep baseline + final only
 8. **Document decisions**: Not just what changed, but why
 
@@ -286,8 +307,9 @@ This workflow is successful when:
 
 ## Next Steps
 
-1. Create `/workspace/screenshots/capture.sh` script
-2. Capture initial baseline of current UI (post-retro-032)
-3. Identify first improvement area (spacing? colors? mobile?)
-4. Run first iteration cycle
-5. Document learnings in new retro
+1. Create `/workspace/screenshots/` directory and `capture.sh` script
+2. Start development server with `just dev`
+3. Capture initial baseline of current events UI
+4. Identify first improvement area (event card layout? date formatting? mobile responsiveness?)
+5. Run first iteration cycle
+6. Document any significant UI changes in project log
