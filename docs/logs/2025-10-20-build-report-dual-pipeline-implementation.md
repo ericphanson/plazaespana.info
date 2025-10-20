@@ -114,4 +114,47 @@ Update HTML build report to track both cultural events pipeline (datos.madrid.es
 
 ---
 
+### Task 4: Testing & Verification
+
+**Status**: ✅ Complete
+**Time**: 2025-10-20 14:25 - 14:27
+
+**Goal**: Run full build and verify build report works correctly
+
+**Tests Performed**:
+
+1. **Full Build Execution**:
+   - Ran `./build/buildsite -config config.toml`
+   - Build completed successfully in ~2.5s
+   - Generated `public/build-report.html` (9.6KB)
+
+2. **Pipeline Metrics Verification**:
+   - ✅ Cultural pipeline: 137 events (1.67s)
+   - ✅ City pipeline: 19 events (879ms)
+   - ✅ Total: 156 events
+   - ✅ Matches console output exactly
+
+3. **Report Content Verification**:
+   - ✅ Both pipelines appear in overview cards
+   - ✅ Cultural pipeline section with purple accent (🎭)
+   - ✅ City pipeline section with orange accent (🎉)
+   - ✅ Fetch stats shown correctly (JSON/XML/CSV for cultural, XML for city)
+   - ✅ Deduplication stats for cultural pipeline (2002 duplicates removed)
+   - ✅ Distrito filtering stats (CENTRO, MONCLOA-ARAVACA)
+   - ✅ Geographic filtering for both pipelines
+   - ✅ Time filtering for both pipelines
+
+4. **Design Verification**:
+   - ✅ Dark mode support with `prefers-color-scheme` media query
+   - ✅ Responsive grid layouts (`auto-fit` for summary and pipeline cards)
+   - ✅ Color-coded pipeline cards (purple border for cultural, orange for city)
+   - ✅ Mobile-friendly with proper viewport meta tag
+
+5. **Edge Cases**:
+   - ⏭️ Skipped: Test with no city events (fallback case) - not critical for initial deployment
+
+**Result**: Build report successfully displays dual pipeline metrics with accurate data and responsive design
+
+---
+
 *Log will be updated as tasks are completed*
