@@ -15,7 +15,11 @@ func TestFetchCSV_FieldMapping(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	result := client.FetchCSV(fixtureURL, loc)
 
 	// Should have at least some events from the fixture
@@ -72,7 +76,11 @@ func TestFetchCSV_EncodingConversion(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	result := client.FetchCSV(fixtureURL, loc)
 
 	if len(result.Events) == 0 {
@@ -117,7 +125,11 @@ VALID-002;Another Valid Event;2025-11-27 00:00:00.0;2025-11-27 23:59:00.0;19:00;
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	result := client.FetchCSV("file://"+tmpFile, loc)
 
 	// Should have 2 valid events

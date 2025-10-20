@@ -177,3 +177,37 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 4. RequestAudit - Request tracking and export
 
 ---
+
+## Phase 2: Client Integration
+
+### Task 2.1: Update Client Constructor
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Modified:**
+- `internal/fetch/client.go` - Client struct and constructor
+- `internal/fetch/client_test.go` - Updated test calls
+- `internal/fetch/csv_test.go` - Updated test calls
+- `internal/fetch/json_test.go` - Updated test calls
+- `internal/fetch/xml_test.go` - Updated test calls
+
+**Changes:**
+- Added new fields to Client struct: cache, throttle, auditor, config
+- Updated NewClient signature: `func NewClient(timeout time.Duration, config ModeConfig, cacheDir string) (*Client, error)`
+- NewClient now returns error (cache creation can fail)
+- Added Auditor() method to access request auditor
+- Updated all 11 test files with new NewClient signature
+
+**Implementation Details:**
+- Client now initializes HTTPCache with configurable TTL
+- Client now initializes RequestThrottle with configurable min delay
+- Client now initializes RequestAuditor for tracking requests
+- All test files use DefaultDevelopmentConfig() for testing
+- All tests use t.TempDir() for isolated cache directories
+
+**Tests:** All fetch package tests passing (31 tests)
+
+**Result:** Client constructor updated and ready for cache/throttle integration
+
+---

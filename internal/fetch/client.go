@@ -21,16 +21,34 @@ import (
 type Client struct {
 	httpClient *http.Client
 	userAgent  string
+	cache      *HTTPCache
+	throttle   *RequestThrottle
+	auditor    *RequestAuditor
+	config     ModeConfig
 }
 
-// NewClient creates a fetch client with the given timeout.
-func NewClient(timeout time.Duration) *Client {
+// NewClient creates a fetch client with the given timeout, mode config, and cache directory.
+func NewClient(timeout time.Duration, config ModeConfig, cacheDir string) (*Client, error) {
+	cache, err := NewHTTPCache(cacheDir, config.CacheTTL)
+	if err != nil {
+		return nil, fmt.Errorf("creating cache: %w", err)
+	}
+
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
 		userAgent: "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)",
-	}
+		cache:     cache,
+		throttle:  NewRequestThrottle(config.MinDelay),
+		auditor:   NewRequestAuditor(),
+		config:    config,
+	}, nil
+}
+
+// Auditor returns the request auditor for exporting request logs.
+func (c *Client) Auditor() *RequestAuditor {
+	return c.auditor
 }
 
 // FetchJSON fetches and decodes JSON from the given URL.

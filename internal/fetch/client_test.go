@@ -8,7 +8,11 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	if client == nil {
 		t.Fatal("Expected non-nil client")
 	}
@@ -17,6 +21,15 @@ func TestNewClient(t *testing.T) {
 	}
 	if client.httpClient.Timeout != 5*time.Second {
 		t.Errorf("Expected timeout 5s, got %v", client.httpClient.Timeout)
+	}
+	if client.cache == nil {
+		t.Error("Expected non-nil cache")
+	}
+	if client.throttle == nil {
+		t.Error("Expected non-nil throttle")
+	}
+	if client.auditor == nil {
+		t.Error("Expected non-nil auditor")
 	}
 }
 
@@ -34,7 +47,11 @@ func TestClient_FetchWithUserAgent(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	result := client.FetchJSON(server.URL, loc)
 	if len(result.Errors) > 0 {
 		t.Fatalf("FetchJSON failed: %v", result.Errors[0].Error)
@@ -79,7 +96,11 @@ func TestClient_FetchXML(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	result := client.FetchXML(server.URL, loc)
 
 	if len(result.Errors) > 0 {
@@ -109,7 +130,11 @@ CSV-001;CSV Event;2025-11-25 00:00:00.0;2025-11-25 23:59:00.0;17:30;CSV Venue;40
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	result := client.FetchCSV(server.URL, loc)
 
 	if len(result.Errors) > 0 {
@@ -149,7 +174,11 @@ CSV-002,CSV Event 2,2025-11-26 00:00:00.0,2025-11-26 23:59:00.0,18:00,Venue 2,40
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(5 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(5*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 	result := client.FetchCSV(server.URL, loc)
 
 	if len(result.Errors) > 0 {

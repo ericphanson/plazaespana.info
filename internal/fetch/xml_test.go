@@ -205,7 +205,11 @@ func TestFetchXML_FieldMapping(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(10 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 
 	// Use file:// URL to load local fixture
 	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.xml"
@@ -258,7 +262,11 @@ func TestFetchXML_PartialFailure(t *testing.T) {
 		t.Fatalf("loading timezone: %v", err)
 	}
 
-	client := NewClient(10 * time.Second)
+	config := DefaultDevelopmentConfig()
+	client, err := NewClient(10*time.Second, config, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 
 	// Use file:// URL to load local fixture
 	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.xml"
