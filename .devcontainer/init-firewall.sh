@@ -74,6 +74,8 @@ for domain in \
     "vscode.blob.core.windows.net" \
     "update.code.visualstudio.com" \
     "datos.madrid.es" \
+    "www.esmadrid.com" \
+    "esmadrid.com" \
     "proxy.golang.org" \
     "sum.golang.org"; do
     echo "Resolving $domain..."
