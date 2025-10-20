@@ -36,4 +36,45 @@ Update HTML build report to track both cultural events pipeline (datos.madrid.es
 
 ---
 
+### Task 2: Update HTML Rendering
+
+**Status**: ✅ Complete
+**Time**: 2025-10-20 14:12 - 14:18
+
+**Goal**: Rewrite HTML report to display both pipelines with clear visual distinction
+
+**Changes Made**:
+- Complete rewrite of `internal/report/html.go` (343 lines → 546 lines)
+- Added CSS variables for pipeline colors: `--cultural` (purple) and `--city` (orange)
+- Dark mode support for all colors
+- Responsive grid layout for pipeline overview cards
+
+**HTML Structure**:
+1. Build Summary - Total stats (time, duration, status, total events)
+2. Pipeline Overview - Side-by-side cards with key metrics
+3. Cultural Events Pipeline - Detailed section with:
+   - Data fetching (JSON/XML/CSV attempts)
+   - Deduplication stats
+   - Distrito filtering
+   - Geographic filtering
+   - Time filtering
+4. City Events Pipeline - Detailed section with:
+   - Data fetching (XML only)
+   - Geographic filtering
+   - Category filtering
+   - Time filtering
+5. Output Files - HTML/JSON paths
+6. Warnings - If any
+
+**Visual Design**:
+- Purple accent (🎭) for cultural events
+- Orange accent (🎉) for city events
+- Cards with colored left borders
+- Emoji icons for visual clarity
+- Mobile-responsive grid layouts
+
+**Result**: Clean, modern HTML report showing both pipelines clearly
+
+---
+
 *Log will be updated as tasks are completed*

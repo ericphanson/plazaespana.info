@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 )
 
-// WriteHTML writes an HTML-formatted build report.
+// WriteHTML writes an HTML-formatted build report for dual pipeline architecture.
 func (r *BuildReport) WriteHTML(w io.Writer) error {
 	var b strings.Builder
 
@@ -27,6 +28,8 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
       --border: #ddd;
       --success: #0a8754;
       --failure: #d93025;
+      --cultural: #7c3aed;
+      --city: #ea580c;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -39,6 +42,8 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
         --border: #444;
         --success: #34a853;
         --failure: #f28b82;
+        --cultural: #a78bfa;
+        --city: #fb923c;
       }
     }
 
@@ -48,296 +53,493 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
       margin: 0;
       background: var(--bg);
       color: var(--fg);
-      font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial;
+      font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
     }
 
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 2rem;
+    header, main, footer {
+      max-width: 1200px;
+      margin: auto;
+      padding: 1rem;
     }
 
-    h1, h2, h3 { margin: 1.5rem 0 0.75rem; }
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.5rem; margin-top: 2rem; }
+    h1 { margin: 0; font-size: 2rem; }
+    h2 { margin: 1.5rem 0 0.5rem; font-size: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h3 { margin: 1rem 0 0.5rem; font-size: 1.2rem; }
 
-    .meta {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin: 0.5rem 0;
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
     }
 
-    .stat-grid {
+    .summary-card h2 { margin-top: 0; border-bottom: none; }
+
+    .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
-      margin: 1.5rem 0;
+      margin-top: 1rem;
     }
 
-    .stat-card {
-      background: var(--card);
-      padding: 1.25rem;
-      border-radius: 8px;
-    }
+    .summary-item strong { display: block; color: var(--muted); font-size: 0.875rem; margin-bottom: 0.25rem; }
+    .summary-item span { font-size: 1.5rem; font-weight: 600; }
 
-    .stat-label {
-      color: var(--muted);
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.5rem;
-    }
-
-    .stat-value {
-      font-size: 2rem;
-      font-weight: 600;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1.5rem;
       margin: 1rem 0;
-      background: var(--card);
-      border-radius: 8px;
-      overflow: hidden;
     }
 
-    th, td {
-      text-align: left;
-      padding: 0.75rem 1rem;
+    .pipeline-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .pipeline-card.cultural { border-left: 4px solid var(--cultural); }
+    .pipeline-card.city { border-left: 4px solid var(--city); }
+
+    .pipeline-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .pipeline-header h3 { margin: 0; }
+    .pipeline-header .icon { font-size: 1.5rem; }
+
+    .pipeline-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
       border-bottom: 1px solid var(--border);
     }
 
-    th {
+    .pipeline-stat:last-child { border-bottom: none; }
+
+    .section {
       background: var(--card);
-      font-weight: 600;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+
+    .section h3 { margin-top: 0; }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+    }
+
+    .metric-row span:first-child { color: var(--muted); }
+
+    .status-success { color: var(--success); font-weight: 600; }
+    .status-failure { color: var(--failure); font-weight: 600; }
+
+    .fetch-attempts {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+
+    .fetch-attempts li {
+      margin: 0.25rem 0;
+    }
+
+    .warning-box {
+      background: rgba(234, 88, 12, 0.1);
+      border-left: 4px solid var(--city);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+    }
+
+    .warning-box ul {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+
+    footer {
       color: var(--muted);
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    .status-success { color: var(--success); }
-    .status-failure { color: var(--failure); }
-
-    .warning {
-      background: var(--card);
-      border-left: 4px solid var(--failure);
-      padding: 1rem;
-      margin: 1rem 0;
-      border-radius: 4px;
-    }
-
-    .recommendation {
-      background: var(--card);
-      border-left: 4px solid var(--link);
-      padding: 1rem;
-      margin: 1rem 0;
-      border-radius: 4px;
-    }
-
-    .back-link {
-      display: inline-block;
+      font-size: 0.875rem;
+      text-align: center;
       margin-top: 2rem;
-      color: var(--link);
-      text-decoration: none;
-    }
-
-    .back-link:hover {
-      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-<div class="container">
+  <header>
+    <h1>Build Report</h1>
+    <p style="color: var(--muted); margin: 0.5rem 0;">Madrid Events Site Generator</p>
+  </header>
+
+  <main>
 `)
 
-	// Title and metadata
-	b.WriteString("<h1>Build Report</h1>\n")
-	b.WriteString(fmt.Sprintf("<p class=\"meta\"><strong>Build Time:</strong> %s</p>\n",
-		r.BuildTime.Format("2006-01-02 15:04:05 MST")))
-	b.WriteString(fmt.Sprintf("<p class=\"meta\"><strong>Duration:</strong> %.2fs</p>\n",
-		r.Duration.Seconds()))
-	b.WriteString(fmt.Sprintf("<p class=\"meta\"><strong>Status:</strong> %s</p>\n",
-		r.ExitStatus))
+	// Build Summary
+	b.WriteString(`    <div class="summary-card">
+      <h2>Build Summary</h2>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <strong>Build Time</strong>
+          <span>` + r.BuildTime.Format("2006-01-02 15:04:05") + `</span>
+        </div>
+        <div class="summary-item">
+          <strong>Duration</strong>
+          <span>` + formatDuration(r.Duration) + `</span>
+        </div>
+        <div class="summary-item">
+          <strong>Status</strong>
+          <span class="` + statusClass(r.ExitStatus) + `">` + r.ExitStatus + `</span>
+        </div>
+        <div class="summary-item">
+          <strong>Total Events</strong>
+          <span>` + fmt.Sprintf("%d", r.TotalEvents) + `</span>
+        </div>
+      </div>
+    </div>
+`)
 
-	// Key statistics
-	b.WriteString("<div class=\"stat-grid\">\n")
-	b.WriteString("  <div class=\"stat-card\">\n")
-	b.WriteString("    <div class=\"stat-label\">Events Generated</div>\n")
-	b.WriteString(fmt.Sprintf("    <div class=\"stat-value\">%d</div>\n", r.EventsCount))
-	b.WriteString("  </div>\n")
+	// Pipeline Overview
+	b.WriteString(`    <h2>Pipeline Overview</h2>
+    <div class="pipeline-grid">
+`)
 
-	if r.Processing.Merge.TotalBeforeMerge > 0 {
-		b.WriteString("  <div class=\"stat-card\">\n")
-		b.WriteString("    <div class=\"stat-label\">Total Fetched</div>\n")
-		b.WriteString(fmt.Sprintf("    <div class=\"stat-value\">%d</div>\n", r.Processing.Merge.TotalBeforeMerge))
-		b.WriteString("  </div>\n")
+	// Cultural Pipeline Card
+	b.WriteString(fmt.Sprintf(`      <div class="pipeline-card cultural">
+        <div class="pipeline-header">
+          <span class="icon">🎭</span>
+          <h3 style="color: var(--cultural);">%s</h3>
+        </div>
+        <div class="pipeline-stat">
+          <span>Source</span>
+          <span>%s</span>
+        </div>
+        <div class="pipeline-stat">
+          <span>Events</span>
+          <span><strong>%d</strong></span>
+        </div>
+        <div class="pipeline-stat">
+          <span>Duration</span>
+          <span>%s</span>
+        </div>
+      </div>
+`, r.CulturalPipeline.Name, r.CulturalPipeline.Source, r.CulturalPipeline.EventCount, formatDuration(r.CulturalPipeline.Duration)))
 
-		b.WriteString("  <div class=\"stat-card\">\n")
-		b.WriteString("    <div class=\"stat-label\">Unique Events</div>\n")
-		b.WriteString(fmt.Sprintf("    <div class=\"stat-value\">%d</div>\n", r.Processing.Merge.UniqueEvents))
-		b.WriteString("  </div>\n")
+	// City Pipeline Card
+	b.WriteString(fmt.Sprintf(`      <div class="pipeline-card city">
+        <div class="pipeline-header">
+          <span class="icon">🎉</span>
+          <h3 style="color: var(--city);">%s</h3>
+        </div>
+        <div class="pipeline-stat">
+          <span>Source</span>
+          <span>%s</span>
+        </div>
+        <div class="pipeline-stat">
+          <span>Events</span>
+          <span><strong>%d</strong></span>
+        </div>
+        <div class="pipeline-stat">
+          <span>Duration</span>
+          <span>%s</span>
+        </div>
+      </div>
+`, r.CityPipeline.Name, r.CityPipeline.Source, r.CityPipeline.EventCount, formatDuration(r.CityPipeline.Duration)))
 
-		b.WriteString("  <div class=\"stat-card\">\n")
-		b.WriteString("    <div class=\"stat-label\">Duplicates Removed</div>\n")
-		b.WriteString(fmt.Sprintf("    <div class=\"stat-value\">%d</div>\n", r.Processing.Merge.Duplicates))
-		b.WriteString("  </div>\n")
-	}
-	b.WriteString("</div>\n")
+	b.WriteString(`    </div>
+`)
 
-	// Data Sources
-	b.WriteString("<h2>Data Sources</h2>\n")
-	b.WriteString("<table>\n")
-	b.WriteString("  <thead>\n")
-	b.WriteString("    <tr><th>Source</th><th>Status</th><th>Events</th><th>Duration</th></tr>\n")
-	b.WriteString("  </thead>\n")
-	b.WriteString("  <tbody>\n")
+	// Cultural Events Pipeline Detailed
+	b.WriteString(fmt.Sprintf(`    <h2 style="color: var(--cultural);">🎭 Cultural Events Pipeline</h2>
+    <div class="section">
+      <h3>📡 Data Fetching</h3>
+`))
 
-	for _, attempt := range []FetchAttempt{r.Fetching.JSON, r.Fetching.XML, r.Fetching.CSV} {
-		if attempt.Source == "" {
-			continue
+	for _, attempt := range r.CulturalPipeline.Fetching.Attempts {
+		statusSymbol := "✅"
+		if attempt.Status == "FAILED" {
+			statusSymbol = "❌"
+		} else if attempt.Status == "SKIPPED" {
+			statusSymbol = "⏭️"
 		}
-		statusClass := "status-success"
-		statusText := "✅ " + attempt.Status
-		if attempt.Status != "SUCCESS" {
-			statusClass = "status-failure"
-			statusText = "❌ " + attempt.Status
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>%s %s</span>
+        <span>%s</span>
+      </div>
+`, statusSymbol, attempt.Source, formatAttempt(attempt)))
+	}
+
+	if r.CulturalPipeline.Merging != nil {
+		b.WriteString(`      <h3>🔄 Deduplication</h3>
+`)
+		merge := r.CulturalPipeline.Merging
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Input events</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Duplicates removed</span>
+        <span>%d (%.1f%%)</span>
+      </div>
+      <div class="metric-row">
+        <span>Unique events</span>
+        <span>%d</span>
+      </div>
+`, merge.TotalBeforeMerge, merge.Duplicates, float64(merge.Duplicates)*100.0/float64(merge.TotalBeforeMerge), merge.UniqueEvents))
+	}
+
+	// Cultural Filtering
+	if r.CulturalPipeline.Filtering.DistrictoFilter != nil {
+		b.WriteString(`      <h3>🗺️ Distrito Filtering</h3>
+`)
+		df := r.CulturalPipeline.Filtering.DistrictoFilter
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Allowed districts</span>
+        <span>%s</span>
+      </div>
+      <div class="metric-row">
+        <span>Input events</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Kept in district</span>
+        <span>%d</span>
+      </div>
+`, strings.Join(df.AllowedDistricts, ", "), df.Input, df.Kept))
+	}
+
+	if r.CulturalPipeline.Filtering.GeoFilter != nil {
+		b.WriteString(`      <h3>🎯 Geographic Filtering</h3>
+`)
+		gf := r.CulturalPipeline.Filtering.GeoFilter
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Reference point</span>
+        <span>%.5f, %.5f</span>
+      </div>
+      <div class="metric-row">
+        <span>Radius</span>
+        <span>%.2f km</span>
+      </div>
+      <div class="metric-row">
+        <span>Input events</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Within radius</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Missing coordinates</span>
+        <span>%d (%.1f%%)</span>
+      </div>
+`, gf.RefLat, gf.RefLon, gf.Radius, gf.Input, gf.Kept, gf.MissingCoords, float64(gf.MissingCoords)*100.0/float64(gf.Input)))
+	}
+
+	if r.CulturalPipeline.Filtering.TimeFilter != nil {
+		b.WriteString(`      <h3>⏰ Time Filtering</h3>
+`)
+		tf := r.CulturalPipeline.Filtering.TimeFilter
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Reference time</span>
+        <span>%s</span>
+      </div>
+      <div class="metric-row">
+        <span>Input events</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Past events removed</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Future events kept</span>
+        <span>%d</span>
+      </div>
+`, tf.ReferenceTime.Format("2006-01-02 15:04"), tf.Input, tf.PastEvents, tf.Kept))
+	}
+
+	b.WriteString(`    </div>
+`)
+
+	// City Events Pipeline Detailed
+	b.WriteString(fmt.Sprintf(`    <h2 style="color: var(--city);">🎉 City Events Pipeline</h2>
+    <div class="section">
+      <h3>📡 Data Fetching</h3>
+`))
+
+	for _, attempt := range r.CityPipeline.Fetching.Attempts {
+		statusSymbol := "✅"
+		if attempt.Status == "FAILED" {
+			statusSymbol = "❌"
+		} else if attempt.Status == "SKIPPED" {
+			statusSymbol = "⏭️"
 		}
-		b.WriteString(fmt.Sprintf("    <tr><td>%s</td><td class=\"%s\">%s</td><td>%d</td><td>%.2fs</td></tr>\n",
-			attempt.Source, statusClass, statusText, attempt.EventCount, attempt.Duration.Seconds()))
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>%s %s</span>
+        <span>%s</span>
+      </div>
+`, statusSymbol, attempt.Source, formatAttempt(attempt)))
 	}
 
-	b.WriteString("  </tbody>\n")
-	b.WriteString("</table>\n")
+	// City Filtering
+	if r.CityPipeline.Filtering.GeoFilter != nil {
+		b.WriteString(`      <h3>🎯 Geographic Filtering</h3>
+`)
+		gf := r.CityPipeline.Filtering.GeoFilter
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Reference point</span>
+        <span>%.5f, %.5f</span>
+      </div>
+      <div class="metric-row">
+        <span>Radius</span>
+        <span>%.2f km</span>
+      </div>
+      <div class="metric-row">
+        <span>Input events</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Within radius</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Missing coordinates</span>
+        <span>%d (%.1f%%)</span>
+      </div>
+`, gf.RefLat, gf.RefLon, gf.Radius, gf.Input, gf.Kept, gf.MissingCoords, float64(gf.MissingCoords)*100.0/float64(gf.Input)))
+	}
 
-	// Merge & Deduplication
-	if r.Processing.Merge.TotalBeforeMerge > 0 {
-		b.WriteString("<h2>Merge & Deduplication</h2>\n")
-		dedupPercent := 0.0
-		if r.Processing.Merge.TotalBeforeMerge > 0 {
-			dedupPercent = float64(r.Processing.Merge.Duplicates) * 100.0 / float64(r.Processing.Merge.TotalBeforeMerge)
+	if r.CityPipeline.Filtering.CategoryFilter != nil {
+		b.WriteString(`      <h3>🏷️ Category Filtering</h3>
+`)
+		cf := r.CityPipeline.Filtering.CategoryFilter
+		if len(cf.AllowedCategories) > 0 {
+			b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Allowed categories</span>
+        <span>%s</span>
+      </div>
+`, strings.Join(cf.AllowedCategories, ", ")))
+		} else {
+			b.WriteString(`      <div class="metric-row">
+        <span>Note</span>
+        <span>No category filter configured (all kept)</span>
+      </div>
+`)
 		}
-		b.WriteString(fmt.Sprintf("<p>Merged %d events from 3 sources into %d unique events (%.1f%% deduplication rate)</p>\n",
-			r.Processing.Merge.TotalBeforeMerge, r.Processing.Merge.UniqueEvents, dedupPercent))
-
-		b.WriteString("<table>\n")
-		b.WriteString("  <thead>\n")
-		b.WriteString("    <tr><th>Coverage</th><th>Count</th></tr>\n")
-		b.WriteString("  </thead>\n")
-		b.WriteString("  <tbody>\n")
-		b.WriteString(fmt.Sprintf("    <tr><td>In all 3 sources</td><td>%d</td></tr>\n", r.Processing.Merge.InAllThree))
-		b.WriteString(fmt.Sprintf("    <tr><td>In 2 sources</td><td>%d</td></tr>\n", r.Processing.Merge.InTwoSources))
-		b.WriteString(fmt.Sprintf("    <tr><td>In 1 source only</td><td>%d</td></tr>\n", r.Processing.Merge.InOneSource))
-		b.WriteString("  </tbody>\n")
-		b.WriteString("</table>\n")
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Input events</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Kept</span>
+        <span>%d</span>
+      </div>
+`, cf.Input, cf.Kept))
 	}
 
-	// Geographic Filtering
-	if r.Processing.GeoFilter.Input > 0 {
-		b.WriteString("<h2>Geographic Filtering</h2>\n")
-		b.WriteString(fmt.Sprintf("<p>Reference: %.5f°N, %.5f°W • Radius: %.2f km</p>\n",
-			r.Processing.GeoFilter.RefLat, -r.Processing.GeoFilter.RefLon, r.Processing.GeoFilter.Radius))
-
-		b.WriteString("<table>\n")
-		b.WriteString("  <thead>\n")
-		b.WriteString("    <tr><th>Category</th><th>Count</th></tr>\n")
-		b.WriteString("  </thead>\n")
-		b.WriteString("  <tbody>\n")
-		b.WriteString(fmt.Sprintf("    <tr><td>Input events</td><td>%d</td></tr>\n", r.Processing.GeoFilter.Input))
-		b.WriteString(fmt.Sprintf("    <tr><td>Missing coordinates</td><td>%d</td></tr>\n", r.Processing.GeoFilter.MissingCoords))
-		b.WriteString(fmt.Sprintf("    <tr><td>Outside radius</td><td>%d</td></tr>\n", r.Processing.GeoFilter.OutsideRadius))
-		b.WriteString(fmt.Sprintf("    <tr><td>Kept</td><td>%d</td></tr>\n", r.Processing.GeoFilter.Kept))
-		b.WriteString("  </tbody>\n")
-		b.WriteString("</table>\n")
+	if r.CityPipeline.Filtering.TimeFilter != nil {
+		b.WriteString(`      <h3>⏰ Time Filtering</h3>
+`)
+		tf := r.CityPipeline.Filtering.TimeFilter
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Reference time</span>
+        <span>%s</span>
+      </div>
+      <div class="metric-row">
+        <span>Input events</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Past events removed</span>
+        <span>%d</span>
+      </div>
+      <div class="metric-row">
+        <span>Future events kept</span>
+        <span>%d</span>
+      </div>
+`, tf.ReferenceTime.Format("2006-01-02 15:04"), tf.Input, tf.PastEvents, tf.Kept))
 	}
 
-	// Time Filtering
-	if r.Processing.TimeFilter.Input > 0 {
-		b.WriteString("<h2>Time Filtering</h2>\n")
-		b.WriteString(fmt.Sprintf("<p>Reference time: %s (%s)</p>\n",
-			r.Processing.TimeFilter.ReferenceTime.Format("2006-01-02 15:04:05"),
-			r.Processing.TimeFilter.Timezone))
+	b.WriteString(`    </div>
+`)
 
-		b.WriteString("<table>\n")
-		b.WriteString("  <thead>\n")
-		b.WriteString("    <tr><th>Category</th><th>Count</th></tr>\n")
-		b.WriteString("  </thead>\n")
-		b.WriteString("  <tbody>\n")
-		b.WriteString(fmt.Sprintf("    <tr><td>Input events</td><td>%d</td></tr>\n", r.Processing.TimeFilter.Input))
-		b.WriteString(fmt.Sprintf("    <tr><td>Past events</td><td>%d</td></tr>\n", r.Processing.TimeFilter.PastEvents))
-		b.WriteString(fmt.Sprintf("    <tr><td>Kept (future)</td><td>%d</td></tr>\n", r.Processing.TimeFilter.Kept))
-		b.WriteString("  </tbody>\n")
-		b.WriteString("</table>\n")
-	}
+	// Output Files
+	b.WriteString(`    <h2>Output Files</h2>
+    <div class="section">
+`)
+	b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>HTML</span>
+        <span class="%s">%s</span>
+      </div>
+      <div class="metric-row">
+        <span>JSON</span>
+        <span class="%s">%s</span>
+      </div>
+`, statusClass(r.Output.HTML.Status), r.Output.HTML.Path, statusClass(r.Output.JSON.Status), r.Output.JSON.Path))
+	b.WriteString(`    </div>
+`)
 
 	// Warnings
 	if len(r.Warnings) > 0 {
-		b.WriteString("<h2>Warnings</h2>\n")
+		b.WriteString(`    <div class="warning-box">
+      <h3 style="margin-top: 0;">⚠️ Warnings</h3>
+      <ul>
+`)
 		for _, warning := range r.Warnings {
-			b.WriteString(fmt.Sprintf("<div class=\"warning\">⚠️ %s</div>\n", warning))
+			b.WriteString(fmt.Sprintf("        <li>%s</li>\n", warning))
 		}
+		b.WriteString(`      </ul>
+    </div>
+`)
 	}
 
-	// Recommendations
-	if len(r.Recommendations) > 0 {
-		b.WriteString("<h2>Recommendations</h2>\n")
-		for _, rec := range r.Recommendations {
-			b.WriteString(fmt.Sprintf("<div class=\"recommendation\">💡 %s</div>\n", rec))
-		}
-	}
+	// Footer
+	b.WriteString(`  </main>
 
-	// Output files
-	b.WriteString("<h2>Output Files</h2>\n")
-	b.WriteString("<table>\n")
-	b.WriteString("  <thead>\n")
-	b.WriteString("    <tr><th>File</th><th>Status</th><th>Size</th><th>Duration</th></tr>\n")
-	b.WriteString("  </thead>\n")
-	b.WriteString("  <tbody>\n")
-
-	if r.Output.HTML.Path != "" {
-		statusClass := "status-success"
-		statusText := "✅ " + r.Output.HTML.Status
-		if r.Output.HTML.Status != "SUCCESS" {
-			statusClass = "status-failure"
-			statusText = "❌ " + r.Output.HTML.Status
-		}
-		size := fmt.Sprintf("%d bytes", r.Output.HTML.Size)
-		if r.Output.HTML.Size > 1024 {
-			size = fmt.Sprintf("%.1f KB", float64(r.Output.HTML.Size)/1024.0)
-		}
-		b.WriteString(fmt.Sprintf("    <tr><td>%s</td><td class=\"%s\">%s</td><td>%s</td><td>%.3fs</td></tr>\n",
-			r.Output.HTML.Path, statusClass, statusText, size, r.Output.HTML.Duration.Seconds()))
-	}
-
-	if r.Output.JSON.Path != "" {
-		statusClass := "status-success"
-		statusText := "✅ " + r.Output.JSON.Status
-		if r.Output.JSON.Status != "SUCCESS" {
-			statusClass = "status-failure"
-			statusText = "❌ " + r.Output.JSON.Status
-		}
-		size := fmt.Sprintf("%d bytes", r.Output.JSON.Size)
-		if r.Output.JSON.Size > 1024 {
-			size = fmt.Sprintf("%.1f KB", float64(r.Output.JSON.Size)/1024.0)
-		}
-		b.WriteString(fmt.Sprintf("    <tr><td>%s</td><td class=\"%s\">%s</td><td>%s</td><td>%.3fs</td></tr>\n",
-			r.Output.JSON.Path, statusClass, statusText, size, r.Output.JSON.Duration.Seconds()))
-	}
-
-	b.WriteString("  </tbody>\n")
-	b.WriteString("</table>\n")
-
-	// Back link
-	b.WriteString("<a href=\"index.html\" class=\"back-link\">← Back to Events</a>\n")
-
-	// Close HTML
-	b.WriteString("</div>\n</body>\n</html>\n")
+  <footer>
+    <p>Generated by Madrid Events Site Generator</p>
+    <p><a href="/">← Back to events</a></p>
+  </footer>
+</body>
+</html>`)
 
 	_, err := w.Write([]byte(b.String()))
 	return err
+}
+
+// formatDuration formats a duration for display.
+func formatDuration(d time.Duration) string {
+	if d < time.Millisecond {
+		return fmt.Sprintf("%dµs", d.Microseconds())
+	}
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	return fmt.Sprintf("%.2fs", d.Seconds())
+}
+
+// statusClass returns the CSS class for a status.
+func statusClass(status string) string {
+	if status == "SUCCESS" {
+		return "status-success"
+	}
+	return "status-failure"
+}
+
+// formatAttempt formats a fetch attempt for display.
+func formatAttempt(a FetchAttempt) string {
+	if a.Status == "SUCCESS" {
+		return fmt.Sprintf("%d events (%s)", a.EventCount, formatDuration(a.Duration))
+	}
+	if a.Status == "SKIPPED" {
+		return "Skipped"
+	}
+	return fmt.Sprintf("Failed: %s", a.Error)
 }
