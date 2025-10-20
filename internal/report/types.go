@@ -26,13 +26,13 @@ type BuildReport struct {
 
 // PipelineReport tracks a single data pipeline (cultural or city events).
 type PipelineReport struct {
-	Name     string // "Cultural Events" or "City Events"
-	Source   string // "datos.madrid.es" or "esmadrid.com"
-	Fetching PipelineFetchReport
-	Merging  *MergeStats             // Only for cultural events (3 sources)
-	Filtering PipelineFilterReport
+	Name       string // "Cultural Events" or "City Events"
+	Source     string // "datos.madrid.es" or "esmadrid.com"
+	Fetching   PipelineFetchReport
+	Merging    *MergeStats // Only for cultural events (3 sources)
+	Filtering  PipelineFilterReport
 	EventCount int
-	Duration time.Duration
+	Duration   time.Duration
 }
 
 // PipelineFetchReport tracks fetching for one pipeline.

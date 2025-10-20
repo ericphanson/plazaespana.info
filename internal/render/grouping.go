@@ -59,9 +59,9 @@ func GroupEventsByTime(events []event.CulturalEvent, now time.Time) (groups []Ti
 		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)
 	} else {
 		// Mon-Fri: "past weekend" is most recent Sat-Sun
-		daysToLastSunday := int(now.Weekday()) // Mon=1, Tue=2, etc.
+		daysToLastSunday := int(now.Weekday())                             // Mon=1, Tue=2, etc.
 		pastWeekendStart = startOfToday.AddDate(0, 0, -daysToLastSunday-1) // Go to last Saturday
-		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)               // Sat + Sun
+		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)              // Sat + Sun
 	}
 
 	// This weekend: next or current Fri-Sun

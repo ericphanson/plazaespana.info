@@ -10,13 +10,13 @@ import (
 
 // RequestRecord captures details of an HTTP request.
 type RequestRecord struct {
-	URL         string        `json:"url"`
-	Timestamp   time.Time     `json:"timestamp"`
-	CacheHit    bool          `json:"cache_hit"`
-	StatusCode  int           `json:"status_code,omitempty"`
-	DelayMs     int64         `json:"delay_ms"`
-	RateLimited bool          `json:"rate_limited"`
-	Error       string        `json:"error,omitempty"`
+	URL         string    `json:"url"`
+	Timestamp   time.Time `json:"timestamp"`
+	CacheHit    bool      `json:"cache_hit"`
+	StatusCode  int       `json:"status_code,omitempty"`
+	DelayMs     int64     `json:"delay_ms"`
+	RateLimited bool      `json:"rate_limited"`
+	Error       string    `json:"error,omitempty"`
 }
 
 // RequestAuditor collects request records.

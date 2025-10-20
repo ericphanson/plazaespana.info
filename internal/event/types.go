@@ -22,8 +22,8 @@ type FilterResult struct {
 	// Time filtering
 	StartDate time.Time `json:"start_date,omitempty"`
 	EndDate   time.Time `json:"end_date,omitempty"`
-	DaysOld   int       `json:"days_old"`     // days since start (negative = future)
-	TooOld    bool      `json:"too_old"`      // started more than cutoff days ago?
+	DaysOld   int       `json:"days_old"` // days since start (negative = future)
+	TooOld    bool      `json:"too_old"`  // started more than cutoff days ago?
 
 	// Final decision
 	Kept         bool   `json:"kept"`          // true = will be rendered, false = filtered out

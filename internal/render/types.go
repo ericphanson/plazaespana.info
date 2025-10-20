@@ -39,7 +39,7 @@ type JSONOutput struct {
 
 // JSONMeta contains metadata about the JSON output.
 type JSONMeta struct {
-	UpdateTime     string `json:"update_time"`
-	TotalCultural  int    `json:"total_cultural"`
-	TotalCity      int    `json:"total_city"`
+	UpdateTime    string `json:"update_time"`
+	TotalCultural int    `json:"total_cultural"`
+	TotalCity     int    `json:"total_city"`
 }

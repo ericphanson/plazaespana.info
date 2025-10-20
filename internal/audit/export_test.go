@@ -2,6 +2,7 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -54,8 +55,12 @@ func TestSaveAuditJSON(t *testing.T) {
 		},
 	}
 
+	// Create parse errors (empty for this test)
+	culturalParseErrors := []event.ParseError{}
+	cityParseErrors := []event.ParseError{}
+
 	// Save audit JSON
-	err := SaveAuditJSON(culturalEvents, cityEvents, auditPath, buildTime, duration)
+	err := SaveAuditJSON(culturalEvents, cityEvents, culturalParseErrors, cityParseErrors, auditPath, buildTime, duration)
 	if err != nil {
 		t.Fatalf("SaveAuditJSON failed: %v", err)
 	}
@@ -110,6 +115,11 @@ func TestSaveAuditJSON(t *testing.T) {
 	}
 	if audit.CityEvents.Kept != 1 {
 		t.Errorf("CityEvents.Kept = %d, want 1", audit.CityEvents.Kept)
+	}
+
+	// Verify parse errors section exists (empty in this test)
+	if audit.ParseErrors.TotalErrors != 0 {
+		t.Errorf("ParseErrors.TotalErrors = %d, want 0", audit.ParseErrors.TotalErrors)
 	}
 }
 
@@ -169,6 +179,90 @@ func TestProcessCulturalEvents(t *testing.T) {
 	}
 	if pipeline.FilterBreakdown["event too old"] != 1 {
 		t.Errorf("FilterBreakdown[event too old] = %d, want 1", pipeline.FilterBreakdown["event too old"])
+	}
+}
+
+func TestSaveAuditJSON_WithParseErrors(t *testing.T) {
+	// Create temp directory
+	tempDir := t.TempDir()
+	auditPath := filepath.Join(tempDir, "audit-events.json")
+
+	buildTime := time.Date(2025, 10, 20, 14, 0, 0, 0, time.UTC)
+	duration := 1 * time.Second
+
+	// Create test events (empty)
+	culturalEvents := []event.CulturalEvent{}
+	cityEvents := []event.CityEvent{}
+
+	// Create parse errors
+	culturalParseErrors := []event.ParseError{
+		{
+			Source:      "JSON",
+			Index:       5,
+			RawData:     `{"ID-EVENTO": "invalid"}`,
+			Error:       fmt.Errorf("missing required field"),
+			RecoverType: "skipped",
+		},
+		{
+			Source:      "XML",
+			Index:       12,
+			RawData:     "<event>bad xml</event>",
+			Error:       fmt.Errorf("malformed XML"),
+			RecoverType: "skipped",
+		},
+	}
+
+	cityParseErrors := []event.ParseError{
+		{
+			Source:      "ESMadrid",
+			Index:       3,
+			RawData:     "",
+			Error:       fmt.Errorf("missing coordinates"),
+			RecoverType: "skipped",
+		},
+	}
+
+	// Save audit JSON
+	err := SaveAuditJSON(culturalEvents, cityEvents, culturalParseErrors, cityParseErrors, auditPath, buildTime, duration)
+	if err != nil {
+		t.Fatalf("SaveAuditJSON failed: %v", err)
+	}
+
+	// Read and parse JSON
+	data, err := os.ReadFile(auditPath)
+	if err != nil {
+		t.Fatalf("Failed to read audit file: %v", err)
+	}
+
+	var audit AuditFile
+	if err := json.Unmarshal(data, &audit); err != nil {
+		t.Fatalf("Failed to parse audit JSON: %v", err)
+	}
+
+	// Verify parse errors
+	if audit.ParseErrors.TotalErrors != 3 {
+		t.Errorf("ParseErrors.TotalErrors = %d, want 3", audit.ParseErrors.TotalErrors)
+	}
+
+	if len(audit.ParseErrors.CulturalErrors) != 2 {
+		t.Errorf("len(ParseErrors.CulturalErrors) = %d, want 2", len(audit.ParseErrors.CulturalErrors))
+	}
+
+	if len(audit.ParseErrors.CityErrors) != 1 {
+		t.Errorf("len(ParseErrors.CityErrors) = %d, want 1", len(audit.ParseErrors.CityErrors))
+	}
+
+	// Verify first cultural error
+	if audit.ParseErrors.CulturalErrors[0].Source != "JSON" {
+		t.Errorf("CulturalErrors[0].Source = %s, want JSON", audit.ParseErrors.CulturalErrors[0].Source)
+	}
+	if audit.ParseErrors.CulturalErrors[0].Index != 5 {
+		t.Errorf("CulturalErrors[0].Index = %d, want 5", audit.ParseErrors.CulturalErrors[0].Index)
+	}
+
+	// Verify city error
+	if audit.ParseErrors.CityErrors[0].Source != "ESMadrid" {
+		t.Errorf("CityErrors[0].Source = %s, want ESMadrid", audit.ParseErrors.CityErrors[0].Source)
 	}
 }
 

@@ -99,12 +99,12 @@ func TestHTMLRenderer_DualSection(t *testing.T) {
 	renderer := NewHTMLRenderer(templatePath)
 
 	tests := []struct {
-		name           string
-		data           TemplateData
-		wantCultural   string
-		wantCity       string
-		wantTotal      string
-		wantSections   int
+		name         string
+		data         TemplateData
+		wantCultural string
+		wantCity     string
+		wantTotal    string
+		wantSections int
 	}{
 		{
 			name: "Both event types present",

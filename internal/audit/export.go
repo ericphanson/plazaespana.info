@@ -17,22 +17,31 @@ type AuditFile struct {
 	BuildDuration float64   `json:"build_duration_seconds"`
 	TotalEvents   int       `json:"total_events"`
 
-	CulturalEvents AuditPipeline `json:"cultural_events"`
-	CityEvents     AuditPipeline `json:"city_events"`
+	CulturalEvents AuditPipeline    `json:"cultural_events"`
+	CityEvents     AuditPipeline    `json:"city_events"`
+	ParseErrors    ParseErrorsAudit `json:"parse_errors"` // NEW: Track parse failures
 }
 
 // AuditPipeline tracks all events and filtering decisions for one pipeline.
 type AuditPipeline struct {
-	Total           int                `json:"total"`
-	Kept            int                `json:"kept"`
-	Filtered        int                `json:"filtered"`
-	FilterBreakdown map[string]int     `json:"filter_breakdown"`
-	Events          []json.RawMessage  `json:"events"` // Raw JSON to support different event types
+	Total           int               `json:"total"`
+	Kept            int               `json:"kept"`
+	Filtered        int               `json:"filtered"`
+	FilterBreakdown map[string]int    `json:"filter_breakdown"`
+	Events          []json.RawMessage `json:"events"` // Raw JSON to support different event types
 }
 
 // SaveAuditJSON exports complete audit trail to JSON file.
-// Includes all events (kept + filtered) with filter decisions.
-func SaveAuditJSON(culturalEvents []event.CulturalEvent, cityEvents []event.CityEvent, path string, buildTime time.Time, duration time.Duration) error {
+// Includes all events (kept + filtered) with filter decisions and parse errors.
+func SaveAuditJSON(
+	culturalEvents []event.CulturalEvent,
+	cityEvents []event.CityEvent,
+	culturalParseErrors []event.ParseError,
+	cityParseErrors []event.ParseError,
+	path string,
+	buildTime time.Time,
+	duration time.Duration,
+) error {
 	// Process cultural events
 	culturalPipeline, err := processCulturalEvents(culturalEvents)
 	if err != nil {
@@ -45,6 +54,9 @@ func SaveAuditJSON(culturalEvents []event.CulturalEvent, cityEvents []event.City
 		return fmt.Errorf("processing city events: %w", err)
 	}
 
+	// Process parse errors
+	parseErrorsAudit := processParseErrors(culturalParseErrors, cityParseErrors)
+
 	// Build audit file
 	audit := AuditFile{
 		BuildTime:      buildTime,
@@ -52,6 +64,7 @@ func SaveAuditJSON(culturalEvents []event.CulturalEvent, cityEvents []event.City
 		TotalEvents:    len(culturalEvents) + len(cityEvents),
 		CulturalEvents: culturalPipeline,
 		CityEvents:     cityPipeline,
+		ParseErrors:    parseErrorsAudit,
 	}
 
 	// Marshal to JSON
@@ -138,4 +151,37 @@ func processCityEvents(events []event.CityEvent) (AuditPipeline, error) {
 	}
 
 	return pipeline, nil
+}
+
+// processParseErrors converts parse errors from both pipelines into audit format.
+func processParseErrors(culturalErrors []event.ParseError, cityErrors []event.ParseError) ParseErrorsAudit {
+	// Convert cultural parse errors
+	culturalAudit := make([]AuditParseError, 0, len(culturalErrors))
+	for _, e := range culturalErrors {
+		culturalAudit = append(culturalAudit, AuditParseError{
+			Source:      e.Source,
+			Index:       e.Index,
+			RawData:     e.RawData,
+			Error:       e.Error.Error(),
+			RecoverType: e.RecoverType,
+		})
+	}
+
+	// Convert city parse errors
+	cityAudit := make([]AuditParseError, 0, len(cityErrors))
+	for _, e := range cityErrors {
+		cityAudit = append(cityAudit, AuditParseError{
+			Source:      e.Source,
+			Index:       e.Index,
+			RawData:     e.RawData,
+			Error:       e.Error.Error(),
+			RecoverType: e.RecoverType,
+		})
+	}
+
+	return ParseErrorsAudit{
+		CulturalErrors: culturalAudit,
+		CityErrors:     cityAudit,
+		TotalErrors:    len(culturalErrors) + len(cityErrors),
+	}
 }

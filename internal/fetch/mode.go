@@ -45,7 +45,7 @@ func DefaultDevelopmentConfig() ModeConfig {
 		Mode:           DevelopmentMode,
 		CacheTTL:       1 * time.Hour,
 		MinDelay:       5 * time.Second,
-		MaxRequestRate: 1,             // 1 request per 5 minutes
+		MaxRequestRate: 1, // 1 request per 5 minutes
 		TimeWindow:     5 * time.Minute,
 	}
 }

@@ -444,16 +444,23 @@ func main() {
 
 	// Convert to CityEvent structs
 	var cityEvents []event.CityEvent
-	parseErrors := 0
-	for _, svc := range esmadridServices {
+	var cityParseErrors []event.ParseError
+	for i, svc := range esmadridServices {
 		cityEvent, err := svc.ToCityEvent()
 		if err != nil {
-			parseErrors++
+			// Track parse error with details
+			cityParseErrors = append(cityParseErrors, event.ParseError{
+				Source:      "ESMadrid",
+				Index:       i,
+				RawData:     "", // ESMadrid services are complex, skip raw data
+				Error:       err,
+				RecoverType: "skipped",
+			})
 			continue
 		}
 		cityEvents = append(cityEvents, *cityEvent)
 	}
-	log.Printf("Parsed %d city events (%d parse errors)", len(cityEvents), parseErrors)
+	log.Printf("Parsed %d city events (%d parse errors)", len(cityEvents), len(cityParseErrors))
 
 	// Track filtering start
 	cityFilterStart := time.Now()
@@ -560,17 +567,34 @@ func main() {
 	// AUDIT EXPORT: Save complete audit trail with all events
 	// =====================================================================
 	log.Println("\n=== Exporting Audit Trail ===")
+
+	// Collect all cultural parse errors
+	culturalParseErrors := []event.ParseError{}
+	culturalParseErrors = append(culturalParseErrors, pipeResult.JSONErrors...)
+	culturalParseErrors = append(culturalParseErrors, pipeResult.XMLErrors...)
+	culturalParseErrors = append(culturalParseErrors, pipeResult.CSVErrors...)
+
 	auditPath := filepath.Join(cfg.Snapshot.DataDir, "audit-events.json")
-	auditErr := audit.SaveAuditJSON(allEvents, allCityEvents, auditPath, buildReport.BuildTime, buildReport.Duration)
+	auditErr := audit.SaveAuditJSON(
+		allEvents,
+		allCityEvents,
+		culturalParseErrors,
+		cityParseErrors,
+		auditPath,
+		buildReport.BuildTime,
+		buildReport.Duration,
+	)
 	if auditErr != nil {
 		log.Printf("Warning: Failed to save audit JSON: %v", auditErr)
 		buildReport.AddWarning("Failed to export audit trail: %v", auditErr)
 	} else {
 		auditInfo, _ := os.Stat(auditPath)
-		log.Printf("Audit trail exported: %s (%.1f MB, %d total events)",
+		totalParseErrors := len(culturalParseErrors) + len(cityParseErrors)
+		log.Printf("Audit trail exported: %s (%.1f MB, %d events, %d parse errors)",
 			auditPath,
 			float64(auditInfo.Size())/1024/1024,
-			len(allEvents)+len(allCityEvents))
+			len(allEvents)+len(allCityEvents),
+			totalParseErrors)
 	}
 
 	// =====================================================================
