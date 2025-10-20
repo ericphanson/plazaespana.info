@@ -9,6 +9,9 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
 )
 
 // Client wraps an HTTP client for fetching Madrid event data.
@@ -50,6 +53,10 @@ func (c *Client) FetchJSON(url string) (*JSONResponse, error) {
 		return nil, fmt.Errorf("reading response: %w", err)
 	}
 
+	// Preprocess JSON to escape literal newlines in string values
+	// Madrid's JSON sometimes contains unescaped newlines which are invalid JSON
+	body = fixJSONNewlines(body)
+
 	var result JSONResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("decoding JSON: %w", err)
@@ -60,8 +67,8 @@ func (c *Client) FetchJSON(url string) (*JSONResponse, error) {
 
 // XMLResponse wraps the Madrid API XML structure.
 type XMLResponse struct {
-	XMLName xml.Name   `xml:"response"`
-	Events  []RawEvent `xml:"event"`
+	XMLName xml.Name   `xml:"Contenidos"`
+	Events  []RawEvent `xml:"contenido"`
 }
 
 // FetchXML fetches and decodes XML from the given URL.
@@ -130,7 +137,15 @@ func (c *Client) FetchCSV(url string) ([]RawEvent, error) {
 }
 
 func parseCSV(data []byte, delimiter rune) ([]RawEvent, error) {
-	r := csv.NewReader(bytes.NewReader(data))
+	// Convert from ISO-8859-1/Windows-1252 to UTF-8
+	// Madrid's CSV files use Windows-1252 encoding
+	decoder := charmap.Windows1252.NewDecoder()
+	utf8Data, err := io.ReadAll(transform.NewReader(bytes.NewReader(data), decoder))
+	if err != nil {
+		return nil, fmt.Errorf("converting encoding: %w", err)
+	}
+
+	r := csv.NewReader(bytes.NewReader(utf8Data))
 	r.Comma = delimiter
 	r.TrimLeadingSpace = true
 
@@ -190,4 +205,45 @@ func getField(row []string, headerMap map[string]int, fieldName string) string {
 		return ""
 	}
 	return row[idx]
+}
+
+// fixJSONNewlines preprocesses JSON to escape literal newlines in string values.
+// This handles Madrid's JSON which sometimes contains unescaped newlines.
+func fixJSONNewlines(data []byte) []byte {
+	var result bytes.Buffer
+	inString := false
+	escaped := false
+
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+
+		// Track if we're inside a string
+		if c == '"' && !escaped {
+			inString = !inString
+			result.WriteByte(c)
+			continue
+		}
+
+		// Track escape sequences
+		if c == '\\' && !escaped {
+			escaped = true
+			result.WriteByte(c)
+			continue
+		}
+
+		// If we're in a string and hit a literal newline, escape it
+		if inString && !escaped && (c == '\n' || c == '\r') {
+			if c == '\n' {
+				result.WriteString("\\n")
+			} else {
+				result.WriteString("\\r")
+			}
+		} else {
+			result.WriteByte(c)
+		}
+
+		escaped = false
+	}
+
+	return result.Bytes()
 }
