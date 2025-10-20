@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 // JSONRenderer renders events to JSON.
@@ -15,8 +16,30 @@ func NewJSONRenderer() *JSONRenderer {
 }
 
 // Render generates JSON output and writes it atomically to outputPath.
-func (r *JSONRenderer) Render(events []JSONEvent, outputPath string) error {
-	data, err := json.MarshalIndent(events, "", "  ")
+// culturalEvents: events from datos.madrid.es
+// cityEvents: events from esmadrid.com
+// updateTime: timestamp when the data was generated
+func (r *JSONRenderer) Render(culturalEvents, cityEvents []JSONEvent, updateTime time.Time, outputPath string) error {
+	// Build the structured output
+	output := JSONOutput{
+		CulturalEvents: culturalEvents,
+		CityEvents:     cityEvents,
+		Meta: JSONMeta{
+			UpdateTime:    updateTime.Format(time.RFC3339),
+			TotalCultural: len(culturalEvents),
+			TotalCity:     len(cityEvents),
+		},
+	}
+
+	// Ensure empty arrays instead of null in JSON
+	if output.CulturalEvents == nil {
+		output.CulturalEvents = []JSONEvent{}
+	}
+	if output.CityEvents == nil {
+		output.CityEvents = []JSONEvent{}
+	}
+
+	data, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encoding JSON: %w", err)
 	}

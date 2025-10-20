@@ -29,3 +29,17 @@ type JSONEvent struct {
 	VenueName  string `json:"venue_name,omitempty"`
 	DetailsURL string `json:"details_url,omitempty"`
 }
+
+// JSONOutput is the top-level structure for the JSON API output.
+type JSONOutput struct {
+	CulturalEvents []JSONEvent `json:"cultural_events"`
+	CityEvents     []JSONEvent `json:"city_events"`
+	Meta           JSONMeta    `json:"meta"`
+}
+
+// JSONMeta contains metadata about the JSON output.
+type JSONMeta struct {
+	UpdateTime     string `json:"update_time"`
+	TotalCultural  int    `json:"total_cultural"`
+	TotalCity      int    `json:"total_city"`
+}

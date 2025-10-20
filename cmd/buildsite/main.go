@@ -356,7 +356,7 @@ func main() {
 
 	// Convert cultural events to template format
 	var culturalTemplateEvents []render.TemplateEvent
-	var jsonEvents []render.JSONEvent
+	var culturalJSONEvents []render.JSONEvent
 
 	for _, evt := range filteredEvents {
 		culturalTemplateEvents = append(culturalTemplateEvents, render.TemplateEvent{
@@ -368,7 +368,7 @@ func main() {
 			Description:       render.TruncateText(evt.Description, 150),
 		})
 
-		jsonEvents = append(jsonEvents, render.JSONEvent{
+		culturalJSONEvents = append(culturalJSONEvents, render.JSONEvent{
 			ID:         evt.ID,
 			Title:      evt.Title,
 			StartTime:  evt.StartTime.Format(time.RFC3339),
@@ -379,6 +379,8 @@ func main() {
 
 	// Convert city events to template format
 	var cityTemplateEvents []render.TemplateEvent
+	var cityJSONEvents []render.JSONEvent
+
 	for _, evt := range filteredCityEvents {
 		cityTemplateEvents = append(cityTemplateEvents, render.TemplateEvent{
 			IDEvento:          evt.ID,
@@ -389,8 +391,7 @@ func main() {
 			Description:       render.TruncateText(evt.Description, 150),
 		})
 
-		// Add city events to JSON output as well
-		jsonEvents = append(jsonEvents, render.JSONEvent{
+		cityJSONEvents = append(cityJSONEvents, render.JSONEvent{
 			ID:         evt.ID,
 			Title:      evt.Title,
 			StartTime:  evt.StartDate.Format(time.RFC3339),
@@ -439,11 +440,11 @@ func main() {
 	}
 	log.Println("Generated:", htmlPath)
 
-	// Render JSON
+	// Render JSON with separated event types
 	jsonRenderStart := time.Now()
 	jsonRenderer := render.NewJSONRenderer()
 	jsonPath := cfg.Output.JSONPath
-	jsonErr := jsonRenderer.Render(jsonEvents, jsonPath)
+	jsonErr := jsonRenderer.Render(culturalJSONEvents, cityJSONEvents, now, jsonPath)
 	jsonRenderDuration := time.Since(jsonRenderStart)
 
 	if jsonErr != nil {
