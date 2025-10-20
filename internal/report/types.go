@@ -5,15 +5,18 @@ import (
 	"time"
 )
 
-// BuildReport tracks the entire build process.
+// BuildReport tracks the entire build process with dual pipeline support.
 type BuildReport struct {
-	BuildTime   time.Time
-	Duration    time.Duration
-	ExitStatus  string // "SUCCESS", "FAILED", "PARTIAL"
-	EventsCount int
+	BuildTime  time.Time
+	Duration   time.Duration
+	ExitStatus string // "SUCCESS", "FAILED", "PARTIAL"
 
-	Fetching    FetchReport
-	Processing  ProcessingReport
+	// Dual pipeline tracking
+	CulturalPipeline PipelineReport
+	CityPipeline     PipelineReport
+
+	TotalEvents int // Sum of both pipelines
+
 	DataQuality []DataQualityIssue
 	Output      OutputReport
 
@@ -21,13 +24,29 @@ type BuildReport struct {
 	Recommendations []string
 }
 
-// FetchReport tracks data fetching attempts.
-type FetchReport struct {
-	JSON FetchAttempt
-	XML  FetchAttempt
-	CSV  FetchAttempt
+// PipelineReport tracks a single data pipeline (cultural or city events).
+type PipelineReport struct {
+	Name     string // "Cultural Events" or "City Events"
+	Source   string // "datos.madrid.es" or "esmadrid.com"
+	Fetching PipelineFetchReport
+	Merging  *MergeStats             // Only for cultural events (3 sources)
+	Filtering PipelineFilterReport
+	EventCount int
+	Duration time.Duration
+}
 
+// PipelineFetchReport tracks fetching for one pipeline.
+type PipelineFetchReport struct {
+	Attempts      []FetchAttempt // One or more sources
 	TotalDuration time.Duration
+}
+
+// PipelineFilterReport tracks filtering for one pipeline.
+type PipelineFilterReport struct {
+	GeoFilter       *GeoFilterStats       // Optional
+	TimeFilter      *TimeFilterStats      // Optional
+	CategoryFilter  *CategoryFilterStats  // Optional (for city events)
+	DistrictoFilter *DistrictoFilterStats // Optional (for cultural events)
 }
 
 // FetchAttempt represents one attempt to fetch data.
@@ -43,14 +62,7 @@ type FetchAttempt struct {
 	EventCount  int
 }
 
-// ProcessingReport tracks data processing steps.
-type ProcessingReport struct {
-	Merge      MergeStats
-	GeoFilter  GeoFilterStats
-	TimeFilter TimeFilterStats
-}
-
-// MergeStats tracks multi-source merging and deduplication.
+// MergeStats tracks multi-source merging and deduplication (cultural events only).
 type MergeStats struct {
 	JSONEvents int
 	XMLEvents  int
@@ -66,14 +78,6 @@ type MergeStats struct {
 	InOneSource  int // Events found in only 1 source
 
 	Duration time.Duration
-}
-
-// DeduplicationStats tracks event deduplication.
-type DeduplicationStats struct {
-	Input      int
-	Duplicates int
-	Output     int
-	Duration   time.Duration
 }
 
 // GeoFilterStats tracks geographic filtering.
@@ -97,6 +101,24 @@ type TimeFilterStats struct {
 	PastEvents    int
 	Kept          int
 	Duration      time.Duration
+}
+
+// CategoryFilterStats tracks category-based filtering (city events).
+type CategoryFilterStats struct {
+	AllowedCategories []string
+	Input             int
+	Filtered          int
+	Kept              int
+	Duration          time.Duration
+}
+
+// DistrictoFilterStats tracks distrito-based filtering (cultural events).
+type DistrictoFilterStats struct {
+	AllowedDistricts []string
+	Input            int
+	Filtered         int
+	Kept             int
+	Duration         time.Duration
 }
 
 // DataQualityIssue represents a data quality problem.
