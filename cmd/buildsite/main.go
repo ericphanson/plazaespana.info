@@ -65,6 +65,12 @@ func main() {
 		log.Fatal("Missing required flag: -json-url")
 	}
 
+	// Use URLs directly (no server-side filtering)
+	// Server-side filters return minimal schema and are not usable
+	finalJSONURL := *jsonURL
+	finalXMLURL := *xmlURL
+	finalCSVURL := *csvURL
+
 	// Load timezone
 	loc, err := time.LoadLocation(*timezone)
 	if err != nil {
@@ -75,8 +81,8 @@ func main() {
 	client := fetch.NewClient(30 * time.Second)
 	snapMgr := snapshot.NewManager(*dataDir)
 
-	// Create pipeline for multi-source fetching
-	pipe := pipeline.NewPipeline(*jsonURL, *xmlURL, *csvURL, client, loc)
+	// Create pipeline for multi-source fetching (use final URLs with distrito filter if applied)
+	pipe := pipeline.NewPipeline(finalJSONURL, finalXMLURL, finalCSVURL, client, loc)
 
 	// Fetch from all three sources independently
 	log.Println("Fetching from all three sources (JSON, XML, CSV)...")
@@ -84,10 +90,10 @@ func main() {
 	pipeResult := pipe.FetchAll()
 	buildReport.Fetching.TotalDuration = time.Since(fetchStart)
 
-	// Track individual fetch results
-	buildReport.Fetching.JSON = createFetchAttempt("JSON", *jsonURL, pipeResult.JSONEvents, pipeResult.JSONErrors)
-	buildReport.Fetching.XML = createFetchAttempt("XML", *xmlURL, pipeResult.XMLEvents, pipeResult.XMLErrors)
-	buildReport.Fetching.CSV = createFetchAttempt("CSV", *csvURL, pipeResult.CSVEvents, pipeResult.CSVErrors)
+	// Track individual fetch results (use final URLs for reporting)
+	buildReport.Fetching.JSON = createFetchAttempt("JSON", finalJSONURL, pipeResult.JSONEvents, pipeResult.JSONErrors)
+	buildReport.Fetching.XML = createFetchAttempt("XML", finalXMLURL, pipeResult.XMLEvents, pipeResult.XMLErrors)
+	buildReport.Fetching.CSV = createFetchAttempt("CSV", finalCSVURL, pipeResult.CSVEvents, pipeResult.CSVErrors)
 
 	log.Printf("JSON: %d events, %d errors", len(pipeResult.JSONEvents), len(pipeResult.JSONErrors))
 	log.Printf("XML: %d events, %d errors", len(pipeResult.XMLEvents), len(pipeResult.XMLErrors))
@@ -143,33 +149,56 @@ func main() {
 	geoStart := time.Now()
 	var filteredEvents []event.CanonicalEvent
 
-	// Location keywords for text-based fallback
+	// Target districts near Plaza de España
+	targetDistricts := map[string]bool{
+		"CENTRO":          true,
+		"MONCLOA-ARAVACA": true,
+	}
+
+	// Location keywords for text-based fallback (when no distrito or coords)
 	locationKeywords := []string{
 		"plaza de españa",
 		"plaza españa",
 		"templo de debod",
 		"parque del oeste",
+		"conde duque",
 	}
 
-	missingCoords := 0
-	missingCoordsKept := 0
-	outsideRadius := 0
+	missingDistr := 0
+	missingBoth := 0
+	byDistrito := 0
+	byRadius := 0
+	byTextMatch := 0
+	outsideAll := 0
 	pastEvents := 0
 
 	for _, evt := range merged {
-		// Text-based fallback if missing coordinates
-		if evt.Latitude == 0 || evt.Longitude == 0 {
-			if filter.MatchesLocation(evt.VenueName, evt.Address, evt.Description, locationKeywords) {
-				missingCoordsKept++
-				// Skip geo check but continue to time filter
+		// Priority 1: Filter by distrito (works for 95% of events)
+		if evt.Distrito != "" {
+			if targetDistricts[evt.Distrito] {
+				byDistrito++
+				// Skip to time filter
 			} else {
-				missingCoords++
+				outsideAll++
+				continue
+			}
+		} else if evt.Latitude != 0 && evt.Longitude != 0 {
+			// Priority 2: GPS coordinates available, use radius
+			if filter.WithinRadius(*lat, *lon, evt.Latitude, evt.Longitude, *radiusKm) {
+				byRadius++
+				missingDistr++
+			} else {
+				outsideAll++
 				continue
 			}
 		} else {
-			// Check geographic proximity
-			if !filter.WithinRadius(*lat, *lon, evt.Latitude, evt.Longitude, *radiusKm) {
-				outsideRadius++
+			// Priority 3: No distrito, no coords - try text matching
+			if filter.MatchesLocation(evt.VenueName, evt.Address, evt.Description, locationKeywords) {
+				byTextMatch++
+				missingBoth++
+			} else {
+				missingBoth++
+				outsideAll++
 				continue
 			}
 		}
@@ -188,6 +217,8 @@ func main() {
 		filteredEvents = append(filteredEvents, evt)
 	}
 
+	log.Printf("Filtered by distrito: %d, by radius: %d, by text: %d", byDistrito, byRadius, byTextMatch)
+
 	// Record geo filter stats
 	geoDuration := time.Since(geoStart)
 	buildReport.Processing.GeoFilter = report.GeoFilterStats{
@@ -195,15 +226,15 @@ func main() {
 		RefLon:        *lon,
 		Radius:        *radiusKm,
 		Input:         len(merged),
-		MissingCoords: missingCoords,
-		OutsideRadius: outsideRadius,
+		MissingCoords: missingBoth,
+		OutsideRadius: outsideAll,
 		Kept:          len(filteredEvents) + pastEvents, // Events that passed geo filter
 		Duration:      geoDuration,
 	}
 
-	// Log text-based fallback results
-	if missingCoordsKept > 0 {
-		log.Printf("Text-based location matching: kept %d events without coordinates", missingCoordsKept)
+	// Log filtering method breakdown
+	if byTextMatch > 0 {
+		log.Printf("Text-based location matching: kept %d events", byTextMatch)
 	}
 
 	// Record time filter stats

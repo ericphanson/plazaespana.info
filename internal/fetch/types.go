@@ -122,6 +122,7 @@ type XMLEvent struct {
 	Longitud    float64
 	Instalacion string
 	Direccion   string
+	Distrito    string
 	ContentURL  string
 }
 
@@ -160,6 +161,7 @@ func (e *XMLEvent) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	e.Hora = attrs["HORA-EVENTO"]
 	e.Instalacion = attrs["NOMBRE-INSTALACION"]
 	e.Direccion = attrs["DIRECCION-INSTALACION"]
+	e.Distrito = attrs["DISTRITO"]
 	e.ContentURL = attrs["CONTENT-URL"]
 
 	// Parse coordinates
@@ -175,11 +177,12 @@ func (e *XMLEvent) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 
 // extractAttributes recursively extracts all nombre/value pairs from nested atributos.
 func extractAttributes(attr xmlAtributo, result map[string]string) {
-	if attr.Nombre != "" && attr.Nombre != "LOCALIZACION" {
+	// Store attribute value (skip container nodes like LOCALIZACION that have children)
+	if attr.Nombre != "" && attr.Value != "" {
 		result[attr.Nombre] = attr.Value
 	}
 
-	// Recursively extract nested attributes
+	// Recursively extract nested attributes (including those inside LOCALIZACION)
 	for _, nested := range attr.Atributos {
 		extractAttributes(nested, result)
 	}
@@ -218,6 +221,7 @@ func (e XMLEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) 
 		Longitude:   e.Longitud,
 		VenueName:   e.Instalacion,
 		Address:     e.Direccion,
+		Distrito:    e.Distrito,
 		DetailsURL:  e.ContentURL,
 		Sources:     []string{"XML"},
 	}
@@ -285,6 +289,7 @@ type CSVEvent struct {
 	Longitud          float64
 	NombreInstalacion string
 	Direccion         string
+	Distrito          string
 	ContentURL        string
 }
 
@@ -314,6 +319,7 @@ func (e CSVEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) 
 		Longitude:   e.Longitud,
 		VenueName:   e.NombreInstalacion,
 		Address:     e.Direccion,
+		Distrito:    e.Distrito,
 		DetailsURL:  e.ContentURL,
 		Sources:     []string{"CSV"},
 	}

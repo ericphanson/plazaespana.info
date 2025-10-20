@@ -19,6 +19,7 @@ type CanonicalEvent struct {
 	Longitude float64
 	VenueName string
 	Address   string
+	Distrito  string // District where event takes place (e.g. "CENTRO", "MONCLOA-ARAVACA")
 
 	// Metadata
 	DetailsURL string

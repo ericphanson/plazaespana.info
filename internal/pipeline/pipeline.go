@@ -120,6 +120,28 @@ func (p *Pipeline) Merge(result PipelineResult) []event.CanonicalEvent {
 		if existing, found := seen[sourced.Event.ID]; found {
 			// Event already exists, add this source
 			existing.Sources = append(existing.Sources, sourced.Source)
+
+			// Merge distrito if the new source has it but existing doesn't
+			if existing.Distrito == "" && sourced.Event.Distrito != "" {
+				existing.Distrito = sourced.Event.Distrito
+			}
+
+			// Merge other missing fields as needed
+			if existing.VenueName == "" && sourced.Event.VenueName != "" {
+				existing.VenueName = sourced.Event.VenueName
+			}
+			if existing.Address == "" && sourced.Event.Address != "" {
+				existing.Address = sourced.Event.Address
+			}
+			if existing.Description == "" && sourced.Event.Description != "" {
+				existing.Description = sourced.Event.Description
+			}
+			if existing.Latitude == 0 && sourced.Event.Latitude != 0 {
+				existing.Latitude = sourced.Event.Latitude
+			}
+			if existing.Longitude == 0 && sourced.Event.Longitude != 0 {
+				existing.Longitude = sourced.Event.Longitude
+			}
 		} else {
 			// New event
 			evt := sourced.Event

@@ -253,6 +253,7 @@ func parseCSVRow(row []string, headerMap map[string]int) CSVEvent {
 		Hora:              getField(row, headerMap, "HORA"),
 		NombreInstalacion: getField(row, headerMap, "NOMBRE-INSTALACION"),
 		Direccion:         getField(row, headerMap, "DIRECCION"),
+		Distrito:          getField(row, headerMap, "DISTRITO-INSTALACION"),
 		ContentURL:        getField(row, headerMap, "CONTENT-URL"),
 		Descripcion:       getField(row, headerMap, "DESCRIPCION"),
 	}
