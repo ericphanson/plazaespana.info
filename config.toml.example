@@ -1,0 +1,73 @@
+# Madrid Events Site Generator - Configuration File
+# Version: 2.0.0-dual-pipeline
+
+# This file configures the dual pipeline system that fetches:
+# 1. Cultural events from datos.madrid.es (JSON/XML/CSV fallback)
+# 2. City events from esmadrid.com (XML)
+
+# ===================================================================
+# CULTURAL EVENTS - datos.madrid.es
+# ===================================================================
+[cultural_events]
+# Primary source: Madrid's open data portal
+# Three-tier fallback: JSON → XML → CSV
+json_url = "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json"
+xml_url = "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml"
+csv_url = "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv"
+
+# ===================================================================
+# CITY EVENTS - esmadrid.com
+# ===================================================================
+[city_events]
+# Secondary source: ESMadrid tourism portal
+# Provides complementary event listings (concerts, shows, etc.)
+xml_url = "https://www.esmadrid.com/opendata/agenda_v1_es.xml"
+
+# ===================================================================
+# GEOGRAPHIC FILTERING
+# ===================================================================
+[filter]
+# Reference point: Plaza de España, Madrid
+latitude = 40.42338
+longitude = -3.71217
+
+# Radius in kilometers (0.35 km = 350 meters)
+# Events beyond this distance are excluded
+radius_km = 0.35
+
+# Distrito-based filtering (priority filter for cultural events)
+# Events in these districts are automatically included
+# Common values: "CENTRO", "MONCLOA-ARAVACA", "CHAMBERÍ", "SALAMANCA"
+distritos = ["CENTRO", "MONCLOA-ARAVACA"]
+
+# Time filtering
+# Exclude events that started more than N weeks ago
+# (Even if ongoing, we don't show old exhibitions)
+past_events_weeks = 2
+
+# ===================================================================
+# OUTPUT PATHS
+# ===================================================================
+[output]
+# Generated HTML file (main event listing page)
+html_path = "public/index.html"
+
+# Generated JSON API (machine-readable output)
+# Structure: {"cultural_events": [...], "city_events": [...], "last_updated": "..."}
+json_path = "public/events.json"
+
+# ===================================================================
+# SNAPSHOT STORAGE
+# ===================================================================
+[snapshot]
+# Directory for storing last successful fetch
+# Used for fallback resilience when API is unavailable
+data_dir = "data"
+
+# ===================================================================
+# DEVELOPMENT SERVER
+# ===================================================================
+[server]
+# Port for local dev server (just dev)
+# Production deployment doesn't use this
+port = 8080
