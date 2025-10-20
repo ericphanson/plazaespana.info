@@ -238,3 +238,49 @@ if timeStr != "" {
 **Note:** This is a temporary bridge solution. Task 7 will remove RawEvent entirely and work directly with CanonicalEvent.
 
 ---
+
+## Phase 2: Pipeline
+
+### Task 5: Create Pipeline Orchestrator
+
+**Status:** COMPLETED
+**Completed:** 2025-10-20 03:30:00
+
+**Implementation:**
+
+✅ Created `internal/pipeline/pipeline.go`:
+- Pipeline struct with NewPipeline() constructor
+- PipelineResult struct tracking events and errors from all 3 sources
+- FetchAll() method for sequential fetching with isolation
+- fetchJSONIsolated/fetchXMLIsolated/fetchCSVIsolated with panic recovery
+- Merge() method for deduplication with source tracking
+
+✅ Created `internal/pipeline/pipeline_test.go` (6 tests):
+- TestPipeline_FetchAll_Sequential (verifies all 3 sources work)
+- TestPipeline_FetchAll_ErrorIsolation (JSON failure doesn't prevent CSV/XML)
+- TestPipeline_Merge_Deduplication (3003 events → 1055 unique)
+- TestPipeline_Merge_SourceTracking (947 events in all 3 sources, 54 in 2, 54 in 1)
+- TestPipeline_Merge_HandlesFailures (merge works with partial failures)
+- TestPipeline_Merge_EmptyResult (handles all-failures case)
+
+**Key Features:**
+- Each source isolated with panic recovery (one failure doesn't crash others)
+- Sequential fetching (avoids server spam, meets user requirement)
+- Deduplication by ID with multi-source tracking
+- Empty slice returned (not nil) when no events
+
+**Test Results:** 6/6 tests passing, all using real fixtures
+
+**Insights from real data:**
+- 3003 total events (1001 each from JSON/XML/CSV)
+- 1055 unique events after deduplication
+- 1948 duplicates removed (64.8% deduplication rate)
+- 947 events found in all 3 sources (89.7%)
+- 54 events found in 2 sources (5.1%)
+- 54 events found in 1 source only (5.1%)
+
+This confirms the three sources have significant overlap but aren't identical - robust multi-source fetching is valuable!
+
+**Next:** Task 6 (update build reporting) - skipped for now, moving to Task 7 (main.go integration)
+
+---
