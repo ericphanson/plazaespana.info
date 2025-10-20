@@ -157,6 +157,68 @@ See [`ops/deploy-notes.md`](ops/deploy-notes.md) for complete deployment instruc
 
 See [`docs/design.md`](docs/design.md) for architecture details.
 
+## Respectful Upstream Fetching
+
+This project implements comprehensive respectful fetching to prevent overwhelming upstream servers (datos.madrid.es, esmadrid.com) during development and production use.
+
+### Problem
+
+During development, we run `just dev` 10-20+ times per hour to test changes. Without throttling, this rapid-fire fetching looks like an attack and could get us blocked.
+
+### Solution: Dual-Mode System
+
+**Development Mode** (default):
+- **Cache TTL**: 1 hour (aggressive caching)
+- **Delays**: 5 seconds between requests
+- **Purpose**: Test rapidly without hitting upstream
+- **Usage**: `just dev` (automatic)
+
+**Production Mode** (for cron):
+- **Cache TTL**: 30 minutes (fresh data)
+- **Delays**: 2 seconds between requests
+- **Purpose**: Standard respectful behavior
+- **Usage**: `-fetch-mode production` flag
+
+### Features
+
+1. **HTTP Caching**: Persistent cache with `If-Modified-Since` headers
+   - Cache hits: No HTTP request, instant return
+   - 304 Not Modified: Minimal bandwidth usage
+
+2. **Request Throttling**: Per-host delays prevent rapid-fire requests
+   - Enforced in both fetch layer and pipeline
+   - Clear logging shows delays: `[Pipeline] Waiting 5s...`
+
+3. **Rate Limit Detection**: Handles 429/403/503 status codes
+   - Marks rate-limited requests in audit trail
+   - Clear error messages
+
+4. **Request Auditing**: Tracks all HTTP requests
+   - Stored in `data/request-audit.json`
+   - Records: URL, cache hits, delays, errors
+
+### Usage
+
+**Development** (default):
+```bash
+just dev  # Uses development mode automatically
+```
+
+**Production** (cron):
+```bash
+./build/buildsite -config config.toml -fetch-mode production
+```
+
+**Configuration** (config.toml):
+```toml
+[fetch]
+mode = "development"  # or "production"
+cache_dir = "data/http-cache"
+audit_path = "data/request-audit.json"
+```
+
+**Result**: Safe to run `just dev` 20+ times during testing without risk of being blocked.
+
 ## License
 
 Data source: [Ayuntamiento de Madrid – datos.madrid.es](https://datos.madrid.es)

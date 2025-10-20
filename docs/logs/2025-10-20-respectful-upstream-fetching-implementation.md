@@ -437,3 +437,47 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 **Result:** Complete documentation of respectful fetching system
 
 ---
+
+### Task 4.4: Update README.md
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Modified:**
+- `README.md` - Add "Respectful Upstream Fetching" section
+
+**Changes:**
+- Added new section (61 lines) after "How It Works"
+- Explains problem, solution, features, and usage
+- Shows development vs production mode differences
+- Provides usage examples with `just dev` and `-fetch-mode` flag
+- Includes config.toml snippet
+- Result statement: "Safe to run `just dev` 20+ times during testing"
+
+**Content:**
+- Problem: Dev testing looks like attack without throttling
+- Solution: Dual-mode system (development/production)
+- Features: HTTP caching, throttling, rate detection, auditing
+- Usage examples for both modes
+- Configuration snippet
+
+**Result:** User-facing documentation complete
+
+---
+
+## Phase 4: Complete ✅
+
+**Summary:**
+- 4 tasks completed (combined into 2 commits)
+- config.toml: Added [fetch] section with full documentation
+- .gitignore: Clarified data/ covers http-cache
+- CLAUDE.md: Added 67-line "Respectful Upstream Fetching" section
+- README.md: Added 61-line user-facing documentation
+
+**Documentation Coverage:**
+- Technical details (CLAUDE.md) for developers
+- User-facing guide (README.md) for all users
+- Configuration reference (config.toml) with comments
+- All aspects of respectful fetching documented
+
+---
