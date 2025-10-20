@@ -488,3 +488,153 @@ Dual pipeline support: Cultural events (datos.madrid.es) + City events (esmadrid
 **Ready for:** Phase 5 implementation
 
 ---
+
+## Phase 5: Deployment Preparation
+
+### Task 13: Update Build & Deploy Scripts
+**Status:** ✅ Complete
+**Commit:** 398a1e8
+**Files:** justfile, ops/deploy-notes.md, scripts/build-freebsd.sh
+
+**Implementation:**
+1. **justfile updates:**
+   - Added `just config` command to validate configuration
+   - Simplified `just dev` to use config.toml instead of long CLI flags
+
+2. **Build script updates:**
+   - Added reminder to upload config.toml with binary
+
+3. **Deployment notes updates:**
+   - Documented config-first workflow for NFSN deployment
+   - Added config.toml upload instructions
+   - Included full config example with all sections
+   - Kept legacy CLI flags as alternative
+
+**Acceptance:**
+- ✅ `just config` validates TOML
+- ✅ Build includes config file handling
+- ✅ Deploy instructions updated
+
+---
+
+### Task 14: Verify Firewall for ESMadrid
+**Status:** ✅ Complete
+**Commit:** (completed in earlier session)
+**Files:** .devcontainer/init-firewall.sh
+
+**Verification:**
+- ✅ esmadrid.com in firewall allowlist (line 77)
+- ✅ www.esmadrid.com in firewall allowlist (line 78)
+- ✅ Connectivity verified in earlier testing
+- ✅ No additional changes needed
+
+**Acceptance:**
+- ✅ esmadrid.com accessible
+- ✅ Changes committed (earlier session)
+
+---
+
+### Task 15: Final End-to-End Test
+**Status:** ✅ Complete
+**Commit:** (verification only)
+**Time:** 2025-10-20 ~12:30
+
+**Testing Results:**
+
+**15.1 - FreeBSD Binary Build:**
+- ✅ Built successfully: 8.1 MB static binary
+- ✅ No CGO dependencies
+- ✅ Ready for FreeBSD/amd64 deployment
+
+**15.2 - Live Data Execution:**
+- ✅ Both pipelines executed successfully
+- ✅ datos.madrid.es: 137 cultural events
+- ✅ esmadrid.com: 19 city events
+- ✅ Total: 156 events rendered
+- ✅ Performance: **2.52 seconds** (target: <10s)
+
+**15.3 - Plaza de España Events Verification:**
+- ✅ Ice rink event found: "Pista de hielo de Plaza de España" (21/11/2025)
+- ✅ Christmas ball found: "Gran bola Navidad" (28/11/2025)
+- ✅ Both events properly rendered in HTML and JSON
+
+**15.4 - Cultural Events Verification:**
+- ✅ 137 cultural events from datos.madrid.es
+- ✅ Geographic filtering working (GPS radius + distrito)
+- ✅ Time filtering working (past events excluded)
+- ✅ Three-tier fallback verified (JSON→XML→CSV)
+
+**15.5 - Output Verification:**
+- ✅ HTML: 88 KB, properly formatted, both sections visible
+- ✅ JSON: 57 KB, structured format with separated arrays
+- ✅ Build report: Generated with detailed metrics
+
+**15.6 - Performance Check:**
+- ✅ Total build time: 2.52 seconds
+- ✅ ESMadrid pipeline: 941ms
+- ✅ Deduplication: 64.9% (1,948 duplicates removed)
+- ✅ Well under 10-second target
+
+**Acceptance:**
+- ✅ FreeBSD binary builds successfully
+- ✅ Both pipelines fetch live data
+- ✅ Plaza de España city events visible
+- ✅ Cultural events unchanged (137)
+- ✅ Build time reasonable (2.52s < 10s target)
+- ✅ All tests pass (100% success rate)
+
+---
+
+## 🎉 IMPLEMENTATION COMPLETE!
+
+**All 15 tasks from the ESMadrid integration plan have been successfully completed.**
+
+### Final Statistics
+
+**Implementation:**
+- Total commits: 15+ commits across all phases
+- Total tests: 100+ tests passing (22 in render package alone)
+- Total event sources: 2 (datos.madrid.es + esmadrid.com)
+- Total events rendered: 156 (137 cultural + 19 city)
+- Build time: 2.52 seconds
+- Binary size: 8.1 MB (FreeBSD/amd64)
+
+**Code Changes:**
+- New packages: internal/config (TOML configuration)
+- New event type: CityEvent (parallel to CulturalEvent)
+- New pipeline: ESMadrid fetch, parse, filter
+- Updated rendering: Dual-section HTML + separated JSON
+- Enhanced CLI: Config support, version info, improved help
+
+**Key Features Delivered:**
+1. ✅ Dual pipeline architecture (cultural + city events)
+2. ✅ TOML configuration system with CLI override support
+3. ✅ ESMadrid.com XML parser with nested extradata extraction
+4. ✅ City event filtering (GPS radius, category, time)
+5. ✅ Dual-section HTML rendering with visual distinction
+6. ✅ Separated JSON API output with metadata
+7. ✅ Comprehensive documentation and examples
+8. ✅ Production-ready FreeBSD deployment
+
+**Plaza de España City Events Found:**
+- Pista de hielo (Ice rink) - November 21, 2025
+- Gran bola Navidad (Christmas ball) - November 28, 2025
+
+### Production Readiness
+
+✅ **All acceptance criteria met**
+✅ **All tests passing (100% success rate)**
+✅ **FreeBSD binary built and verified**
+✅ **Documentation complete**
+✅ **Performance excellent (2.52s)**
+✅ **Backward compatibility maintained**
+
+### Deployment Command
+
+```bash
+/home/bin/buildsite -config /home/config.toml
+```
+
+**The implementation is ready for deployment to NearlyFreeSpeech.NET! 🚀**
+
+---
