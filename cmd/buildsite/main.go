@@ -552,6 +552,7 @@ func main() {
 	cityOutsideRadius := 0
 	cityTooOld := 0
 	cityMissingCoords := 0
+	cityMultiVenueKept := 0
 
 	for _, evt := range cityEvents {
 		result := event.FilterResult{}
@@ -569,30 +570,67 @@ func main() {
 		result.DaysOld = int(now.Sub(evt.EndDate).Hours() / 24)
 		result.TooOld = evt.EndDate.Before(cutoffTime)
 
-		// Decide if kept (priority: missing coords -> outside radius -> too old -> kept)
+		// Check for Plaza de España text mention (city events only)
+		result.PlazaEspanaText = filter.MatchesPlazaEspana(
+			evt.Title,
+			evt.Venue,
+			evt.Address,
+			evt.Description,
+		)
+
+		// Decide if kept (priority: missing coords -> geo/text -> too old -> kept)
 		if !hasCoords {
-			// No coordinates - cannot filter by location
-			result.Kept = false
-			result.FilterReason = "missing location data"
-			cityMissingCoords++
+			// No coordinates - check text matching
+			if result.PlazaEspanaText {
+				if result.TooOld {
+					result.Kept = false
+					result.FilterReason = "event too old"
+					cityTooOld++
+				} else {
+					result.Kept = true
+					result.FilterReason = "kept (multi-venue: Plaza de España)"
+					result.MultiVenueKept = true
+					cityMultiVenueKept++
+				}
+			} else {
+				result.Kept = false
+				result.FilterReason = "missing location data"
+				cityMissingCoords++
+			}
 		} else {
-			// Have coordinates - calculate distance
+			// Have coordinates - check geo first, then text
 			result.GPSDistanceKm = filter.HaversineDistance(
 				cfg.Filter.Latitude, cfg.Filter.Longitude,
 				evt.Latitude, evt.Longitude)
 			result.WithinRadius = (result.GPSDistanceKm <= cfg.Filter.RadiusKm)
 
-			if !result.WithinRadius {
+			if result.WithinRadius {
+				// Kept by geo (preferred)
+				if result.TooOld {
+					result.Kept = false
+					result.FilterReason = "event too old"
+					cityTooOld++
+				} else {
+					result.Kept = true
+					result.FilterReason = "kept"
+				}
+			} else if result.PlazaEspanaText {
+				// Outside radius but mentions Plaza de España
+				if result.TooOld {
+					result.Kept = false
+					result.FilterReason = "event too old"
+					cityTooOld++
+				} else {
+					result.Kept = true
+					result.FilterReason = "kept (multi-venue: Plaza de España)"
+					result.MultiVenueKept = true
+					cityMultiVenueKept++
+				}
+			} else {
+				// Outside radius and no text match
 				result.Kept = false
 				result.FilterReason = "outside GPS radius"
 				cityOutsideRadius++
-			} else if result.TooOld {
-				result.Kept = false
-				result.FilterReason = "event too old"
-				cityTooOld++
-			} else {
-				result.Kept = true
-				result.FilterReason = "kept"
 			}
 		}
 
@@ -610,7 +648,8 @@ func main() {
 
 	cityFilterDuration := time.Since(cityFilterStart)
 
-	log.Printf("City events after filtering: %d events", len(filteredCityEvents))
+	log.Printf("City events after filtering: %d events (%d by geo, %d by Plaza de España text match)",
+		len(filteredCityEvents), len(filteredCityEvents)-cityMultiVenueKept, cityMultiVenueKept)
 
 	// Geo filter stats for city pipeline (FIXED: use correct counters)
 	buildReport.CityPipeline.Filtering.GeoFilter = &report.GeoFilterStats{

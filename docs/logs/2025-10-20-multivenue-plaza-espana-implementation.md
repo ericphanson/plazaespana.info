@@ -79,5 +79,50 @@ PASS
 
 ### Phase 3: City Events Filtering Logic
 
+#### Task 3.1: Update City Events Filtering to Include Text Matching (45 min)
+**Status:** ✅ Completed
+**Started:** 2025-10-20
+**Completed:** 2025-10-20
+
+**Goal:** Modify city events filtering to keep events that mention Plaza de España, even if outside radius.
+
+**Files modified:**
+- `cmd/buildsite/main.go` - Updated city events filtering logic (lines 551-652):
+  - Added `cityMultiVenueKept` counter
+  - Check Plaza de España text in all events using `filter.MatchesPlazaEspana()`
+  - Updated filtering decision tree:
+    - No coordinates + text match → keep as multi-venue (if not too old)
+    - Has coordinates + within radius → keep by geo (preferred)
+    - Has coordinates + outside radius + text match → keep as multi-venue (if not too old)
+    - All other cases → filter out with appropriate reason
+  - Set `MultiVenueKept` flag and filter reason for text-matched events
+  - Updated logging to show geo vs text kept breakdown
+
+**Filter Logic Priority:**
+1. Check coordinates presence
+2. Check time filter (too old)
+3. For events with coordinates: geo radius takes precedence over text
+4. For events without coordinates: text matching provides fallback
+5. Text-matched events marked with `filter_reason = "kept (multi-venue: Plaza de España)"`
+
+**Logging:**
+```
+City events after filtering: N events (X by geo, Y by Plaza de España text match)
+```
+
+**Test Results:**
+- All existing tests pass
+- Code compiles successfully
+- No regressions
+
+**Notes:**
+- Text matching only applied to city events (not cultural events)
+- Geo filtering remains primary method (within 350m radius)
+- Multi-venue matching is additive (doesn't break existing behavior)
+
+---
+
+### Phase 4: Build Report Integration
+
 **Status:** In Progress
 **Started:** 2025-10-20
