@@ -136,7 +136,7 @@ func main() {
 	// Handle snapshot fallback if ALL sources failed
 	if len(merged) == 0 && allSourcesFailed(pipeResult) {
 		log.Println("All sources failed, loading snapshot...")
-		// TODO: Implement snapshot loading with CanonicalEvent conversion
+		// TODO: Implement snapshot loading with CulturalEvent conversion
 		buildReport.AddWarning("Using stale snapshot data - all fetch attempts failed")
 	} else if len(merged) > 0 {
 		// Save successful merge to snapshot
@@ -148,7 +148,7 @@ func main() {
 	// Filter by location and time
 	now := time.Now().In(loc)
 	geoStart := time.Now()
-	var filteredEvents []event.CanonicalEvent
+	var filteredEvents []event.CulturalEvent
 
 	// Target districts near Plaza de España
 	targetDistricts := map[string]bool{
@@ -240,7 +240,7 @@ func main() {
 		ReferenceTime: now,
 		Timezone:      *timezone,
 		Input:         len(filteredEvents) + pastEvents,
-		ParseFailures: 0, // No parse failures with CanonicalEvent
+		ParseFailures: 0, // No parse failures with CulturalEvent
 		PastEvents:    pastEvents,
 		Kept:          len(filteredEvents),
 		Duration:      0, // Included in geo filter duration
@@ -379,8 +379,8 @@ func allSourcesFailed(result pipeline.PipelineResult) bool {
 	return len(result.JSONEvents) == 0 && len(result.XMLEvents) == 0 && len(result.CSVEvents) == 0
 }
 
-// convertToRawEvents converts CanonicalEvents to RawEvents for snapshot compatibility.
-func convertToRawEvents(canonical []event.CanonicalEvent) []fetch.RawEvent {
+// convertToRawEvents converts CulturalEvents to RawEvents for snapshot compatibility.
+func convertToRawEvents(canonical []event.CulturalEvent) []fetch.RawEvent {
 	raw := make([]fetch.RawEvent, len(canonical))
 	for i, evt := range canonical {
 		raw[i] = fetch.RawEvent{

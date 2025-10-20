@@ -71,13 +71,13 @@ func parseJSONTime(dateStr string, loc *time.Location) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("parsing date %q: %w", dateStr, lastErr)
 }
 
-// ToCanonical converts JSONEvent to CanonicalEvent.
+// ToCanonical converts JSONEvent to CulturalEvent.
 // Returns error if validation fails or required fields are missing.
-func (e JSONEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) {
+func (e JSONEvent) ToCanonical(loc *time.Location) (event.CulturalEvent, error) {
 	// Parse start time (format: "2025-10-25 19:00:00.0")
 	startTime, err := parseJSONTime(e.StartTime, loc)
 	if err != nil {
-		return event.CanonicalEvent{}, fmt.Errorf("parsing start time: %w", err)
+		return event.CulturalEvent{}, fmt.Errorf("parsing start time: %w", err)
 	}
 
 	// Parse end time (format: "2025-10-25 23:59:00.0")
@@ -87,7 +87,7 @@ func (e JSONEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error)
 		endTime = time.Time{}
 	}
 
-	canonical := event.CanonicalEvent{
+	canonical := event.CulturalEvent{
 		ID:          e.ID,
 		Title:       e.Title,
 		Description: e.Description,
@@ -103,7 +103,7 @@ func (e JSONEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error)
 	// Sanitize and validate
 	validate.SanitizeEvent(&canonical)
 	if err := validate.ValidateEvent(canonical); err != nil {
-		return event.CanonicalEvent{}, err
+		return event.CulturalEvent{}, err
 	}
 
 	return canonical, nil
@@ -194,14 +194,14 @@ type XMLResponse struct {
 	Events  []XMLEvent `xml:"contenido"`
 }
 
-// ToCanonical converts XMLEvent to CanonicalEvent.
+// ToCanonical converts XMLEvent to CulturalEvent.
 // Returns error if validation fails or required fields are missing.
-func (e XMLEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) {
+func (e XMLEvent) ToCanonical(loc *time.Location) (event.CulturalEvent, error) {
 	// Import filter package for ParseEventDateTime
 	// Parse times using filter.ParseEventDateTime (handles CSV format)
 	startTime, err := parseXMLTime(e.Fecha, e.Hora, loc)
 	if err != nil {
-		return event.CanonicalEvent{}, fmt.Errorf("parsing start time: %w", err)
+		return event.CulturalEvent{}, fmt.Errorf("parsing start time: %w", err)
 	}
 
 	// Parse end time (no HORA for end time)
@@ -211,7 +211,7 @@ func (e XMLEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) 
 		endTime = time.Time{}
 	}
 
-	canonical := event.CanonicalEvent{
+	canonical := event.CulturalEvent{
 		ID:          e.IDEvento,
 		Title:       e.Titulo,
 		Description: e.Descripcion,
@@ -229,7 +229,7 @@ func (e XMLEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) 
 	// Sanitize and validate
 	validate.SanitizeEvent(&canonical)
 	if err := validate.ValidateEvent(canonical); err != nil {
-		return event.CanonicalEvent{}, err
+		return event.CulturalEvent{}, err
 	}
 
 	return canonical, nil
@@ -293,13 +293,13 @@ type CSVEvent struct {
 	ContentURL        string
 }
 
-// ToCanonical converts CSVEvent to CanonicalEvent.
+// ToCanonical converts CSVEvent to CulturalEvent.
 // Returns error if validation fails or required fields are missing.
-func (e CSVEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) {
+func (e CSVEvent) ToCanonical(loc *time.Location) (event.CulturalEvent, error) {
 	// Parse times using parseXMLTime (CSV uses same format as XML)
 	startTime, err := parseXMLTime(e.Fecha, e.Hora, loc)
 	if err != nil {
-		return event.CanonicalEvent{}, fmt.Errorf("parsing start time: %w", err)
+		return event.CulturalEvent{}, fmt.Errorf("parsing start time: %w", err)
 	}
 
 	// Parse end time (no separate HORA for end time in CSV)
@@ -309,7 +309,7 @@ func (e CSVEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) 
 		endTime = time.Time{}
 	}
 
-	canonical := event.CanonicalEvent{
+	canonical := event.CulturalEvent{
 		ID:          e.IDEvento,
 		Title:       e.Titulo,
 		Description: e.Descripcion,
@@ -327,7 +327,7 @@ func (e CSVEvent) ToCanonical(loc *time.Location) (event.CanonicalEvent, error) 
 	// Sanitize and validate
 	validate.SanitizeEvent(&canonical)
 	if err := validate.ValidateEvent(canonical); err != nil {
-		return event.CanonicalEvent{}, err
+		return event.CulturalEvent{}, err
 	}
 
 	return canonical, nil

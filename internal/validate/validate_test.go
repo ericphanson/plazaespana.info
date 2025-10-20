@@ -11,13 +11,13 @@ import (
 func TestValidateEvent_RequiredFields(t *testing.T) {
 	tests := []struct {
 		name    string
-		event   event.CanonicalEvent
+		event   event.CulturalEvent
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid event with all required fields",
-			event: event.CanonicalEvent{
+			event: event.CulturalEvent{
 				ID:        "12345",
 				Title:     "Concert at Plaza de España",
 				StartTime: time.Now(),
@@ -26,7 +26,7 @@ func TestValidateEvent_RequiredFields(t *testing.T) {
 		},
 		{
 			name: "missing ID",
-			event: event.CanonicalEvent{
+			event: event.CulturalEvent{
 				Title:     "Concert",
 				StartTime: time.Now(),
 			},
@@ -35,7 +35,7 @@ func TestValidateEvent_RequiredFields(t *testing.T) {
 		},
 		{
 			name: "missing Title",
-			event: event.CanonicalEvent{
+			event: event.CulturalEvent{
 				ID:        "12345",
 				StartTime: time.Now(),
 			},
@@ -44,7 +44,7 @@ func TestValidateEvent_RequiredFields(t *testing.T) {
 		},
 		{
 			name: "missing StartTime",
-			event: event.CanonicalEvent{
+			event: event.CulturalEvent{
 				ID:    "12345",
 				Title: "Concert",
 			},
@@ -53,7 +53,7 @@ func TestValidateEvent_RequiredFields(t *testing.T) {
 		},
 		{
 			name: "multiple missing fields",
-			event: event.CanonicalEvent{
+			event: event.CulturalEvent{
 				Description: "A great event",
 			},
 			wantErr: true,
@@ -79,7 +79,7 @@ func TestValidateEvent_RequiredFields(t *testing.T) {
 }
 
 func TestValidateEvent_CoordinateBounds(t *testing.T) {
-	baseEvent := event.CanonicalEvent{
+	baseEvent := event.CulturalEvent{
 		ID:        "12345",
 		Title:     "Concert",
 		StartTime: time.Now(),
@@ -187,7 +187,7 @@ func TestValidateEvent_CoordinateBounds(t *testing.T) {
 }
 
 func TestSanitizeEvent_Whitespace(t *testing.T) {
-	evt := event.CanonicalEvent{
+	evt := event.CulturalEvent{
 		ID:        "  12345  ",
 		Title:     "\tConcert at Plaza\n",
 		VenueName: "  Teatro Real  ",
@@ -239,7 +239,7 @@ func TestSanitizeEvent_DefaultEndTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			evt := event.CanonicalEvent{
+			evt := event.CulturalEvent{
 				ID:        "12345",
 				Title:     "Concert",
 				StartTime: tt.startTime,
@@ -267,7 +267,7 @@ func TestSanitizeEvent_DefaultEndTime(t *testing.T) {
 }
 
 func TestSanitizeEvent_DeduplicateSources(t *testing.T) {
-	evt := event.CanonicalEvent{
+	evt := event.CulturalEvent{
 		ID:      "12345",
 		Title:   "Concert",
 		Sources: []string{"JSON", "XML", "JSON", "CSV", "XML"},

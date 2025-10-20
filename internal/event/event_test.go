@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-// TestCanonicalEvent_Creation verifies that CanonicalEvent can be created
+// TestCulturalEvent_Creation verifies that CulturalEvent can be created
 // with all fields populated correctly.
-func TestCanonicalEvent_Creation(t *testing.T) {
+func TestCulturalEvent_Creation(t *testing.T) {
 	madrid := time.FixedZone("Europe/Madrid", 3600) // CET (UTC+1)
 	startTime := time.Date(2025, 10, 20, 19, 0, 0, 0, madrid)
 	endTime := time.Date(2025, 10, 20, 22, 0, 0, 0, madrid)
 
-	event := CanonicalEvent{
+	event := CulturalEvent{
 		ID:          "event-123",
 		Title:       "Test Event",
 		Description: "A test event description",
@@ -94,7 +94,7 @@ func TestSourcedEvent_Tracking(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			canonical := CanonicalEvent{
+			canonical := CulturalEvent{
 				ID:      tt.eventID,
 				Title:   "Test Event",
 				Sources: []string{tt.source},
@@ -128,7 +128,7 @@ func TestSourcedEvent_Tracking(t *testing.T) {
 func TestParseResult_Creation(t *testing.T) {
 	// Create a successful event
 	successEvent := SourcedEvent{
-		Event: CanonicalEvent{
+		Event: CulturalEvent{
 			ID:      "success-1",
 			Title:   "Successful Event",
 			Sources: []string{"JSON"},

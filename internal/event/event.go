@@ -2,9 +2,9 @@ package event
 
 import "time"
 
-// CanonicalEvent represents an event in our internal format.
+// CulturalEvent represents an event in our internal format.
 // All parsers convert to this structure.
-type CanonicalEvent struct {
+type CulturalEvent struct {
 	// Core fields
 	ID          string
 	Title       string
@@ -28,9 +28,14 @@ type CanonicalEvent struct {
 	Sources []string // ["JSON", "XML", "CSV"]
 }
 
+// EventType returns the type of this event.
+func (e CulturalEvent) EventType() string {
+	return "cultural"
+}
+
 // SourcedEvent wraps an event with its source.
 type SourcedEvent struct {
-	Event  CanonicalEvent
+	Event  CulturalEvent
 	Source string // "JSON", "XML", or "CSV"
 }
 

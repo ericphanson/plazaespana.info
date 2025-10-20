@@ -8,9 +8,9 @@ import (
 	"github.com/ericphanson/madrid-events/internal/event"
 )
 
-// ValidateEvent checks if canonical event has required fields.
+// ValidateEvent checks if cultural event has required fields.
 // Returns error if critical data is missing or invalid.
-func ValidateEvent(evt event.CanonicalEvent) error {
+func ValidateEvent(evt event.CulturalEvent) error {
 	var issues []string
 
 	// Required fields
@@ -41,7 +41,7 @@ func ValidateEvent(evt event.CanonicalEvent) error {
 }
 
 // SanitizeEvent fixes common data quality issues.
-func SanitizeEvent(evt *event.CanonicalEvent) {
+func SanitizeEvent(evt *event.CulturalEvent) {
 	// Trim whitespace
 	evt.ID = strings.TrimSpace(evt.ID)
 	evt.Title = strings.TrimSpace(evt.Title)

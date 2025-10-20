@@ -106,7 +106,7 @@ func (p *Pipeline) fetchCSVIsolated() (events []event.SourcedEvent, errors []eve
 
 // Merge combines events from all sources and deduplicates.
 // Events found in multiple sources will have all sources tracked.
-func (p *Pipeline) Merge(result PipelineResult) []event.CanonicalEvent {
+func (p *Pipeline) Merge(result PipelineResult) []event.CulturalEvent {
 	// Combine all events
 	var all []event.SourcedEvent
 	all = append(all, result.JSONEvents...)
@@ -114,7 +114,7 @@ func (p *Pipeline) Merge(result PipelineResult) []event.CanonicalEvent {
 	all = append(all, result.CSVEvents...)
 
 	// Deduplicate by ID, tracking sources
-	seen := make(map[string]*event.CanonicalEvent)
+	seen := make(map[string]*event.CulturalEvent)
 
 	for _, sourced := range all {
 		if existing, found := seen[sourced.Event.ID]; found {
@@ -150,7 +150,7 @@ func (p *Pipeline) Merge(result PipelineResult) []event.CanonicalEvent {
 	}
 
 	// Convert map to slice
-	merged := make([]event.CanonicalEvent, 0, len(seen))
+	merged := make([]event.CulturalEvent, 0, len(seen))
 	for _, evt := range seen {
 		merged = append(merged, *evt)
 	}
