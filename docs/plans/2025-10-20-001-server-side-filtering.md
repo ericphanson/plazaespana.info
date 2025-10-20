@@ -1,8 +1,14 @@
-# Implementation Plan: Maximum Server-Side Filtering
+# Implementation Plan 001: Maximum Server-Side Filtering
+
+**Date:** 2025-10-20
+**Plan ID:** 2025-10-20-001
+**Status:** Not Started (Blocked - Network Access Issues)
 
 **Goal:** Leverage Madrid's API capabilities to minimize client-side work and create a true "Plaza de España feed" that's essentially a pass-through from Madrid's API.
 
 **Philosophy:** Let the server do the heavy lifting. We just format and present.
+
+**Important Note:** NFSN deployment is out of scope for this plan. We need to resolve network/firewall issues in the development environment to test API filtering capabilities. This is acceptable - we can adjust firewall/network settings locally.
 
 ---
 
@@ -72,33 +78,71 @@ Benefits:
 
 ## Implementation Plan
 
-### Phase 1: Test Server-Side Filtering (REQUIRED)
+### Phase 1: Resolve Network Access (REQUIRED)
 
-**Goal:** Verify API radius search works correctly
+**Goal:** Fix network/firewall issues to test API filtering
 
-#### Task 1.1: Deploy Current Code to Production
-**Why:** Container has network issues, must test from NFSN FreeBSD server
+**Current Issue:** Container cannot reach datos.madrid.es
+- All curl/wget attempts result in 0-byte files or timeouts
+- HTTP 302/307 redirects but no data received
+- Likely firewall/network configuration issue
+
+#### Task 1.1: Diagnose Network Issue
+**Location:** Development environment (container/host)
 
 **Steps:**
 ```bash
-# 1. Build FreeBSD binary
-just freebsd
+# 1. Test from host machine (outside container)
+curl -I "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json"
 
-# 2. Upload to NFSN
-scp build/buildsite username@ssh.phx.nearlyfreespeech.net:/home/bin/
+# 2. Check DNS resolution
+nslookup datos.madrid.es
+dig datos.madrid.es
 
-# 3. Test from production
-ssh username@ssh.phx.nearlyfreespeech.net
-cd /home
-./bin/buildsite -json-url "https://datos.madrid.es/..." -out-dir /tmp/test
+# 3. Test with different tools
+wget --spider "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json"
+
+# 4. Check for proxy/firewall
+echo $HTTP_PROXY $HTTPS_PROXY
+env | grep -i proxy
 ```
 
-**Success Criteria:** Binary runs, fetches events, no network errors
+**Success Criteria:** Identify why container can't reach datos.madrid.es
 
 **Estimated Time:** 30 minutes
 
-#### Task 1.2: Test Radius Search API
-**Location:** From NFSN production server
+#### Task 1.2: Fix Network/Firewall Configuration
+**Potential Solutions:**
+
+**Option A: Adjust container network settings**
+```yaml
+# .devcontainer/devcontainer.json
+{
+  "runArgs": ["--network=host"],  // Use host network
+  // or
+  "runArgs": ["--dns=8.8.8.8", "--dns=8.8.4.4"]  // Use Google DNS
+}
+```
+
+**Option B: Configure proxy/firewall rules**
+```bash
+# If behind corporate firewall
+export HTTP_PROXY=http://proxy.example.com:8080
+export HTTPS_PROXY=http://proxy.example.com:8080
+```
+
+**Option C: Test from host machine directly**
+```bash
+# Run curl from host, not container
+# Then proceed with implementation
+```
+
+**Success Criteria:** Can successfully download from datos.madrid.es
+
+**Estimated Time:** 30-60 minutes
+
+#### Task 1.3: Test Radius Search API
+**Location:** Once network access works
 
 **Test A: Radius Search (Primary)**
 ```bash
