@@ -48,7 +48,7 @@ Thumbs.db
 # Public/generated output
 public/
 
-# Data files
+# Data files (includes snapshots, http-cache, request-audit.json)
 data/
 last_success.*
 events-normalized.json

@@ -27,6 +27,29 @@ json_path = "public/events.json"
 [snapshot]
 data_dir = "data"
 
+[fetch]
+# Respectful upstream fetching configuration
+# Mode: "production" for hourly cron, "development" for frequent testing
+mode = "development"
+
+# Development mode settings (used during frequent testing):
+# - Cache TTL: 1 hour (aggressive caching to avoid hitting upstream)
+# - Min delay: 5 seconds between requests to same host
+# - Max request rate: 1 request per 5 minutes per URL
+# - Logs warnings when making real HTTP requests
+
+# Production mode settings (used for hourly cron):
+# - Cache TTL: 30 minutes (fresh data)
+# - Min delay: 2 seconds between requests to same host
+# - Max request rate: 1 request per hour per URL
+# - Standard respectful behavior for automated systems
+
+# HTTP cache directory (created automatically)
+cache_dir = "data/http-cache"
+
+# Request audit trail (tracks all HTTP requests with timing/cache hits)
+audit_path = "data/request-audit.json"
+
 [server]
 # For development only
 port = 8080

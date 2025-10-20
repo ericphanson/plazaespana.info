@@ -131,6 +131,74 @@ justfile                           # Task automation (just command runner)
 - **Graceful degradation**: Missing fields (e.g., HORA) treated as all-day events
 - **Timezone normalization**: All times parsed to Europe/Madrid
 
+### Respectful Upstream Fetching
+
+**Problem:** During development, we run builds 10-20+ times per hour to test changes. Without throttling, this looks like an attack to upstream servers (datos.madrid.es, esmadrid.com) and could get us blocked.
+
+**Solution:** Comprehensive respectful fetching system with dual modes:
+
+**Development Mode** (default, for frequent testing):
+- **Cache TTL**: 1 hour (aggressive caching to minimize upstream hits)
+- **Min delay**: 5 seconds between requests to same host
+- **Rate limit**: 1 request per 5 minutes per URL
+- **Logging**: `[development] Waiting 5s before fetching...`
+- **Purpose**: Allows rapid testing without hitting upstream servers
+
+**Production Mode** (for hourly cron):
+- **Cache TTL**: 30 minutes (fresh data every cron run)
+- **Min delay**: 2 seconds between requests to same host
+- **Rate limit**: 1 request per hour per URL
+- **Purpose**: Standard respectful behavior for automated systems
+
+**Implementation:**
+```
+internal/fetch/
+  mode.go       # ClientMode types, ProductionMode/DevelopmentMode configs
+  cache.go      # HTTPCache with TTL, If-Modified-Since, atomic writes
+  throttle.go   # RequestThrottle enforces per-host delays
+  audit.go      # RequestAuditor tracks all HTTP requests
+  client.go     # fetch() method integrates all respectful features
+```
+
+**Features:**
+1. **HTTP Caching**:
+   - Persistent cache stored in `data/http-cache/` (SHA256 filenames)
+   - Uses `If-Modified-Since` headers to minimize bandwidth
+   - Server returns 304 Not Modified → use cached data (no body transfer)
+   - Cache hit: No HTTP request, instant return
+
+2. **Request Throttling**:
+   - Per-host minimum delays (tracks last request time per hostname)
+   - Enforced via `time.Sleep()` in both fetch() and pipeline
+   - User-visible logging: `[Pipeline] Waiting 5s before fetching next format (respectful delay)...`
+
+3. **Rate Limit Detection**:
+   - Detects 429 (Too Many Requests), 403 (Forbidden), 503 (Service Unavailable)
+   - Marks requests as rate-limited in audit trail
+   - Clear error messages if blocked
+
+4. **Request Auditing**:
+   - Every HTTP request tracked in `data/request-audit.json`
+   - Records: URL, timestamp, cache hit, status code, delay, errors
+   - Used for build reports and debugging
+
+**Pipeline Integration:**
+- Explicit delays between JSON → XML → CSV fetches
+- Both pipeline sleep + fetch throttle (double protection)
+- Clear logging: User always knows why build is slow
+
+**Configuration:** (config.toml)
+```toml
+[fetch]
+mode = "development"  # or "production"
+cache_dir = "data/http-cache"
+audit_path = "data/request-audit.json"
+```
+
+**Flag:** Use `-fetch-mode production` for cron jobs, `-fetch-mode development` (default) for testing.
+
+**Result:** Safe to run `just dev` 20+ times during development without risk of getting blocked.
+
 ### Build Report
 
 Every build generates an HTML report (`public/build-report.html`) with detailed metrics tracking both data pipelines:

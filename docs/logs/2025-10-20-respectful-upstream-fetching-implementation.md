@@ -401,3 +401,39 @@ Implement comprehensive respectful fetching system to prevent API abuse during b
 - Double protection: pipeline sleep + fetch throttle
 
 ---
+
+## Phase 4: Configuration & Documentation
+
+### Task 4.1-4.3: Update Config and Documentation
+
+**Status:** ✅ Complete
+**Time:** 2025-10-20
+
+**Files Modified:**
+- `config.toml` - Add [fetch] section
+- `.gitignore` - Update data/ comment
+- `CLAUDE.md` - Add "Respectful Upstream Fetching" section
+
+**Changes:**
+
+1. **config.toml**:
+   - Added [fetch] section with mode, cache_dir, audit_path
+   - Documented both development and production mode settings
+   - Clear comments explaining cache TTL, delays, and rate limits
+
+2. **.gitignore**:
+   - Updated data/ comment to clarify it includes http-cache and request-audit.json
+   - No new ignores needed (data/ already covers everything)
+
+3. **CLAUDE.md**:
+   - Added comprehensive "Respectful Upstream Fetching" section (67 lines)
+   - Explains problem (development testing looks like attack)
+   - Documents development vs production modes
+   - Lists all implementation files (mode, cache, throttle, audit)
+   - Details HTTP caching, throttling, rate limit detection, auditing
+   - Shows configuration and flag usage
+   - Result: Safe to run `just dev` 20+ times without risk
+
+**Result:** Complete documentation of respectful fetching system
+
+---
