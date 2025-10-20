@@ -649,6 +649,7 @@ func main() {
 			ID:         evt.ID,
 			Title:      evt.Title,
 			StartTime:  evt.StartTime.Format(time.RFC3339),
+			EndTime:    evt.EndTime.Format(time.RFC3339), // ADDED: Include end time
 			VenueName:  evt.VenueName,
 			DetailsURL: evt.DetailsURL,
 		})
@@ -660,6 +661,7 @@ func main() {
 			ID:         evt.ID,
 			Title:      evt.Title,
 			StartTime:  evt.StartDate.Format(time.RFC3339),
+			EndTime:    evt.EndDate.Format(time.RFC3339), // ADDED: Include end time
 			VenueName:  evt.Venue,
 			DetailsURL: evt.WebURL,
 		})

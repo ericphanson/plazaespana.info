@@ -313,3 +313,70 @@ evt.Sources = deduplicateStrings(evt.Sources)
 - Simple fix with significant impact on metrics accuracy
 - Preserves source order for consistency
 - No performance impact (O(n) with small n)
+
+---
+
+#### Task 4.2: Add EndTime to JSON Output (15 min)
+**Status:** In Progress
+**Started:** 2025-10-20
+
+**Goal:** Populate EndTime field in JSON API output so consumers can see event end times.
+
+**Problem:**
+- JSONEvent struct has EndTime field but it's not populated
+- Cultural events only show StartTime
+- City events only show StartDate
+- Consumers cannot see when events end
+
+**Solution:** Populate EndTime in culturalToJSON and cityToJSON conversion functions.
+
+**Files to modify:**
+- `internal/render/json.go` - JSONEvent population
+
+**Implementation:**
+1. ✅ Located JSONEvent creation in main.go (lines 648, 659)
+2. ✅ Added EndTime for cultural events: `evt.EndTime.Format(time.RFC3339)`
+3. ✅ Added EndTime for city events: `evt.EndDate.Format(time.RFC3339)`
+4. ✅ Verified JSON struct already has `json:"end_time,omitempty"` tag
+5. ✅ Build successful, all render tests passing
+
+**Changes:**
+- Cultural events JSON: Added EndTime field from evt.EndTime
+- City events JSON: Added EndTime field from evt.EndDate
+- Both formatted as RFC3339 (consistent with StartTime)
+
+**Before:**
+```json
+{
+  "id": "123",
+  "title": "Concert",
+  "start_time": "2025-10-25T19:00:00+02:00",
+  "venue_name": "Teatro"
+}
+```
+
+**After:**
+```json
+{
+  "id": "123",
+  "title": "Concert",
+  "start_time": "2025-10-25T19:00:00+02:00",
+  "end_time": "2025-10-25T21:00:00+02:00",
+  "venue_name": "Teatro"
+}
+```
+
+**Status:** ✅ Complete
+**Completed:** 2025-10-20
+
+**Impact:**
+- JSON API consumers can now see event end times
+- Better event scheduling for downstream systems
+- Improved API completeness and usability
+- omitempty ensures zero times are omitted
+
+**Notes:**
+- Simple one-line addition per event type
+- RFC3339 format consistent with existing StartTime
+- Backward compatible (new field, omitempty for zero values)
+- All tests passing
