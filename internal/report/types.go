@@ -82,14 +82,15 @@ type MergeStats struct {
 
 // GeoFilterStats tracks geographic filtering.
 type GeoFilterStats struct {
-	RefLat        float64
-	RefLon        float64
-	Radius        float64
-	Input         int
-	MissingCoords int
-	OutsideRadius int
-	Kept          int
-	Duration      time.Duration
+	RefLat         float64
+	RefLon         float64
+	Radius         float64
+	Input          int
+	MissingCoords  int
+	OutsideRadius  int
+	Kept           int
+	MultiVenueKept int           `json:"multi_venue_kept,omitempty"` // City events only: kept via Plaza de España text match
+	Duration       time.Duration
 }
 
 // TimeFilterStats tracks time-based filtering.

@@ -653,14 +653,15 @@ func main() {
 
 	// Geo filter stats for city pipeline (FIXED: use correct counters)
 	buildReport.CityPipeline.Filtering.GeoFilter = &report.GeoFilterStats{
-		RefLat:        cfg.Filter.Latitude,
-		RefLon:        cfg.Filter.Longitude,
-		Radius:        cfg.Filter.RadiusKm,
-		Input:         len(allCityEvents),
-		MissingCoords: cityMissingCoords, // FIXED: Track actual missing coordinates
-		OutsideRadius: cityOutsideRadius, // FIXED: Only "outside GPS radius" events
-		Kept:          len(filteredCityEvents),
-		Duration:      cityFilterDuration,
+		RefLat:         cfg.Filter.Latitude,
+		RefLon:         cfg.Filter.Longitude,
+		Radius:         cfg.Filter.RadiusKm,
+		Input:          len(allCityEvents),
+		MissingCoords:  cityMissingCoords,  // FIXED: Track actual missing coordinates
+		OutsideRadius:  cityOutsideRadius,  // FIXED: Only "outside GPS radius" events
+		Kept:           len(filteredCityEvents),
+		MultiVenueKept: cityMultiVenueKept, // NEW: Count of events kept via Plaza de España text match
+		Duration:       cityFilterDuration,
 	}
 
 	// Time filter stats for city pipeline (included in geo filter duration)

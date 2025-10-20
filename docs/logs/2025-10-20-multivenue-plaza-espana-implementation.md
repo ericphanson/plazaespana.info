@@ -124,5 +124,43 @@ City events after filtering: N events (X by geo, Y by Plaza de España text matc
 
 ### Phase 4: Build Report Integration
 
+#### Task 4.1: Add Multi-Venue Stats to Build Report (20 min)
+**Status:** ✅ Completed
+**Started:** 2025-10-20
+**Completed:** 2025-10-20
+
+**Goal:** Track and display multi-venue kept events in build report.
+
+**Files modified:**
+- `internal/report/types.go` - Extended GeoFilterStats struct:
+  - Added `MultiVenueKept int` field with JSON tag `multi_venue_kept,omitempty`
+  - Comment indicates "City events only: kept via Plaza de España text match"
+- `cmd/buildsite/main.go` - Populated multi-venue stats:
+  - Added `MultiVenueKept: cityMultiVenueKept` to GeoFilterStats initialization
+  - This tracks count of events kept via text matching
+
+**Build Report Structure:**
+```json
+{
+  "city_pipeline": {
+    "filtering": {
+      "geo_filter": {
+        "kept": N,
+        "multi_venue_kept": Y  // NEW: subset of kept that are text-matched
+      }
+    }
+  }
+}
+```
+
+**Notes:**
+- Field uses `omitempty` tag (won't appear for cultural events where it's 0)
+- Backward compatible (additive field only)
+- Provides visibility into text-matching effectiveness
+
+---
+
+### Phase 5: Testing
+
 **Status:** In Progress
 **Started:** 2025-10-20
