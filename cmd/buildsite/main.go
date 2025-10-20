@@ -215,12 +215,11 @@ func main() {
 	}
 
 	// =====================================================================
-	// CULTURAL EVENTS PIPELINE: Filter by location and time
+	// CULTURAL EVENTS PIPELINE: Tag events with filter decisions
 	// =====================================================================
 	log.Println("\n=== Cultural Events Pipeline ===")
 	now := time.Now().In(loc)
 	geoStart := time.Now()
-	var filteredEvents []event.CulturalEvent
 
 	// Target districts from config
 	targetDistricts := make(map[string]bool)
@@ -237,6 +236,7 @@ func main() {
 		"conde duque",
 	}
 
+	// Stats counters (for logging)
 	missingDistr := 0
 	missingBoth := 0
 	byDistrito := 0
@@ -245,45 +245,81 @@ func main() {
 	outsideAll := 0
 	pastEvents := 0
 
+	// Step 1: Evaluate all filters for all events and record results
+	// Non-destructive: Keep ALL events in memory
+	allEvents := make([]event.CulturalEvent, 0, len(merged))
 	for _, evt := range merged {
-		// Priority 1: Filter by distrito (works for 95% of events)
-		if evt.Distrito != "" {
-			if targetDistricts[evt.Distrito] {
+		result := event.FilterResult{}
+
+		// Evaluate distrito filter
+		result.HasDistrito = (evt.Distrito != "")
+		result.Distrito = evt.Distrito
+		if result.HasDistrito {
+			result.DistritoMatched = targetDistricts[evt.Distrito]
+		}
+
+		// Evaluate GPS filter
+		result.HasCoordinates = (evt.Latitude != 0 && evt.Longitude != 0)
+		if result.HasCoordinates {
+			result.GPSDistanceKm = filter.HaversineDistance(
+				cfg.Filter.Latitude, cfg.Filter.Longitude,
+				evt.Latitude, evt.Longitude)
+			result.WithinRadius = (result.GPSDistanceKm <= cfg.Filter.RadiusKm)
+		}
+
+		// Evaluate text matching
+		result.TextMatched = filter.MatchesLocation(
+			evt.VenueName, evt.Address, evt.Description, locationKeywords)
+
+		// Evaluate time filter
+		result.StartDate = evt.StartTime
+		result.EndDate = evt.EndTime
+		result.DaysOld = int(now.Sub(evt.StartTime).Hours() / 24)
+		cutoffWeeksAgo := now.AddDate(0, 0, -7*cfg.Filter.PastEventsWeeks)
+		result.TooOld = evt.StartTime.Before(cutoffWeeksAgo)
+
+		// Decide if kept (SAME logic as before, but record instead of filtering)
+		if result.HasDistrito && !result.DistritoMatched {
+			result.Kept = false
+			result.FilterReason = "outside target distrito"
+			outsideAll++
+		} else if result.HasCoordinates && !result.WithinRadius && !result.HasDistrito {
+			result.Kept = false
+			result.FilterReason = "outside GPS radius"
+			outsideAll++
+		} else if result.TooOld {
+			result.Kept = false
+			result.FilterReason = "event too old"
+			pastEvents++
+		} else {
+			result.Kept = true
+			result.FilterReason = "kept"
+
+			// Count kept events by location method (for logging)
+			if result.HasDistrito && result.DistritoMatched {
 				byDistrito++
-				// Skip to time filter
-			} else {
-				outsideAll++
-				continue
-			}
-		} else if evt.Latitude != 0 && evt.Longitude != 0 {
-			// Priority 2: GPS coordinates available, use radius
-			if filter.WithinRadius(cfg.Filter.Latitude, cfg.Filter.Longitude, evt.Latitude, evt.Longitude, cfg.Filter.RadiusKm) {
+			} else if result.HasCoordinates && result.WithinRadius {
 				byRadius++
 				missingDistr++
 			} else {
-				outsideAll++
-				continue
+				// No distrito, no coords - included by default
+				missingBoth++
+				if result.TextMatched {
+					byTextMatch++
+				}
 			}
-		} else {
-			// Priority 3: No distrito, no coords - INCLUDE by default (be inclusive)
-			// Rationale: Incomplete data doesn't mean irrelevant event
-			missingBoth++
-			// Still track text matches for reporting
-			if filter.MatchesLocation(evt.VenueName, evt.Address, evt.Description, locationKeywords) {
-				byTextMatch++
-			}
-			// Note: We used to filter out non-matching events here, but now we keep everything
 		}
 
-		// Filter out events that started more than N weeks ago
-		// (Even if still ongoing, we don't care about old exhibitions)
-		cutoffWeeksAgo := now.AddDate(0, 0, -7*cfg.Filter.PastEventsWeeks)
-		if evt.StartTime.Before(cutoffWeeksAgo) {
-			pastEvents++
-			continue
-		}
+		evt.FilterResult = result
+		allEvents = append(allEvents, evt) // Keep ALL events
+	}
 
-		filteredEvents = append(filteredEvents, evt)
+	// Step 2: Separate kept events for rendering
+	var filteredEvents []event.CulturalEvent
+	for _, evt := range allEvents {
+		if evt.FilterResult.Kept {
+			filteredEvents = append(filteredEvents, evt)
+		}
 	}
 
 	log.Printf("Filtered by distrito: %d, by radius: %d, by text: %d", byDistrito, byRadius, byTextMatch)

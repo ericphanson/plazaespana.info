@@ -82,3 +82,42 @@ Implement comprehensive audit trail system that tracks all events through the fi
 **Result**: Audit export module ready to integrate into build pipeline
 
 ---
+
+### Task 3: Refactor Cultural Events Filtering
+
+**Status**: ✅ Complete
+**Time**: 2025-10-20
+
+**Goal**: Change cultural events filtering from destructive (remove events) to non-destructive (tag events)
+
+**Changes Made**:
+1. Updated `cmd/buildsite/main.go` (lines 217-323):
+   - **Step 1**: Evaluate ALL filters for ALL events
+     - Evaluate distrito filter (hasDistrito, distritoMatched)
+     - Evaluate GPS filter (hasCoordinates, gpsDistanceKm, withinRadius)
+     - Evaluate text matching filter
+     - Evaluate time filter (daysOld, tooOld)
+     - Record final decision (kept, filterReason)
+   - **Step 2**: Separate kept events for rendering
+   - Removed all `continue` statements (no early exits)
+   - Record FilterResult for each event
+   - Keep all events in `allEvents` slice
+
+2. Preserved existing behavior:
+   - Same filter logic (distrito → GPS → text → time)
+   - Same stats counting for logging
+   - Same final output (219 cultural events)
+
+**Key Improvements**:
+- Non-destructive: All events kept in memory
+- Complete audit trail: Every event has FilterResult
+- No data loss: Can see why each event was filtered
+- Same performance: Single pass through events
+
+**Verification**:
+- ✅ Build successful: `go build ./cmd/buildsite`
+- ✅ All tests pass: `go test ./...` (10 packages)
+
+**Result**: Cultural events filtering now tags instead of removes, ready for audit export
+
+---
