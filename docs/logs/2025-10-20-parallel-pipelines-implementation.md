@@ -281,6 +281,54 @@ if timeStr != "" {
 
 This confirms the three sources have significant overlap but aren't identical - robust multi-source fetching is valuable!
 
-**Next:** Task 6 (update build reporting) - skipped for now, moving to Task 7 (main.go integration)
+**Next:** Tasks 6 & 7 (update reporting and main.go integration)
+
+---
+
+## Phase 3: Integration
+
+### Tasks 6 & 7: Update Build Reporting and main.go Integration
+
+**Status:** COMPLETED
+**Completed:** 2025-10-20 04:00:00
+
+**Implementation:**
+
+✅ Updated `internal/report/types.go`:
+- Changed FetchReport from array-based to named fields (JSON, XML, CSV)
+- Added MergeStats struct with source coverage tracking
+- Replaced Deduplication with Merge in ProcessingReport
+
+✅ Updated `internal/report/markdown.go`:
+- Multi-source fetch table showing all 3 sources
+- Merge & Deduplication section with source coverage
+- Pie chart visualization of source coverage
+- Updated pipeline flow diagram
+- Updated performance metrics
+
+✅ Completely rewrote `cmd/buildsite/main.go`:
+- Removed old fallback chain logic
+- Added pipeline-based fetching (all 3 sources)
+- Implemented merge with source tracking
+- Updated filtering to work with CanonicalEvent
+- Added helper functions:
+  - createFetchAttempt() - converts pipeline results to FetchAttempt
+  - allSourcesFailed() - checks if all sources failed
+  - convertToRawEvents() - converts CanonicalEvent to RawEvent for snapshot
+
+**Key Changes:**
+- No more fallback chain - all 3 sources fetched independently
+- Deduplication happens during merge, tracking which sources had each event
+- Filtering operates on CanonicalEvent (no more RawEvent conversion)
+- Build reports now show detailed multi-source statistics
+
+**Test Results:** All 28 tests passing
+
+**Benefits:**
+- More robust: one source failing doesn't prevent others from working
+- Better visibility: can see which events came from which sources
+- Cleaner architecture: no RawEvent → CanonicalEvent → RawEvent conversions (except for snapshot compatibility)
+
+**Next:** Commit and create summary
 
 ---

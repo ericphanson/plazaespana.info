@@ -23,8 +23,10 @@ type BuildReport struct {
 
 // FetchReport tracks data fetching attempts.
 type FetchReport struct {
-	Attempts      []FetchAttempt
-	SourceUsed    string // "JSON", "XML", "CSV", "SNAPSHOT"
+	JSON FetchAttempt
+	XML  FetchAttempt
+	CSV  FetchAttempt
+
 	TotalDuration time.Duration
 }
 
@@ -43,9 +45,27 @@ type FetchAttempt struct {
 
 // ProcessingReport tracks data processing steps.
 type ProcessingReport struct {
-	Deduplication DeduplicationStats
-	GeoFilter     GeoFilterStats
-	TimeFilter    TimeFilterStats
+	Merge      MergeStats
+	GeoFilter  GeoFilterStats
+	TimeFilter TimeFilterStats
+}
+
+// MergeStats tracks multi-source merging and deduplication.
+type MergeStats struct {
+	JSONEvents int
+	XMLEvents  int
+	CSVEvents  int
+
+	TotalBeforeMerge int
+	UniqueEvents     int
+	Duplicates       int
+
+	// Source coverage
+	InAllThree   int // Events found in all 3 sources
+	InTwoSources int // Events found in 2 sources
+	InOneSource  int // Events found in only 1 source
+
+	Duration time.Duration
 }
 
 // DeduplicationStats tracks event deduplication.
