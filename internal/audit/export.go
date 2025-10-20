@@ -23,30 +23,27 @@ type AuditFile struct {
 
 // AuditPipeline tracks all events and filtering decisions for one pipeline.
 type AuditPipeline struct {
-	Total           int                  `json:"total"`
-	Kept            int                  `json:"kept"`
-	Filtered        int                  `json:"filtered"`
-	FilterBreakdown map[string]int       `json:"filter_breakdown"`
-	Events          []event.CulturalEvent `json:"events,omitempty"` // Will be CulturalEvent or CityEvent depending on pipeline
-}
-
-// CityAuditPipeline is a variant for city events with proper typing.
-type CityAuditPipeline struct {
 	Total           int                `json:"total"`
 	Kept            int                `json:"kept"`
 	Filtered        int                `json:"filtered"`
 	FilterBreakdown map[string]int     `json:"filter_breakdown"`
-	Events          []event.CityEvent  `json:"events"`
+	Events          []json.RawMessage  `json:"events"` // Raw JSON to support different event types
 }
 
 // SaveAuditJSON exports complete audit trail to JSON file.
 // Includes all events (kept + filtered) with filter decisions.
 func SaveAuditJSON(culturalEvents []event.CulturalEvent, cityEvents []event.CityEvent, path string, buildTime time.Time, duration time.Duration) error {
 	// Process cultural events
-	culturalPipeline := processCulturalEvents(culturalEvents)
+	culturalPipeline, err := processCulturalEvents(culturalEvents)
+	if err != nil {
+		return fmt.Errorf("processing cultural events: %w", err)
+	}
 
 	// Process city events
-	cityPipeline := processCityEvents(cityEvents)
+	cityPipeline, err := processCityEvents(cityEvents)
+	if err != nil {
+		return fmt.Errorf("processing city events: %w", err)
+	}
 
 	// Build audit file
 	audit := AuditFile{
@@ -54,12 +51,7 @@ func SaveAuditJSON(culturalEvents []event.CulturalEvent, cityEvents []event.City
 		BuildDuration:  duration.Seconds(),
 		TotalEvents:    len(culturalEvents) + len(cityEvents),
 		CulturalEvents: culturalPipeline,
-		CityEvents: AuditPipeline{
-			Total:           cityPipeline.Total,
-			Kept:            cityPipeline.Kept,
-			Filtered:        cityPipeline.Filtered,
-			FilterBreakdown: cityPipeline.FilterBreakdown,
-		},
+		CityEvents:     cityPipeline,
 	}
 
 	// Marshal to JSON
@@ -87,14 +79,14 @@ func SaveAuditJSON(culturalEvents []event.CulturalEvent, cityEvents []event.City
 }
 
 // processCulturalEvents analyzes cultural events and builds pipeline stats.
-func processCulturalEvents(events []event.CulturalEvent) AuditPipeline {
+func processCulturalEvents(events []event.CulturalEvent) (AuditPipeline, error) {
 	pipeline := AuditPipeline{
 		Total:           len(events),
 		FilterBreakdown: make(map[string]int),
-		Events:          events, // Include all events
+		Events:          make([]json.RawMessage, len(events)),
 	}
 
-	for _, evt := range events {
+	for i, evt := range events {
 		if evt.FilterResult.Kept {
 			pipeline.Kept++
 		} else {
@@ -105,20 +97,27 @@ func processCulturalEvents(events []event.CulturalEvent) AuditPipeline {
 		if evt.FilterResult.FilterReason != "" {
 			pipeline.FilterBreakdown[evt.FilterResult.FilterReason]++
 		}
+
+		// Marshal event to JSON
+		data, err := json.Marshal(evt)
+		if err != nil {
+			return pipeline, fmt.Errorf("marshaling cultural event %s: %w", evt.ID, err)
+		}
+		pipeline.Events[i] = data
 	}
 
-	return pipeline
+	return pipeline, nil
 }
 
 // processCityEvents analyzes city events and builds pipeline stats.
-func processCityEvents(events []event.CityEvent) CityAuditPipeline {
-	pipeline := CityAuditPipeline{
+func processCityEvents(events []event.CityEvent) (AuditPipeline, error) {
+	pipeline := AuditPipeline{
 		Total:           len(events),
 		FilterBreakdown: make(map[string]int),
-		Events:          events, // Include all events
+		Events:          make([]json.RawMessage, len(events)),
 	}
 
-	for _, evt := range events {
+	for i, evt := range events {
 		if evt.FilterResult.Kept {
 			pipeline.Kept++
 		} else {
@@ -129,7 +128,14 @@ func processCityEvents(events []event.CityEvent) CityAuditPipeline {
 		if evt.FilterResult.FilterReason != "" {
 			pipeline.FilterBreakdown[evt.FilterResult.FilterReason]++
 		}
+
+		// Marshal event to JSON
+		data, err := json.Marshal(evt)
+		if err != nil {
+			return pipeline, fmt.Errorf("marshaling city event %s: %w", evt.ID, err)
+		}
+		pipeline.Events[i] = data
 	}
 
-	return pipeline
+	return pipeline, nil
 }

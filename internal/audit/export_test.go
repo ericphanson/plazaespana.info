@@ -145,7 +145,10 @@ func TestProcessCulturalEvents(t *testing.T) {
 		},
 	}
 
-	pipeline := processCulturalEvents(events)
+	pipeline, err := processCulturalEvents(events)
+	if err != nil {
+		t.Fatalf("processCulturalEvents failed: %v", err)
+	}
 
 	if pipeline.Total != 4 {
 		t.Errorf("Total = %d, want 4", pipeline.Total)
@@ -187,7 +190,10 @@ func TestProcessCityEvents(t *testing.T) {
 		},
 	}
 
-	pipeline := processCityEvents(events)
+	pipeline, err := processCityEvents(events)
+	if err != nil {
+		t.Fatalf("processCityEvents failed: %v", err)
+	}
 
 	if pipeline.Total != 2 {
 		t.Errorf("Total = %d, want 2", pipeline.Total)
