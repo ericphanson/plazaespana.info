@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -461,6 +462,20 @@ func main() {
 		cityEvents = append(cityEvents, *cityEvent)
 	}
 	log.Printf("Parsed %d city events (%d parse errors)", len(cityEvents), len(cityParseErrors))
+
+	// Update fetch attempt with parsed event count (not fetched services count)
+	if err == nil { // Only update if fetch succeeded
+		cityFetchAttempt.EventCount = len(cityEvents)
+
+		// Add note if there were parse errors
+		if len(cityParseErrors) > 0 {
+			cityFetchAttempt.Error = fmt.Sprintf("Parsed %d/%d services successfully",
+				len(cityEvents), len(esmadridServices))
+		}
+
+		// Update the report with corrected fetch attempt
+		buildReport.CityPipeline.Fetching.Attempts = []report.FetchAttempt{cityFetchAttempt}
+	}
 
 	// Track filtering start
 	cityFilterStart := time.Now()

@@ -52,3 +52,45 @@ ok      github.com/ericphanson/madrid-events/internal/audit     0.008s
 - Audit file now includes parse_errors section with cultural and city subsections
 - Backward compatible - existing audit files will continue to work
 - Successfully compiled and all tests passing
+
+---
+
+#### Task 1.2: Fix City Event Count Reporting (15 min)
+**Status:** In Progress
+**Started:** 2025-10-20
+
+**Goal:** Fix city fetch attempt to show parsed events count, not services fetched count.
+
+**Problem:** Currently cityFetchAttempt.EventCount shows `len(esmadridServices)` (services fetched) instead of `len(allCityEvents)` (events successfully parsed).
+
+**Files to modify:**
+- `cmd/buildsite/main.go` - Update cityFetchAttempt.EventCount
+
+**Implementation:**
+1. ✅ Updated cityFetchAttempt.EventCount to show parsed events (len(cityEvents))
+2. ✅ Added error message showing "Parsed X/Y services successfully" when parse errors occur
+3. ✅ Updated report after parsing completes
+4. ✅ Added fmt import to main.go
+5. ✅ Compiled successfully
+
+**Changes:**
+- After parsing city events, update cityFetchAttempt.EventCount to show parsed count
+- When parse errors exist, set Error field to show both counts (parsed/fetched)
+- Update buildReport.CityPipeline.Fetching.Attempts with corrected data
+
+**Before:**
+- EventCount showed services fetched (e.g., 50 services)
+- No indication of parse failures
+
+**After:**
+- EventCount shows successfully parsed events (e.g., 45 events)
+- Error field shows "Parsed 45/50 services successfully" when parse errors occur
+- More accurate reporting for build report consumers
+
+**Status:** ✅ Complete
+**Completed:** 2025-10-20
+
+**Notes:**
+- Build report now accurately reflects parsed events, not just fetched services
+- Parse error visibility improved with ratio display
+- No changes to report structure (backward compatible)
