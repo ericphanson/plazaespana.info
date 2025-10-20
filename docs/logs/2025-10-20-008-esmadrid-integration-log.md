@@ -203,3 +203,54 @@
 **Next:** Task 7 (Create dual pipeline orchestrator)
 
 ---
+
+### Task 7: Create Dual Pipeline Orchestrator
+**Status:** ✅ Complete
+**Commit:** 57085f4
+**Files:** cmd/buildsite/main.go
+
+**Implementation:**
+- Added `-config` flag for TOML configuration file (default: config.toml)
+- Implemented config loading with CLI flag overrides for backward compatibility
+- Updated cultural events pipeline to use config values:
+  - URLs from cfg.CulturalEvents
+  - Filter coordinates, radius, and distritos from cfg.Filter
+  - Output paths from cfg.Output
+  - Snapshot dir from cfg.Snapshot
+- Added city events pipeline:
+  - Fetches ESMadrid XML using FetchEsmadridEvents
+  - Converts to CityEvent using ToCityEvent
+  - Filters using FilterCityEvents (GPS radius, time, no category filter yet)
+  - Sorts chronologically by StartDate
+- Updated logging with pipeline headers and summary:
+  - "=== Cultural Events Pipeline ===" section
+  - "=== City Events Pipeline ===" section
+  - "=== Build Summary ===" with stats for both
+- For now, only cultural events are rendered (Tasks 8-9 will update renderer)
+- Both pipelines validated working end-to-end
+
+**Test Results:**
+- Build: `just build` successful
+- Integration test with fixture file:
+  - Cultural: 137 events (datos.madrid.es)
+  - City: 19 events (esmadrid.com)
+  - Total: 156 events available
+- All tests pass: `go test ./...`
+- Backward compatibility: All existing CLI flags still work with override logic
+
+**Acceptance Criteria:**
+- ✅ Both pipelines run successfully
+- ✅ Each pipeline independently filters and sorts
+- ✅ Logs show stats for both (Cultural: 137, City: 19)
+- ✅ No conflicts between pipelines
+
+**Code Review:**
+- ✅ Excellent architecture with clean pipeline separation
+- ✅ Comprehensive logging and observability
+- ✅ Both pipelines work correctly (Cultural: 137, City: 19)
+- 🔴 **Critical issue:** Config file required - breaks backward compatibility
+- Need to fix: Make config file optional with defaults
+
+**Fix in progress:** Making config file optional for backward compatibility
+
+---

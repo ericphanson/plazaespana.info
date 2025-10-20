@@ -61,10 +61,18 @@ func main() {
 
 	flag.Parse()
 
-	// Load configuration from TOML file
-	cfg, err := config.Load(*configPath)
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+	// Load configuration from TOML file (or use defaults if not found)
+	var cfg *config.Config
+	if _, err := os.Stat(*configPath); os.IsNotExist(err) {
+		log.Printf("Config file not found (%s), using defaults", *configPath)
+		cfg = config.DefaultConfig()
+	} else {
+		var err error
+		cfg, err = config.Load(*configPath)
+		if err != nil {
+			log.Fatalf("Failed to load config: %v", err)
+		}
+		log.Printf("Loaded configuration from %s", *configPath)
 	}
 
 	// Override config with CLI flags if provided

@@ -54,6 +54,37 @@ type ServerConfig struct {
 	Port int `toml:"port"`
 }
 
+// DefaultConfig returns a Config with sensible default values.
+func DefaultConfig() *Config {
+	return &Config{
+		CulturalEvents: CulturalEventsConfig{
+			JSONURL: "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json",
+			XMLURL:  "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml",
+			CSVURL:  "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv",
+		},
+		CityEvents: CityEventsConfig{
+			XMLURL: "https://www.esmadrid.com/opendata/agenda_v1_es.xml",
+		},
+		Filter: FilterConfig{
+			Latitude:        40.42338,
+			Longitude:       -3.71217,
+			RadiusKm:        0.35,
+			Distritos:       []string{"CENTRO", "MONCLOA-ARAVACA"},
+			PastEventsWeeks: 2,
+		},
+		Output: OutputConfig{
+			HTMLPath: "public/index.html",
+			JSONPath: "public/events.json",
+		},
+		Snapshot: SnapshotConfig{
+			DataDir: "data",
+		},
+		Server: ServerConfig{
+			Port: 8080,
+		},
+	}
+}
+
 // Load reads and parses a TOML configuration file.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
