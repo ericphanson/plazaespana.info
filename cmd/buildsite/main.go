@@ -36,12 +36,12 @@ func main() {
 	defer func() {
 		buildReport.Duration = time.Since(buildReport.BuildTime)
 
-		// Write markdown report
-		mdPath := filepath.Join(outputDir, "build-report.md")
-		if f, err := os.Create(mdPath); err == nil {
-			buildReport.WriteMarkdown(f)
+		// Write HTML report
+		htmlReportPath := filepath.Join(outputDir, "build-report.html")
+		if f, err := os.Create(htmlReportPath); err == nil {
+			buildReport.WriteHTML(f)
 			f.Close()
-			log.Println("Build report written to:", mdPath)
+			log.Println("Build report written to:", htmlReportPath)
 		}
 	}()
 
