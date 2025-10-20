@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="utf-8">
+  <title>{{if eq .Lang "es"}}Eventos en Plaza de España{{else}}Plaza de España events{{end}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/assets/site.{{.CSSHash}}.css">
+  <style>
+    /* Toggle cultural events visibility */
+    #toggle-cultural:not(:checked) ~ main .cultural-section,
+    #toggle-cultural:not(:checked) ~ main .ongoing-cultural {
+      display: none;
+    }
+
+    .toggle-label {
+      display: inline-block;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      border-radius: 8px;
+      user-select: none;
+      margin: 0.5rem 0;
+    }
+
+    .toggle-label:hover {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    #toggle-cultural {
+      margin-right: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <input type="checkbox" id="toggle-cultural" {{if .ShowCulturalDefault}}checked{{end}}>
+
+  <header>
+    <h1>{{if eq .Lang "es"}}Eventos en Plaza de España (Madrid){{else}}Events at Plaza de España (Madrid){{end}}</h1>
+    <p class="stamp">Última actualización: {{.LastUpdated}}</p>
+    {{if gt .TotalEvents 0}}
+    <p class="stamp">Total: {{.TotalCityEvents}} eventos de ciudad{{if gt .TotalCulturalEvents 0}}, {{.TotalCulturalEvents}} eventos culturales{{end}}</p>
+    {{end}}
+
+    {{if gt .TotalCulturalEvents 0}}
+    <label for="toggle-cultural" class="toggle-label">
+      ☐ Mostrar eventos culturales ({{.TotalCulturalEvents}})
+    </label>
+    {{end}}
+  </header>
+
+  <main>
+    {{/* City event time groups */}}
+    {{range .CityGroups}}
+    <section class="event-section time-group city-section">
+      <h2 class="section-header">
+        <span class="section-icon">{{.Icon}}</span>
+        {{.Name}}
+        <span class="event-count">{{len .Events}}</span>
+      </h2>
+
+      {{range .Events}}
+      <article class="event-card city" id="ev-{{.IDEvento}}">
+        <span class="event-badge city-badge">Evento Ciudad</span>
+        <h3>{{.Titulo}}</h3>
+        <p class="when">{{.StartHuman}}</p>
+        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+      </article>
+      {{end}}
+    </section>
+    {{end}}
+
+    {{/* Cultural event time groups (hidden by default) */}}
+    {{range .CulturalGroups}}
+    <section class="event-section time-group cultural-section">
+      <h2 class="section-header">
+        <span class="section-icon">{{.Icon}}</span>
+        {{.Name}} <span style="color: var(--cultural-accent);">(Cultural)</span>
+        <span class="event-count">{{len .Events}}</span>
+      </h2>
+
+      {{range .Events}}
+      <article class="event-card cultural" id="ev-{{.IDEvento}}">
+        <span class="event-badge cultural-badge">Cultural</span>
+        <h3>{{.Titulo}}</h3>
+        <p class="when">{{.StartHuman}}</p>
+        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+      </article>
+      {{end}}
+    </section>
+    {{end}}
+
+    {{/* Ongoing city events */}}
+    {{if gt (len .OngoingCityEvents) 0}}
+    <section class="event-section time-group city-section">
+      <h2 class="section-header">
+        <span class="section-icon">🎪</span>
+        Eventos en Curso
+        <span class="event-count">{{len .OngoingCityEvents}}</span>
+      </h2>
+
+      {{range .OngoingCityEvents}}
+      <article class="event-card city" id="ev-{{.IDEvento}}">
+        <span class="event-badge city-badge">Evento Ciudad</span>
+        <h3>{{.Titulo}}</h3>
+        <p class="when">{{.StartHuman}}</p>
+        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+      </article>
+      {{end}}
+    </section>
+    {{end}}
+
+    {{/* Ongoing cultural events (hidden by default) */}}
+    {{if gt (len .OngoingCulturalEvents) 0}}
+    <section class="event-section time-group cultural-section ongoing-cultural">
+      <h2 class="section-header">
+        <span class="section-icon">🎪</span>
+        Eventos en Curso <span style="color: var(--cultural-accent);">(Cultural)</span>
+        <span class="event-count">{{len .OngoingCulturalEvents}}</span>
+      </h2>
+
+      {{range .OngoingCulturalEvents}}
+      <article class="event-card cultural" id="ev-{{.IDEvento}}">
+        <span class="event-badge cultural-badge">Cultural</span>
+        <h3>{{.Titulo}}</h3>
+        <p class="when">{{.StartHuman}}</p>
+        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+      </article>
+      {{end}}
+    </section>
+    {{end}}
+
+    {{if and (eq (len .CityGroups) 0) (eq (len .OngoingCityEvents) 0)}}
+    <p class="no-events">No hay eventos próximos.</p>
+    {{end}}
+  </main>
+
+  <footer>
+    <p>Datos: <a href="https://datos.madrid.es">Ayuntamiento de Madrid – datos.madrid.es</a> y <a href="https://www.esmadrid.com">ESMadrid</a></p>
+    <p><a href="build-report.html">Ver informe de compilación</a></p>
+  </footer>
+</body>
+</html>

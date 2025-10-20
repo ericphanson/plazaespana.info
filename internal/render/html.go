@@ -18,6 +18,11 @@ func NewHTMLRenderer(templatePath string) *HTMLRenderer {
 
 // Render generates HTML output and writes it atomically to outputPath.
 func (r *HTMLRenderer) Render(data TemplateData, outputPath string) error {
+	return r.RenderAny(data, outputPath)
+}
+
+// RenderAny generates HTML output with any data type and writes it atomically to outputPath.
+func (r *HTMLRenderer) RenderAny(data interface{}, outputPath string) error {
 	tmpl, err := template.ParseFiles(r.templatePath)
 	if err != nil {
 		return fmt.Errorf("parsing template: %w", err)

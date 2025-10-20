@@ -377,20 +377,13 @@ func main() {
 	// =====================================================================
 	log.Println("\n=== Rendering Output ===")
 
-	// Convert cultural events to template format
-	var culturalTemplateEvents []render.TemplateEvent
+	// Group events by time
+	cityGroups, ongoingCity := render.GroupCityEventsByTime(filteredCityEvents, now)
+	culturalGroups, ongoingCultural := render.GroupEventsByTime(filteredEvents, now)
+
+	// Convert to JSON format (keep original flat structure for API)
 	var culturalJSONEvents []render.JSONEvent
-
 	for _, evt := range filteredEvents {
-		culturalTemplateEvents = append(culturalTemplateEvents, render.TemplateEvent{
-			IDEvento:          evt.ID,
-			Titulo:            evt.Title,
-			StartHuman:        evt.StartTime.Format("02/01/2006 15:04"),
-			NombreInstalacion: evt.VenueName,
-			ContentURL:        evt.DetailsURL,
-			Description:       render.TruncateText(evt.Description, 150),
-		})
-
 		culturalJSONEvents = append(culturalJSONEvents, render.JSONEvent{
 			ID:         evt.ID,
 			Title:      evt.Title,
@@ -400,20 +393,8 @@ func main() {
 		})
 	}
 
-	// Convert city events to template format
-	var cityTemplateEvents []render.TemplateEvent
 	var cityJSONEvents []render.JSONEvent
-
 	for _, evt := range filteredCityEvents {
-		cityTemplateEvents = append(cityTemplateEvents, render.TemplateEvent{
-			IDEvento:          evt.ID,
-			Titulo:            evt.Title,
-			StartHuman:        evt.StartDate.Format("02/01/2006"),
-			NombreInstalacion: evt.Venue,
-			ContentURL:        evt.WebURL,
-			Description:       render.TruncateText(evt.Description, 150),
-		})
-
 		cityJSONEvents = append(cityJSONEvents, render.JSONEvent{
 			ID:         evt.ID,
 			Title:      evt.Title,
@@ -423,25 +404,40 @@ func main() {
 		})
 	}
 
+	// Count total events in groups
+	totalCityEvents := len(ongoingCity)
+	for _, group := range cityGroups {
+		totalCityEvents += len(group.Events)
+	}
+	totalCulturalEvents := len(ongoingCultural)
+	for _, group := range culturalGroups {
+		totalCulturalEvents += len(group.Events)
+	}
+
 	// Render outputs
 	outDirPath := filepath.Dir(cfg.Output.HTMLPath)
 	if err := os.MkdirAll(outDirPath, 0755); err != nil {
 		log.Fatalf("Failed to create output directory: %v", err)
 	}
 
-	// Render HTML with both event types
+	// Render HTML with grouped events
 	htmlStart := time.Now()
-	htmlRenderer := render.NewHTMLRenderer("templates/index.tmpl.html")
-	htmlData := render.TemplateData{
-		Lang:           "es",
-		CSSHash:        readCSSHash(outDirPath),
-		LastUpdated:    now.Format("2006-01-02 15:04 MST"),
-		CulturalEvents: culturalTemplateEvents,
-		CityEvents:     cityTemplateEvents,
-		TotalEvents:    len(culturalTemplateEvents) + len(cityTemplateEvents),
+	htmlRenderer := render.NewHTMLRenderer("templates/index-grouped.tmpl.html")
+	htmlData := render.GroupedTemplateData{
+		Lang:                  "es",
+		CSSHash:               readCSSHash(outDirPath),
+		LastUpdated:           now.Format("2006-01-02 15:04 MST"),
+		TotalEvents:           totalCityEvents + totalCulturalEvents,
+		TotalCityEvents:       totalCityEvents,
+		TotalCulturalEvents:   totalCulturalEvents,
+		ShowCulturalDefault:   false, // Cultural events hidden by default
+		CityGroups:            cityGroups,
+		CulturalGroups:        culturalGroups,
+		OngoingCityEvents:     ongoingCity,
+		OngoingCulturalEvents: ongoingCultural,
 	}
 	htmlPath := cfg.Output.HTMLPath
-	htmlErr := htmlRenderer.Render(htmlData, htmlPath)
+	htmlErr := htmlRenderer.RenderAny(htmlData, htmlPath)
 	htmlDuration := time.Since(htmlStart)
 
 	if htmlErr != nil {

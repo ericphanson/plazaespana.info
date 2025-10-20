@@ -76,6 +76,11 @@ main {
   padding-bottom: 0.5rem;
 }
 
+.time-group .section-header {
+  font-size: 1.3rem;
+  border-bottom: 1px solid var(--muted);
+}
+
 .section-icon {
   font-size: 1.8rem;
   line-height: 1;
