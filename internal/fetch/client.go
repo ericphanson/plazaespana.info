@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"golang.org/x/text/encoding/charmap"
@@ -60,6 +61,20 @@ func (c *Client) FetchJSON(url string) (*JSONResponse, error) {
 	var result JSONResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("decoding JSON: %w", err)
+	}
+
+	// DEBUG: Log structure of first event to see actual field names
+	if len(result.Graph) > 0 {
+		first := result.Graph[0]
+		fmt.Printf("DEBUG JSON first event: IDEvento=%q Titulo=%q Fecha=%q Lat=%.5f Lon=%.5f\n",
+			first.IDEvento, first.Titulo, first.Fecha, first.Lat, first.Lon)
+
+		// Also save raw JSON sample to file for inspection
+		sample := body
+		if len(body) > 2000 {
+			sample = body[:2000]
+		}
+		os.WriteFile("/tmp/json-sample.txt", sample, 0644)
 	}
 
 	return &result, nil
