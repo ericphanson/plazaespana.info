@@ -11,172 +11,19 @@ import (
 func (r *BuildReport) WriteHTML(w io.Writer) error {
 	var b strings.Builder
 
-	// HTML header with embedded CSS
+	// HTML header with external CSS
 	b.WriteString(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Build Report - Madrid Events</title>
-  <style>
-    :root {
-      --bg: #ffffff;
-      --fg: #111;
-      --muted: #666;
-      --card: #f6f6f6;
-      --link: #0645ad;
-      --border: #ddd;
-      --success: #0a8754;
-      --failure: #d93025;
-      --cultural: #7c3aed;
-      --city: #ea580c;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0f1115;
-        --fg: #eaeaea;
-        --muted: #9aa0a6;
-        --card: #1a1d24;
-        --link: #8ab4f8;
-        --border: #444;
-        --success: #34a853;
-        --failure: #f28b82;
-        --cultural: #a78bfa;
-        --city: #fb923c;
-      }
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--fg);
-      font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
-    }
-
-    header, main, footer {
-      max-width: 1200px;
-      margin: auto;
-      padding: 1rem;
-    }
-
-    h1 { margin: 0; font-size: 2rem; }
-    h2 { margin: 1.5rem 0 0.5rem; font-size: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
-    h3 { margin: 1rem 0 0.5rem; font-size: 1.2rem; }
-
-    .summary-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin: 1rem 0;
-    }
-
-    .summary-card h2 { margin-top: 0; border-bottom: none; }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    .summary-item strong { display: block; color: var(--muted); font-size: 0.875rem; margin-bottom: 0.25rem; }
-    .summary-item span { font-size: 1.5rem; font-weight: 600; }
-
-    .pipeline-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 1.5rem;
-      margin: 1rem 0;
-    }
-
-    .pipeline-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-    }
-
-    .pipeline-card.cultural { border-left: 4px solid var(--cultural); }
-    .pipeline-card.city { border-left: 4px solid var(--city); }
-
-    .pipeline-header {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .pipeline-header h3 { margin: 0; }
-    .pipeline-header .icon { font-size: 1.5rem; }
-
-    .pipeline-stat {
-      display: flex;
-      justify-content: space-between;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .pipeline-stat:last-child { border-bottom: none; }
-
-    .section {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin: 1rem 0;
-    }
-
-    .section h3 { margin-top: 0; }
-
-    .metric-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 0.5rem 0;
-    }
-
-    .metric-row span:first-child { color: var(--muted); }
-
-    .status-success { color: var(--success); font-weight: 600; }
-    .status-failure { color: var(--failure); font-weight: 600; }
-
-    .fetch-attempts {
-      margin: 0.5rem 0;
-      padding-left: 1.5rem;
-    }
-
-    .fetch-attempts li {
-      margin: 0.25rem 0;
-    }
-
-    .warning-box {
-      background: rgba(234, 88, 12, 0.1);
-      border-left: 4px solid var(--city);
-      padding: 1rem;
-      margin: 1rem 0;
-      border-radius: 4px;
-    }
-
-    .warning-box ul {
-      margin: 0.5rem 0;
-      padding-left: 1.5rem;
-    }
-
-    footer {
-      color: var(--muted);
-      font-size: 0.875rem;
-      text-align: center;
-      margin-top: 2rem;
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/build-report.css">
 </head>
 <body>
   <header>
     <h1>Build Report</h1>
-    <p style="color: var(--muted); margin: 0.5rem 0;">Madrid Events Site Generator</p>
+    <p class="muted">Madrid Events Site Generator</p>
   </header>
 
   <main>
@@ -215,7 +62,7 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
 	b.WriteString(fmt.Sprintf(`      <div class="pipeline-card cultural">
         <div class="pipeline-header">
           <span class="icon">🎭</span>
-          <h3 style="color: var(--cultural);">%s</h3>
+          <h3 class="cultural-title">%s</h3>
         </div>
         <div class="pipeline-stat">
           <span>Source</span>
@@ -236,7 +83,7 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
 	b.WriteString(fmt.Sprintf(`      <div class="pipeline-card city">
         <div class="pipeline-header">
           <span class="icon">🎉</span>
-          <h3 style="color: var(--city);">%s</h3>
+          <h3 class="city-title">%s</h3>
         </div>
         <div class="pipeline-stat">
           <span>Source</span>
@@ -257,7 +104,7 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
 `)
 
 	// Cultural Events Pipeline Detailed
-	b.WriteString(fmt.Sprintf(`    <h2 style="color: var(--cultural);">🎭 Cultural Events Pipeline</h2>
+	b.WriteString(fmt.Sprintf(`    <h2 class="cultural-title">🎭 Cultural Events Pipeline</h2>
     <div class="section">
       <h3>📡 Data Fetching</h3>
 `))
@@ -369,7 +216,7 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
 `)
 
 	// City Events Pipeline Detailed
-	b.WriteString(fmt.Sprintf(`    <h2 style="color: var(--city);">🎉 City Events Pipeline</h2>
+	b.WriteString(fmt.Sprintf(`    <h2 class="city-title">🎉 City Events Pipeline</h2>
     <div class="section">
       <h3>📡 Data Fetching</h3>
 `))
@@ -489,7 +336,7 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
 	// Warnings
 	if len(r.Warnings) > 0 {
 		b.WriteString(`    <div class="warning-box">
-      <h3 style="margin-top: 0;">⚠️ Warnings</h3>
+      <h3>⚠️ Warnings</h3>
       <ul>
 `)
 		for _, warning := range r.Warnings {
