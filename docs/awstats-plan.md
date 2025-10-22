@@ -1,5 +1,13 @@
 # AWStats Integration Plan
 
+> **📝 Note:** This document describes the original implementation plan. The actual implementation was **simplified** for better maintainability:
+> - **No weekly archives/rollups created on server** - AWStats just processes logs and generates HTML
+> - **Database files synced directly to git** - `fetch-stats-archives.sh` copies `.txt` files from `/home/private/awstats-data/` to git
+> - **Git tracks changes naturally** - No manual versioning needed (git shows diffs)
+> - **Privacy preserved** - Database files contain aggregate stats only (no IPs/requests)
+>
+> See `docs/deployment.md` for current setup instructions.
+
 ## Goal
 Set up AWStats to track weekly traffic statistics indefinitely, archive rollups in-repo via automated PRs, and serve static stats pages.
 
