@@ -61,18 +61,15 @@ _deploy-files:
     echo "📁 Creating remote directories..."
     ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/public/assets'
 
-    # Upload files
+    # Upload new files with .new suffix (atomic swap later)
     echo "📤 Uploading binary..."
-    scp build/buildsite "$NFSN_USER@$NFSN_HOST:/home/private/bin/buildsite"
+    scp build/buildsite "$NFSN_USER@$NFSN_HOST:/home/private/bin/buildsite.new"
 
     echo "📤 Uploading config..."
-    scp config.toml "$NFSN_USER@$NFSN_HOST:/home/private/config.toml"
+    scp config.toml "$NFSN_USER@$NFSN_HOST:/home/private/config.toml.new"
 
     echo "📤 Uploading templates..."
-    scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html"
-
-    echo "🧹 Cleaning up old CSS files..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'rm -f /home/public/assets/site.*.css'
+    scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html.new"
 
     echo "📤 Uploading hashed CSS..."
     scp public/assets/site.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
@@ -80,13 +77,17 @@ _deploy-files:
     echo "📤 Uploading .htaccess..."
     scp ops/htaccess "$NFSN_USER@$NFSN_HOST:/home/public/.htaccess"
 
-    # Set permissions
-    echo "🔐 Setting permissions..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'chmod +x /home/private/bin/buildsite'
+    # Atomically swap new files into place
+    echo "🔄 Activating new files..."
+    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index-grouped.tmpl.html.new /home/private/templates/index-grouped.tmpl.html && chmod +x /home/private/bin/buildsite'
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
     ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production'
+
+    # Clean up old CSS files (keep only the latest)
+    echo "🧹 Cleaning up old CSS files..."
+    ssh "$NFSN_USER@$NFSN_HOST" 'cd /home/public/assets && ls -t site.*.css 2>/dev/null | tail -n +2 | xargs -r rm -f || true'
 
     echo ""
     echo "✅ Deployment complete!"
