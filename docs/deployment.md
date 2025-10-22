@@ -10,209 +10,121 @@ This guide covers deploying the Madrid Events site to NearlyFreeSpeech.NET (NFSN
 
 ## Quick Start
 
-### Setup Environment Variables (One Time)
+### 1. Setup Credentials (One Time)
 
-**Recommended: Using direnv**
+**Using direnv (recommended):**
 
 ```bash
-# Copy the example file
+# Copy and edit credentials
 cp .envrc.local.example .envrc.local
+# Edit .envrc.local with your NFSN_HOST and NFSN_USER
 
-# Edit with your credentials
-# .envrc.local (this file is gitignored)
-export NFSN_HOST=ssh.phx.nearlyfreespeech.net
-export NFSN_USER=your_actual_username
-
-# Allow direnv to load the file
+# Enable direnv
 direnv allow
 ```
 
-**Alternative: Manual export (not recommended)**
+Variables will auto-load when you `cd` into the project. Why direnv? Gitignored credentials, no shell pollution, per-project config.
 
+**Alternative (manual):**
 ```bash
-# Set environment variables each time
 export NFSN_HOST=ssh.phx.nearlyfreespeech.net
 export NFSN_USER=your_username
 ```
 
-### Local Deployment
+### 2. Setup SSH Key
 
+**Generate key (if needed):**
 ```bash
-# Deploy (environment variables loaded automatically by direnv)
+ssh-keygen -t ed25519 -C "your_email@example.com"
+```
+
+**Add public key to NFSN:**
+- NFSN web interface → Profile → SSH/SFTP Keys
+- Upload `~/.ssh/id_ed25519.pub`
+
+**Test connection:**
+```bash
+ssh your_username@ssh.phx.nearlyfreespeech.net
+```
+
+### 3. Deploy
+
+**Local:**
+```bash
 just deploy
 ```
 
-This will:
-1. Build the FreeBSD binary
-2. Hash the CSS for cache busting
-3. Upload all files to NFSN
-4. Set correct permissions
-5. Regenerate the site on the server
+**Automatic:** GitHub Actions deploys on push to `main` (after tests pass).
 
-### GitHub Actions Deployment
+## GitHub Actions Setup
 
-Deployment happens automatically on push to `main` after tests pass.
+Add these secrets in repository Settings → Secrets and variables → Actions:
 
-## SSH Key Setup
+| Secret Name    | Description           | Value                               |
+|----------------|-----------------------|-------------------------------------|
+| `NFSN_SSH_KEY` | Private SSH key       | Contents of `~/.ssh/id_ed25519`     |
+| `NFSN_HOST`    | NFSN SSH hostname     | `ssh.phx.nearlyfreespeech.net`      |
+| `NFSN_USER`    | NFSN username         | `your_username`                     |
 
-### For Local Deployment
-
-1. Generate SSH key if you don't have one:
-   ```bash
-   ssh-keygen -t ed25519 -C "your_email@example.com"
-   ```
-
-2. Add public key to NFSN:
-   - Log into NFSN web interface
-   - Go to Profile → SSH/SFTP Keys
-   - Add your public key (`~/.ssh/id_ed25519.pub`)
-
-3. Test connection:
-   ```bash
-   ssh your_username@ssh.phx.nearlyfreespeech.net
-   ```
-
-### For GitHub Actions
-
-1. **Add SSH private key to GitHub Secrets:**
-   - Go to repository Settings → Secrets and variables → Actions
-   - Click "New repository secret"
-   - Name: `NFSN_SSH_KEY`
-   - Value: Contents of your **private** SSH key (`~/.ssh/id_ed25519`)
-
-   **⚠️ IMPORTANT:** This should be the private key that corresponds to the public key uploaded to NFSN.
-
-2. **Add NFSN host:**
-   - Name: `NFSN_HOST`
-   - Value: `ssh.phx.nearlyfreespeech.net` (or your specific NFSN SSH host)
-
-3. **Add NFSN username:**
-   - Name: `NFSN_USER`
-   - Value: Your NFSN username
-
-## Required GitHub Secrets
-
-| Secret Name    | Description                          | Example Value                        |
-|----------------|--------------------------------------|--------------------------------------|
-| `NFSN_SSH_KEY` | Private SSH key for authentication   | Contents of `~/.ssh/id_ed25519`      |
-| `NFSN_HOST`    | NFSN SSH hostname                    | `ssh.phx.nearlyfreespeech.net`       |
-| `NFSN_USER`    | NFSN SSH username                    | `your_username`                      |
-
-## What Gets Deployed
-
-The deployment process uploads:
-
-1. **Binary:** `build/buildsite` → `/home/private/bin/buildsite`
-2. **Config:** `config.toml` → `/home/private/config.toml`
-3. **Template:** `templates/index-grouped.tmpl.html` → `/home/private/templates/index-grouped.tmpl.html`
-4. **CSS:** `public/assets/site.*.css` → `/home/public/assets/`
-5. **Apache config:** `ops/htaccess` → `/home/public/.htaccess`
-
-**Simple two-directory structure:**
-- `private/` - All internal files (binary, config, templates, data cache)
-- `public/` - Web root (HTML, JSON, CSS, .htaccess served to visitors)
-
-After uploading, the binary is run to regenerate the site with fresh data.
-
-## Deployment Flow
-
-### GitHub Actions (Automatic)
-
-```
-Push to main
-  ↓
-Run tests
-  ↓
-Build FreeBSD binary
-  ↓ (if tests pass)
-Deploy to NFSN
-  ↓
-Regenerate site
-```
-
-### Local (Manual)
-
-```
-just deploy
-  ↓
-Build FreeBSD binary
-  ↓
-Hash CSS
-  ↓
-Upload via SCP
-  ↓
-SSH: Set permissions
-  ↓
-SSH: Regenerate site
-```
+⚠️ Use the **private key** that matches the public key uploaded to NFSN.
 
 ## Cron Setup on NFSN
 
-After deploying, set up hourly site regeneration:
+After first deployment, set up hourly regeneration:
 
-1. Log into NFSN web interface
-2. Go to Sites → your_site → Scheduled Tasks
-3. Add new task:
+1. NFSN web interface → Sites → your_site → Scheduled Tasks
+2. Add task:
    - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production`
-   - **Schedule:** `0 * * * *` (every hour at :00)
-   - Or use the web UI to select "Every hour"
+   - **Schedule:** Every hour (or `0 * * * *`)
 
-**Command explained:**
-- `/home/private/bin/buildsite` - Run the binary
-- `-config /home/private/config.toml` - Read config
-- `-out-dir /home/public` - Output HTML/JSON to web root
-- `-data-dir /home/private/data` - Store cache/audit in private/
-- `-fetch-mode production` - Production settings (30min cache, 2s delays)
+The flags override config paths for NFSN's absolute paths and enable production fetch mode (30min cache, 2s delays).
 
-## Directory Structure on NFSN
+## What Gets Deployed
 
-After deployment:
+Files uploaded to NFSN:
+
+```
+Local → Remote
+
+build/buildsite                      → /home/private/bin/buildsite
+config.toml                          → /home/private/config.toml
+templates/index-grouped.tmpl.html    → /home/private/templates/index-grouped.tmpl.html
+public/assets/site.*.css             → /home/public/assets/
+ops/htaccess                         → /home/public/.htaccess
+```
+
+After upload, binary runs to generate:
+- `/home/public/index.html` - Event listing (web-accessible)
+- `/home/public/events.json` - JSON API (web-accessible)
+- `/home/private/data/` - Cache & audit logs (not web-accessible)
+
+## NFSN Directory Structure
 
 ```
 /home/
-  private/                 # ❌ Not web-accessible (all internal files here)
-    bin/
-      buildsite            # Executable binary
-    config.toml            # Configuration file
-    templates/
-      index-grouped.tmpl.html  # HTML template
-    data/                  # Auto-created by binary
-      http-cache/          # Cached HTTP responses
-      request-audit.json   # HTTP request log
-      last_success.json    # Snapshot fallback
-      audit-events.json    # Event audit trail
+  private/              # ❌ Not web-accessible
+    bin/buildsite       # Binary
+    config.toml         # Config
+    templates/          # HTML templates
+    data/               # Cache, audit logs (auto-created)
 
-  public/                  # ✅ Web root - Directly accessible via HTTP
-    index.html             # Generated event listing
-    events.json            # Generated JSON API
-    assets/
-      site.<hash>.css      # Hashed CSS file
-    .htaccess              # Apache configuration
-
-  protected/               # (not used by this project)
-  logs/                    # Apache logs (if enabled)
-  tmp/                     # (not used by this project)
+  public/               # ✅ Web root (served via HTTP)
+    index.html          # Generated event listing
+    events.json         # Generated JSON API
+    assets/             # CSS
+    .htaccess           # Apache config
 ```
 
-**Simple structure:**
-- `private/` - Everything internal: binary, config, templates, data cache
-- `public/` - Only files meant to be served to visitors
-
-**Security:**
-- Only `public/` contents are accessible via HTTP
-- All internal files stay in `private/` (completely not web-accessible)
-- Command-line flags override config's relative paths to use absolute NFSN paths
+Only `public/` contents are accessible via HTTP. All internal files (binary, config, templates, cache) stay in `private/`.
 
 ## Troubleshooting
 
-### "Permission denied" errors
+### Permission denied (SSH)
 
-Make sure your SSH key is added to NFSN:
-- NFSN web interface → Profile → SSH/SFTP Keys
+Add your SSH public key: NFSN web interface → Profile → SSH/SFTP Keys
 
-### "Host key verification failed"
+### Host key verification failed
 
-Remove old host key and re-add:
 ```bash
 ssh-keygen -R ssh.phx.nearlyfreespeech.net
 ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
@@ -220,60 +132,35 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 
 ### GitHub Actions deployment fails
 
-1. Check that all secrets are set correctly in repository settings
-2. Ensure the private key in `NFSN_SSH_KEY` matches the public key on NFSN
-3. Check GitHub Actions logs for specific error messages
+1. Verify all three secrets are set in repository settings
+2. Ensure `NFSN_SSH_KEY` private key matches public key on NFSN
+3. Check GitHub Actions logs for specific errors
 
-### Site not regenerating
+### Site not updating
 
-SSH into NFSN and run manually to check for errors:
+SSH in and run manually to see errors:
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
 /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production
 ```
 
-Look for error messages in the output.
+## Security
 
-## Security Notes
-
-- **Never commit private keys** to the repository
-- Private keys should only be in:
-  - Your local `~/.ssh/` directory
-  - GitHub Secrets (for CI/CD)
-- The public key is safe to share and goes on NFSN
-- Use `ed25519` keys (more secure than older RSA)
-
-## Managing Environment Variables
-
-**Using direnv (recommended):**
-
-The repository includes `.envrc` (tracked) which automatically sources `.envrc.local` (gitignored).
-
-1. Install direnv: https://direnv.net/docs/installation.html
-2. Copy `.envrc.local.example` to `.envrc.local`
-3. Edit `.envrc.local` with your credentials
-4. Run `direnv allow` to enable
-5. Variables load automatically when you `cd` into the project
-
-**Why direnv?**
-- ✅ Variables load automatically when entering the directory
-- ✅ Gitignored config keeps credentials safe
-- ✅ No global shell pollution
-- ✅ Per-project configuration
+- Never commit private keys to the repository
+- Private keys belong in `~/.ssh/` (local) and GitHub Secrets (CI)
+- Public keys are safe to share (uploaded to NFSN)
+- Use `ed25519` keys (more secure than RSA)
 
 ## Deployment Checklist
 
-Before deploying:
+**Before deploying:**
+- [ ] Tests pass (`just test`)
+- [ ] Binary builds (`just freebsd`)
+- [ ] SSH key added to NFSN
+- [ ] Credentials configured (direnv or secrets)
 
-- [ ] Tests pass locally (`just test`)
-- [ ] FreeBSD binary builds (`just freebsd`)
-- [ ] Config is valid (`just config`)
-- [ ] SSH key is set up on NFSN
-- [ ] Environment variables are set (local) or secrets configured (GitHub)
-
-After deploying:
-
-- [ ] Visit your NFSN site URL to verify
-- [ ] Check that events are showing
-- [ ] Verify cron job is configured
-- [ ] Check `/home/data/request-audit.json` for any fetch errors
+**After deploying:**
+- [ ] Visit NFSN site URL to verify
+- [ ] Check events are showing
+- [ ] Configure cron job (if first deployment)
+- [ ] Check `/home/private/data/request-audit.json` for errors (via SSH)
