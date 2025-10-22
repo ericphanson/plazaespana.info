@@ -164,13 +164,16 @@ fmt:
 
 # Check if code is properly formatted (for CI)
 fmt-check:
-    @echo "🔍 Checking code formatting..."
-    @if [ -n "$$(gofmt -l .)" ]; then \
-        echo "❌ The following files are not formatted:"; \
-        gofmt -l .; \
-        exit 1; \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔍 Checking code formatting..."
+    FILES=$(gofmt -l .)
+    if [ -n "$FILES" ]; then
+        echo "❌ The following files are not formatted:"
+        echo "$FILES"
+        exit 1
     fi
-    @echo "✅ All files properly formatted"
+    echo "✅ All files properly formatted"
 
 # Run Go linter (go vet)
 lint:
