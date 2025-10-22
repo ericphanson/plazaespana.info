@@ -71,8 +71,9 @@ _deploy-files:
     echo "📤 Uploading templates..."
     scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html.new"
 
-    echo "📤 Uploading hashed CSS..."
-    scp public/assets/site.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
+    echo "📤 Uploading hashed CSS and hash files..."
+    scp public/assets/site.*.css public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
+    scp public/assets/css.hash public/assets/build-report-css.hash "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
 
     echo "📤 Uploading .htaccess..."
     scp ops/htaccess "$NFSN_USER@$NFSN_HOST:/home/public/.htaccess"
