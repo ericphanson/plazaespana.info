@@ -201,3 +201,53 @@ footer {
   font-size: 0.9rem;
   margin-top: 2rem;
 }
+
+/* Toggle cultural events visibility */
+#toggle-cultural:not(:checked) ~ main .event-card.cultural {
+  display: none;
+}
+
+/* Toggle count display based on checkbox state */
+/* When unchecked: show city-only count */
+#toggle-cultural:not(:checked) ~ main .count-all {
+  display: none;
+}
+
+/* When checked: show all count, hide city-only */
+#toggle-cultural:checked ~ main .count-city-only {
+  display: none;
+}
+
+.toggle-label {
+  display: inline-block;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  background: var(--card);
+  border-radius: 8px;
+  user-select: none;
+  margin: 0.5rem 0;
+}
+
+.toggle-label:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* When checkbox is checked, update label appearance */
+#toggle-cultural:checked ~ header .toggle-label {
+  background: var(--cultural-accent);
+  color: white;
+}
+
+/* Change checkbox symbol when checked */
+.toggle-label::before {
+  content: "☐ ";
+}
+
+#toggle-cultural:checked ~ header .toggle-label::before {
+  content: "☑ ";
+}
+
+#toggle-cultural {
+  display: none;
+}
