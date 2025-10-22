@@ -11,14 +11,24 @@ import (
 
 // getFixturePath returns the absolute file:// URL for a fixture file
 func getFixturePath(filename string) string {
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
+	// Try multiple possible paths since go test working directory can vary
+	possiblePaths := []string{
+		filepath.Join("testdata", "fixtures", filename),             // From project root
+		filepath.Join("..", "..", "testdata", "fixtures", filename), // From package dir
 	}
-	// Construct path relative to project root
-	// Tests run from project root, so testdata/fixtures/ is directly accessible
-	absPath := filepath.Join(cwd, "..", "..", "testdata", "fixtures", filename)
+
+	for _, relPath := range possiblePaths {
+		absPath, err := filepath.Abs(relPath)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(absPath); err == nil {
+			return "file://" + absPath
+		}
+	}
+
+	// Fallback: return first path even if it doesn't exist (will fail in test with clear error)
+	absPath, _ := filepath.Abs(possiblePaths[0])
 	return "file://" + absPath
 }
 
