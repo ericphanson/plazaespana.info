@@ -105,6 +105,8 @@ deploy-only: _deploy-files
 
 # Generate content-hashed CSS for cache busting
 hash-css:
+    @echo "🧹 Cleaning up old CSS files..."
+    @rm -f public/assets/site.*.css
     @./scripts/hash-assets.sh
 
 # Build and generate site (no server)
