@@ -89,6 +89,32 @@ echo "📝 Changes detected:"
 git status --short "$LOCAL_DIR"
 echo ""
 
+# Extract statistics from the most recent month's database file
+# Parse BEGIN_GENERAL section for summary stats
+LATEST_DB=$(ls -1t "$LOCAL_DIR"/awstats*.txt 2>/dev/null | head -1)
+STATS_SUMMARY=""
+if [ -f "$LATEST_DB" ]; then
+    # Extract key stats from BEGIN_GENERAL section
+    TOTAL_VISITS=$(awk '/BEGIN_GENERAL/,/END_GENERAL/ {if ($1 == "TotalVisits") print $2}' "$LATEST_DB")
+    TOTAL_UNIQUE=$(awk '/BEGIN_GENERAL/,/END_GENERAL/ {if ($1 == "TotalUnique") print $2}' "$LATEST_DB")
+    FIRST_TIME=$(awk '/BEGIN_GENERAL/,/END_GENERAL/ {if ($1 == "FirstTime") print $2}' "$LATEST_DB")
+    LAST_TIME=$(awk '/BEGIN_GENERAL/,/END_GENERAL/ {if ($1 == "LastTime") print $2}' "$LATEST_DB")
+
+    # Format dates (YYYYMMDDHHMMSS -> YYYY-MM-DD HH:MM)
+    if [ -n "$FIRST_TIME" ] && [ -n "$LAST_TIME" ]; then
+        FIRST_DATE=$(echo "$FIRST_TIME" | sed 's/^\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\).*/\1-\2-\3 \4:\5/')
+        LAST_DATE=$(echo "$LAST_TIME" | sed 's/^\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\).*/\1-\2-\3 \4:\5/')
+
+        STATS_SUMMARY="## Latest Statistics
+
+- **Total visits:** ${TOTAL_VISITS:-0}
+- **Unique visitors:** ${TOTAL_UNIQUE:-0}
+- **Period:** $FIRST_DATE to $LAST_DATE
+
+"
+    fi
+fi
+
 # Add changes and commit
 git add "$LOCAL_DIR"
 git commit -m "chore: sync AWStats database files from server
@@ -114,19 +140,9 @@ else
         --body "$(cat <<EOFPR
 Automated PR to sync AWStats database files from production server.
 
-**Files:** $FILE_COUNT database files
+${STATS_SUMMARY}**Database files:** $FILE_COUNT total
 
-## Privacy-First Approach
-
-These files contain **aggregate statistics only**:
-- ✅ Page views, visitor counts, referrer statistics
-- ✅ Browser/OS/country breakdowns (aggregated)
-- ✅ Monthly trends and historical data
-- ❌ **No individual IP addresses**
-- ❌ **No individual requests**
-- ❌ **No personal information**
-
-The database files preserve historical visitor trends and can be used to regenerate HTML reports without storing raw logs.
+See \`awstats-data/README.md\` for details on privacy configuration and data format.
 
 ---
 
