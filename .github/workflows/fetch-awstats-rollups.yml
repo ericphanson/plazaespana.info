@@ -1,0 +1,47 @@
+name: Fetch AWStats Rollups
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fetch-rollups:
+    name: Fetch and archive AWStats rollups
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for git operations
+
+      - name: Setup SSH for NFSN
+        env:
+          NFSN_SSH_KEY: ${{ secrets.NFSN_SSH_KEY }}
+          NFSN_HOST: ${{ secrets.NFSN_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$NFSN_SSH_KEY" > ~/.ssh/nfsn_awstats
+          chmod 600 ~/.ssh/nfsn_awstats
+          cat >> ~/.ssh/config <<EOF
+          Host $NFSN_HOST
+            IdentityFile ~/.ssh/nfsn_awstats
+            StrictHostKeyChecking accept-new
+          EOF
+
+      - name: Setup Just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+
+      - name: Fetch rollups and update/create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NFSN_HOST: ${{ secrets.NFSN_HOST }}
+          NFSN_USER: ${{ secrets.NFSN_USER }}
+        run: |
+          just fetch-rollups

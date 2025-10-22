@@ -8,6 +8,8 @@ Fetches from two sources:
 - **Cultural events** from datos.madrid.es (theater, museums, exhibitions)
 - **City events** from esmadrid.com (tourism, festivals, outdoor activities)
 
+**Live site:** [plazaespana.info](https://plazaespana.info) (also at [plazaespana.nfshost.com](https://plazaespana.nfshost.com))
+
 ## Quick Start (3 Steps)
 
 ### 1. Install Prerequisites

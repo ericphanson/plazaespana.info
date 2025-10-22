@@ -1,0 +1,7 @@
+# Basic authentication for AWStats statistics directory
+# This file is deployed to /home/public/stats/.htaccess
+
+AuthType Basic
+AuthName "Site Statistics"
+AuthUserFile /home/private/.htpasswd
+Require valid-user

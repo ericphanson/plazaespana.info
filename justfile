@@ -59,7 +59,7 @@ _deploy-files:
 
     # Create remote directories if needed
     echo "📁 Creating remote directories..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/public/assets'
+    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/public/assets /home/public/stats'
 
     # Upload new files with .new suffix (atomic swap later)
     echo "📤 Uploading binary..."
@@ -74,6 +74,15 @@ _deploy-files:
     echo "📤 Uploading cron wrapper script..."
     scp ops/cron-generate.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/cron-generate.sh.new"
 
+    echo "📤 Uploading AWStats config..."
+    scp ops/.awstats.conf "$NFSN_USER@$NFSN_HOST:/home/private/.awstats.conf"
+
+    echo "📤 Uploading AWStats weekly script..."
+    scp ops/awstats-weekly.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/awstats-weekly.sh.new"
+
+    echo "📤 Uploading AWStats stats directory htaccess..."
+    scp ops/stats.htaccess "$NFSN_USER@$NFSN_HOST:/home/public/stats/.htaccess"
+
     echo "📤 Uploading hashed CSS and hash files..."
     scp public/assets/site.*.css public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
     scp public/assets/css.hash public/assets/build-report-css.hash "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
@@ -83,7 +92,7 @@ _deploy-files:
 
     # Atomically swap new files into place
     echo "🔄 Activating new files..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index-grouped.tmpl.html.new /home/private/templates/index-grouped.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/cron-generate.sh'
+    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/bin/awstats-weekly.sh.new /home/private/bin/awstats-weekly.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index-grouped.tmpl.html.new /home/private/templates/index-grouped.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/cron-generate.sh /home/private/bin/awstats-weekly.sh'
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
@@ -99,10 +108,18 @@ _deploy-files:
     echo ""
     echo "📝 Next steps:"
     echo "   1. Verify site at your NFSN URL"
-    echo "   2. Setup cron job in NFSN web UI:"
-    echo "      Command: /home/private/bin/cron-generate.sh"
-    echo "      Schedule: Every hour"
-    echo "      Note: Logs to /home/logs/generate.log, emails only on errors"
+    echo "   2. Setup cron jobs in NFSN web UI:"
+    echo "      a) Site generation:"
+    echo "         Command: /home/private/bin/cron-generate.sh"
+    echo "         Schedule: Every hour"
+    echo "         Note: Logs to /home/logs/generate.log, emails only on errors"
+    echo "      b) AWStats weekly rollup:"
+    echo "         Command: /home/private/bin/awstats-weekly.sh"
+    echo "         Schedule: 0 1 * * 0 (Sunday 1 AM)"
+    echo "         Note: Logs to /home/logs/awstats.log"
+    echo "   3. Setup Basic Auth for /stats/:"
+    echo "      SSH to NFSN and run: htpasswd -c /home/private/.htpasswd username"
+    echo "      Set permissions: chmod 600 /home/private/.htpasswd && chmod 711 /home/private"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
 deploy: freebsd hash-css _deploy-files
@@ -203,3 +220,8 @@ outdated:
 test-integration:
     @echo "🧪 Running integration tests..."
     @go test -tags=integration ./cmd/buildsite
+
+# Fetch new AWStats rollups and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
+fetch-rollups:
+    @echo "📊 Fetching AWStats rollups..."
+    @./scripts/fetch-rollups.sh
