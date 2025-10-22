@@ -11,6 +11,7 @@ default:
     @echo ""
     @echo "🔨 Build Commands:"
     @echo "  just build        - Build binary for local use"
+    @echo "  just generate     - Build binary and generate site (no server)"
     @echo "  just freebsd      - Build for FreeBSD (for NFSN deployment)"
     @echo "  just hash-css     - Generate content-hashed CSS"
     @echo ""
@@ -67,6 +68,27 @@ freebsd:
 # Generate CSS with content hash for cache busting
 hash-css:
     @./scripts/hash-assets.sh
+
+# Build binary and generate site (without starting server)
+generate: build hash-css
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo ""
+    echo "🔨 Building Madrid Events site..."
+    echo "   Mode: Development (1hr cache, 5s delays)"
+    echo "   Config: config.toml"
+    echo ""
+
+    ./build/buildsite -config config.toml
+
+    echo ""
+    echo "✅ Site generated successfully!"
+    echo ""
+    echo "📂 Output files:"
+    echo "   ./public/index.html  - Main event listing"
+    echo "   ./public/events.json - JSON API"
+    echo "   ./data/request-audit.json - HTTP request log"
+    echo ""
 
 # 🚀 Build site and serve locally (MAIN COMMAND)
 # Uses development mode: 1hr cache TTL, safe for rapid testing
