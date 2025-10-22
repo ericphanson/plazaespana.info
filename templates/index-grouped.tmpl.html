@@ -11,6 +11,17 @@
       display: none;
     }
 
+    /* Toggle count display based on checkbox state */
+    /* When unchecked: show city-only count */
+    #toggle-cultural:not(:checked) ~ main .count-all {
+      display: none;
+    }
+
+    /* When checked: show all count, hide city-only */
+    #toggle-cultural:checked ~ main .count-city-only {
+      display: none;
+    }
+
     .toggle-label {
       display: inline-block;
       cursor: pointer;
@@ -70,7 +81,10 @@
       <h2 class="section-header">
         <span class="section-icon">{{.Icon}}</span>
         {{.Name}}
-        <span class="event-count">{{.CityCount}}</span>
+        <span class="event-count">
+          <span class="count-city-only">{{.CityCount}}</span>
+          <span class="count-all">{{len .Events}}</span>
+        </span>
       </h2>
 
       {{range .Events}}
@@ -96,7 +110,10 @@
       <h2 class="section-header">
         <span class="section-icon">🎪</span>
         Eventos en Curso
-        <span class="event-count">{{.OngoingCityCount}}</span>
+        <span class="event-count">
+          <span class="count-city-only">{{.OngoingCityCount}}</span>
+          <span class="count-all">{{len .OngoingEvents}}</span>
+        </span>
       </h2>
 
       {{range .OngoingEvents}}
