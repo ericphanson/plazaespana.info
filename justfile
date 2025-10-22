@@ -75,7 +75,7 @@ _deploy-files:
     scp ops/cron-generate.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/cron-generate.sh.new"
 
     echo "📤 Uploading AWStats config..."
-    scp ops/.awstats.conf "$NFSN_USER@$NFSN_HOST:/home/private/.awstats.conf"
+    scp ops/awstats.conf "$NFSN_USER@$NFSN_HOST:/home/private/awstats.conf"
 
     echo "📤 Uploading AWStats weekly script..."
     scp ops/awstats-weekly.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/awstats-weekly.sh.new"

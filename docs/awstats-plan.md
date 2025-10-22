@@ -5,7 +5,7 @@ Set up AWStats to track weekly traffic statistics indefinitely, archive rollups 
 
 ## ⚠️ Important Notes
 
-1. **AWStats Config Verification Required**: This plan assumes NFSN's `-config=nfsn` flag automatically merges with `/home/private/.awstats.conf`. This must be verified during initial testing (see "Testing AWStats Configuration" section). If this doesn't work, we may need to use `-configdir=/home/private -config=awstats` instead.
+1. **Explicit Config Path**: Uses `-configdir=/home/private -config=awstats` to avoid NFSN config merge issues. Config file is `/home/private/awstats.conf`.
 
 2. **SSH Access Required**: The rollup fetch script requires SSH access to NFSN with key-based authentication (see "SSH Setup" section).
 
@@ -32,9 +32,8 @@ Set up AWStats to track weekly traffic statistics indefinitely, archive rollups 
   access_log.backup       # Rolling backup (1 week retention, for disaster recovery)
 
 /home/private/
-  awstats/
-    awstats.plazaespana.conf    # AWStats config
-    awstats-data/               # AWStats database files
+  awstats.conf                  # AWStats config
+  awstats-data/                 # AWStats database files
       awstats102025.txt         # October 2025 data (permanent)
       awstats112025.txt         # November 2025 data (permanent)
   rollups/                      # Weekly compressed logs (private, SCP access)
@@ -148,9 +147,9 @@ echo "Completed: $(date)" | tee -a "$LOG_FILE"
 
 ## AWStats Configuration
 
-NFSN provides a default AWStats config (`-config=nfsn`). Customize by creating `/home/private/.awstats.conf`:
+Create custom AWStats config at `/home/private/awstats.conf`:
 
-**`/home/private/.awstats.conf`**
+**`/home/private/awstats.conf`**
 ```perl
 # Site identification
 SiteDomain="plazaespana.info"
@@ -170,10 +169,8 @@ DirData="/home/private/awstats-data"
 **File permissions:**
 ```bash
 chmod 711 /home/private
-chmod 644 /home/private/.awstats.conf
+chmod 644 /home/private/awstats.conf
 ```
-
-NFSN will merge this with their base config at `/home/tmp/nfsn-awstats.conf`.
 
 ## Cron Setup
 
@@ -333,7 +330,7 @@ gunzip -c 2025-W43.txt.gz | awk '{print $1}' | sort | uniq -c | sort -rn | head 
 ## Recovery
 These archives can be replayed through AWStats to rebuild statistics:
 ```bash
-gunzip -c 2025-W43.txt.gz | perl /usr/local/www/awstats/cgi-bin/awstats.pl -config=nfsn -update -LogFile=-
+gunzip -c 2025-W43.txt.gz | perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -update -LogFile=-
 ```
 EOF
 
@@ -534,12 +531,12 @@ Before deploying, verify AWStats config works correctly:
 ### Test Config Syntax (on NFSN via SSH)
 ```bash
 ssh user@nfsn.host
-perl /usr/local/www/awstats/cgi-bin/awstats.pl -config=nfsn -configtest
+perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest
 ```
 
 **Expected output:**
 ```
-Config file '/home/private/.awstats.conf' read successfully
+Config file '/home/private/awstats.conf' read successfully
 LogFile = /home/logs/access_log
 SiteDomain = plazaespana.info
 ...
@@ -550,7 +547,8 @@ Press ENTER to continue...
 ```bash
 # Test static page generation to temp directory
 perl /usr/local/www/awstats/tools/awstats_buildstaticpages.pl \
-  -config=nfsn \
+  -configdir=/home/private \
+  -config=awstats \
   -update \
   -dir=/tmp/awstats-test
 
@@ -609,7 +607,8 @@ gzip -c /home/logs/access_log.backup > /home/private/rollups/YYYY-Www.txt.gz
 
 # Or rebuild stats from backup
 gunzip -c /home/logs/access_log.backup | perl /usr/local/www/awstats/tools/awstats_buildstaticpages.pl \
-    -config=nfsn \
+    -configdir=/home/private \
+    -config=awstats \
     -update \
     -dir=/home/public/stats \
     -LogFile=-
@@ -623,7 +622,8 @@ cd awstats-archives
 for archive in *.txt.gz; do
     echo "Processing $archive..."
     gunzip -c "$archive" | perl /usr/local/www/awstats/tools/awstats_buildstaticpages.pl \
-        -config=nfsn \
+        -configdir=/home/private \
+        -config=awstats \
         -update \
         -dir=/home/public/stats \
         -LogFile=-
@@ -662,7 +662,7 @@ gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq
 ## Implementation Checklist
 
 1. **Create AWStats config file**
-   - [ ] Create `ops/.awstats.conf` with SiteDomain and HostAliases (see "AWStats Configuration" section)
+   - [ ] Create `ops/awstats.conf` with SiteDomain and HostAliases (see "AWStats Configuration" section)
    - [ ] Add to deployment upload list in justfile
 
 2. **Create stats directory htaccess**
@@ -686,7 +686,7 @@ gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq
    - [ ] Test SSH access: `ssh $NFSN_USER@$NFSN_HOST ls /home/private`
 
 6. **Update deployment (justfile)**
-   - [ ] Add `.awstats.conf` upload to `_deploy-files` recipe
+   - [ ] Add `awstats.conf` upload to `_deploy-files` recipe
    - [ ] Add `awstats-weekly.sh` upload to `_deploy-files` recipe
    - [ ] Add `stats/.htaccess` upload to `_deploy-files` recipe
    - [ ] Update atomic swap chmod command to include awstats-weekly.sh
@@ -699,8 +699,8 @@ gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq
 
 8. **Deploy and test configuration**
    - [ ] Run `just deploy`
-   - [ ] SSH to NFSN and test config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -config=nfsn -configtest`
-   - [ ] If config test fails, verify NFSN's config merge behavior (see "Important Notes" section)
+   - [ ] SSH to NFSN and test config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest`
+   - [ ] Verify config file loads successfully
 
 9. **Test weekly script manually**
    - [ ] SSH to NFSN and run `/home/private/bin/awstats-weekly.sh` manually
@@ -791,6 +791,5 @@ gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq
 
 ### Remaining Considerations
 
-- **AWStats config merge behavior**: Must be verified during initial testing (Item #8 in checklist)
 - **Storage estimates**: Based on low-traffic site (~1MB/week); could be 10-100x higher with traffic spikes
 - **Cron error handling**: Current approach will send email on errors; consider wrapping in similar pattern to `cron-generate.sh` for consistency

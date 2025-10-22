@@ -108,7 +108,7 @@ public/assets/*.hash                 → /home/public/assets/
 ops/htaccess                         → /home/public/.htaccess
 
 # AWStats
-ops/.awstats.conf                    → /home/private/.awstats.conf
+ops/awstats.conf                     → /home/private/awstats.conf
 ops/awstats-weekly.sh                → /home/private/bin/awstats-weekly.sh
 ops/stats.htaccess                   → /home/public/stats/.htaccess
 ```
@@ -134,7 +134,7 @@ AWStats generates (via weekly cron):
       cron-generate.sh  # Site generation wrapper (hourly cron)
       awstats-weekly.sh # AWStats processor (weekly cron)
     config.toml         # Site generator config
-    .awstats.conf       # AWStats config
+    awstats.conf        # AWStats config
     .htpasswd           # Basic Auth passwords (for /stats/)
     templates/          # HTML templates
     data/               # Site generator cache, audit logs (auto-created)
@@ -174,8 +174,8 @@ Protect the `/stats/` directory with a password:
 # SSH to NFSN
 ssh $NFSN_USER@$NFSN_HOST
 
-# Create htpasswd file (replace 'yourusername' with desired username)
-htpasswd -c /home/private/.htpasswd yourusername
+# Create htpasswd file (username: awstats)
+htpasswd -c /home/private/.htpasswd awstats
 # Enter password when prompted
 
 # Set secure permissions
@@ -196,15 +196,13 @@ Test that AWStats can read the config:
 ssh $NFSN_USER@$NFSN_HOST
 
 # Test config syntax
-perl /usr/local/www/awstats/cgi-bin/awstats.pl -config=nfsn -configtest
+perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest
 
 # Expected output should show:
-# Config file '/home/private/.awstats.conf' read successfully
+# Config file '/home/private/awstats.conf' read successfully
 # LogFile = /home/logs/access_log
 # SiteDomain = plazaespana.info
 ```
-
-**If config test fails:** NFSN's `-config=nfsn` might not merge with `/home/private/.awstats.conf`. See troubleshooting section.
 
 ### 3. Run Initial AWStats Processing
 
@@ -308,21 +306,6 @@ ssh your_username@ssh.phx.nearlyfreespeech.net
 /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production
 ```
 
-### AWStats config not loading
-
-**Symptom:** Config test shows default values, not your custom config
-
-**Fix:** NFSN might not merge `/home/private/.awstats.conf` with `-config=nfsn`. Try explicit config path:
-
-```bash
-# Edit awstats-weekly.sh to use:
-perl "$AWSTATS_STATIC" \
-    -configdir=/home/private \
-    -config=.awstats \
-    -update \
-    -dir="$STATS_DIR"
-```
-
 ### AWStats shows "No data available"
 
 **Causes:**
@@ -402,7 +385,7 @@ gh auth status
 **AWStats setup (after first deployment):**
 - [ ] Create Basic Auth password: `htpasswd -c /home/private/.htpasswd username`
 - [ ] Set permissions: `chmod 600 /home/private/.htpasswd && chmod 711 /home/private`
-- [ ] Verify AWStats config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -config=nfsn -configtest`
+- [ ] Verify AWStats config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest`
 - [ ] Run initial processing: `/home/private/bin/awstats-weekly.sh`
 - [ ] Test web access: Visit `https://plazaespana.info/stats/` (should prompt for password)
 - [ ] Configure AWStats cron job: `0 1 * * 0` (Sunday 1 AM)

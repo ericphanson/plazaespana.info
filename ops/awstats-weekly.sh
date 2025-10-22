@@ -19,12 +19,13 @@ echo "=== AWStats Weekly Processing: $WEEK ===" | tee -a "$LOG_FILE"
 echo "Started: $(date)" | tee -a "$LOG_FILE"
 
 # 1. Update AWStats database and generate static pages
-# NFSN uses -config=nfsn which merges /home/private/.awstats.conf
+# Use explicit config path to avoid NFSN merge issues
 if [ -f "$ACCESS_LOG" ]; then
     echo "Updating AWStats database and generating static pages..." | tee -a "$LOG_FILE"
 
     if ! perl "$AWSTATS_STATIC" \
-        -config=nfsn \
+        -configdir=/home/private \
+        -config=awstats \
         -update \
         -dir="$STATS_DIR" \
         2>&1 | tee -a "$LOG_FILE"; then
@@ -35,7 +36,7 @@ if [ -f "$ACCESS_LOG" ]; then
     # 2. Create symlink for clean index.html access
     cd "$STATS_DIR"
     rm -f index.html
-    ln -s awstats.nfsn.html index.html
+    ln -s awstats.awstats.html index.html
 
     # 3. Create weekly rollup (compressed access log) if not empty
     if [ -s "$ACCESS_LOG" ]; then
