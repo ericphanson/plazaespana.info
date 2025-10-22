@@ -120,14 +120,18 @@ echo "📝 Changes detected:"
 git status --short "$LOCAL_DIR"
 echo ""
 
-# Check if canonical branch exists locally
-if git show-ref --verify --quiet "refs/heads/$CANONICAL_BRANCH"; then
-    echo "Canonical branch '$CANONICAL_BRANCH' exists locally, checking out..."
-    git checkout "$CANONICAL_BRANCH"
+# Fetch remote branches to check if canonical branch exists on remote
+git fetch origin
+
+# Check if canonical branch exists on remote
+if git show-ref --verify --quiet "refs/remotes/origin/$CANONICAL_BRANCH"; then
+    echo "Canonical branch '$CANONICAL_BRANCH' exists on remote, checking out..."
+    # Checkout remote branch (creates local tracking branch if needed)
+    git checkout -B "$CANONICAL_BRANCH" "origin/$CANONICAL_BRANCH"
     # Reset to main to ensure clean state
     git reset --hard main
 else
-    echo "Creating canonical branch '$CANONICAL_BRANCH'..."
+    echo "Creating new canonical branch '$CANONICAL_BRANCH'..."
     git checkout -b "$CANONICAL_BRANCH"
 fi
 
