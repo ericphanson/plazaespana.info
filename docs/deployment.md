@@ -74,12 +74,19 @@ After first deployment, set up hourly regeneration:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
 2. Add task:
-   - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production > /dev/null`
+   - **Command:** `/home/private/bin/cron-generate.sh`
    - **Schedule:** Every hour (or `0 * * * *`)
 
-The flags override config paths for NFSN's absolute paths and enable production fetch mode (30min cache, 2s delays).
+The wrapper script:
+- Logs all output to `/home/logs/generate.log` with timestamps
+- Only sends email on build failures (non-zero exit code)
+- Includes last 30 lines of log in error emails
 
-**Note:** The `> /dev/null` suppresses normal output to avoid cron emails on successful runs. Errors (stderr) still trigger emails.
+**View logs:**
+```bash
+ssh your_username@ssh.phx.nearlyfreespeech.net
+tail -f /home/logs/generate.log
+```
 
 ## What Gets Deployed
 
@@ -89,9 +96,12 @@ Files uploaded to NFSN:
 Local → Remote
 
 build/buildsite                      → /home/private/bin/buildsite
+ops/cron-generate.sh                 → /home/private/bin/cron-generate.sh
 config.toml                          → /home/private/config.toml
 templates/index-grouped.tmpl.html    → /home/private/templates/index-grouped.tmpl.html
 public/assets/site.*.css             → /home/public/assets/
+public/assets/build-report.*.css     → /home/public/assets/
+public/assets/*.hash                 → /home/public/assets/
 ops/htaccess                         → /home/public/.htaccess
 ```
 
@@ -140,7 +150,13 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 
 ### Site not updating
 
-SSH in and run manually to see errors:
+**Check the logs:**
+```bash
+ssh your_username@ssh.phx.nearlyfreespeech.net
+tail -100 /home/logs/generate.log
+```
+
+**Run manually to debug:**
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
 /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production

@@ -71,6 +71,9 @@ _deploy-files:
     echo "📤 Uploading templates..."
     scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html.new"
 
+    echo "📤 Uploading cron wrapper script..."
+    scp ops/cron-generate.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/cron-generate.sh.new"
+
     echo "📤 Uploading hashed CSS and hash files..."
     scp public/assets/site.*.css public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
     scp public/assets/css.hash public/assets/build-report-css.hash "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
@@ -80,7 +83,7 @@ _deploy-files:
 
     # Atomically swap new files into place
     echo "🔄 Activating new files..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index-grouped.tmpl.html.new /home/private/templates/index-grouped.tmpl.html && chmod +x /home/private/bin/buildsite'
+    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index-grouped.tmpl.html.new /home/private/templates/index-grouped.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/cron-generate.sh'
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
@@ -97,9 +100,9 @@ _deploy-files:
     echo "📝 Next steps:"
     echo "   1. Verify site at your NFSN URL"
     echo "   2. Setup cron job in NFSN web UI:"
-    echo "      Command: /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production > /dev/null"
+    echo "      Command: /home/private/bin/cron-generate.sh"
     echo "      Schedule: Every hour"
-    echo "      Note: > /dev/null suppresses output (no cron emails unless errors occur)"
+    echo "      Note: Logs to /home/logs/generate.log, emails only on errors"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
 deploy: freebsd hash-css _deploy-files
