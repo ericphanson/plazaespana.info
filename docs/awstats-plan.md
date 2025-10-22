@@ -20,7 +20,7 @@ Set up AWStats to track weekly traffic statistics indefinitely, archive rollups 
 ### File Locations (NFSN)
 ```
 /home/logs/
-  access_log              # Current Apache access log (NFSN auto-rotates)
+  access_log              # Current Apache access log (we truncate weekly)
 
 /home/private/
   awstats/
@@ -28,12 +28,15 @@ Set up AWStats to track weekly traffic statistics indefinitely, archive rollups 
     awstats-data/               # AWStats database files
       awstats102025.txt         # October 2025 data (permanent)
       awstats112025.txt         # November 2025 data (permanent)
+  rollups/                      # Weekly compressed logs (private, SCP access)
+    2025-W43.txt.gz             # Week 43 compressed log
+    2025-W44.txt.gz             # Week 44 compressed log
   bin/
     awstats-weekly.sh           # Weekly processing + static page generation
   .htpasswd                     # Basic auth credentials
 
 /home/public/
-  stats/                        # Static AWStats HTML (public access)
+  stats/                        # Static AWStats HTML (Basic Auth protected)
     index.html                  # Main stats page
     awstats.plazaespana.*.html  # Monthly/daily pages
 ```
@@ -62,7 +65,7 @@ awstats-archives/
 set -euo pipefail
 
 AWSTATS_STATIC=/usr/local/www/awstats/tools/awstats_buildstaticpages.pl
-ROLLUP_DIR=/home/public/rollups
+ROLLUP_DIR=/home/private/rollups
 STATS_DIR=/home/public/stats
 ACCESS_LOG=/home/logs/access_log
 
@@ -93,12 +96,10 @@ if [ -f "$ACCESS_LOG" ]; then
     echo "Creating weekly rollup: $WEEK.txt.gz"
     gzip -c "$ACCESS_LOG" > "$ROLLUP_DIR/$WEEK.txt.gz"
 
-    # 4. Update rollups index for CI
-    echo "$WEEK.txt.gz" >> "$ROLLUP_DIR/index.txt"
-    sort -u "$ROLLUP_DIR/index.txt" -o "$ROLLUP_DIR/index.txt"
-
-    # 5. NFSN handles log rotation automatically
-    # We don't truncate - let NFSN manage the file
+    # 4. Truncate access log to prevent duplicates in next rollup
+    # NFSN will continue writing to it
+    echo "Truncating access log..."
+    > "$ACCESS_LOG"
 
     echo "Weekly rollup created: $ROLLUP_DIR/$WEEK.txt.gz"
     echo "Static pages updated: $STATS_DIR/"
@@ -113,8 +114,9 @@ echo "Completed: $(date)"
 - Uses NFSN's `-config=nfsn` flag (merges with `/home/private/.awstats.conf`)
 - Single command updates database + generates static pages
 - Creates `index.html` symlink for clean URLs
-- Maintains `index.txt` file listing all rollups (for CI)
-- Lets NFSN handle log rotation automatically
+- Stores rollups in `/home/private/rollups/` (not public)
+- **Truncates access_log after archiving** to prevent duplicates
+- Each weekly rollup contains exactly one week's data
 
 ## AWStats Configuration
 
@@ -201,18 +203,15 @@ htpasswd -c /home/private/.htpasswd yourusername
 # Enter password when prompted
 ```
 
-### Public Rollups Directory
-`/home/public/rollups/` is intentionally public (no auth) so CI can download files via HTTPS.
-
 ## CI/PR Automation for Weekly Rollups
 
 ### Overview
-After successful deployment, CI checks for new weekly rollups on the server and creates a PR to archive them in the repo.
+After successful deployment, CI checks for new weekly rollups on the server via SCP and creates a PR to archive them in the repo.
 
 ### Workflow
 1. Deploy succeeds (GitHub Actions or manual)
 2. CI runs `just fetch-rollups` (or automatic step in CI)
-3. Script downloads new rollup files from `https://plazaespana.nfshost.com/rollups/`
+3. Script uses SCP to list and download new rollup files from `/home/private/rollups/`
 4. If new files exist, creates PR with:
    - New `awstats-archives/YYYY-Www.txt.gz` files
    - Updated `awstats-archives/README.md`
@@ -223,21 +222,28 @@ After successful deployment, CI checks for new weekly rollups on the server and 
 **`/workspace/scripts/fetch-rollups.sh`**
 ```bash
 #!/bin/bash
-# Download new AWStats rollups from server and create PR if needed
+# Download new AWStats rollups from server via SCP and create PR if needed
 set -euo pipefail
 
-ROLLUP_URL="https://plazaespana.nfshost.com/rollups"
+# Check required environment variables
+if [ -z "${NFSN_HOST:-}" ] || [ -z "${NFSN_USER:-}" ]; then
+    echo "❌ Error: NFSN_HOST and NFSN_USER environment variables required"
+    echo "   Set in .envrc.local or export manually"
+    exit 1
+fi
+
+REMOTE_DIR="/home/private/rollups"
 ARCHIVE_DIR="awstats-archives"
 
 mkdir -p "$ARCHIVE_DIR"
 
-echo "Checking for new rollups at $ROLLUP_URL"
+echo "Checking for new rollups on $NFSN_HOST:$REMOTE_DIR"
 
-# Get list of available rollups from index.txt
-AVAILABLE=$(curl -s "$ROLLUP_URL/index.txt" 2>/dev/null || true)
+# Get list of available rollups via SSH
+AVAILABLE=$(ssh "$NFSN_USER@$NFSN_HOST" "ls -1 $REMOTE_DIR/*.txt.gz 2>/dev/null | xargs -n1 basename" || true)
 
 if [ -z "$AVAILABLE" ]; then
-    echo "No rollups found (index.txt not available or empty)"
+    echo "No rollups found on server"
     exit 0
 fi
 
@@ -254,11 +260,11 @@ if [ ${#NEW_ROLLUPS[@]} -eq 0 ]; then
     exit 0
 fi
 
-# Download new rollups
+# Download new rollups via SCP
 echo "Found ${#NEW_ROLLUPS[@]} new rollup(s)"
 for rollup in "${NEW_ROLLUPS[@]}"; do
     echo "Downloading $rollup..."
-    curl -f -s -o "$ARCHIVE_DIR/$rollup" "$ROLLUP_URL/$rollup"
+    scp -q "$NFSN_USER@$NFSN_HOST:$REMOTE_DIR/$rollup" "$ARCHIVE_DIR/$rollup"
 done
 
 # Create or update README
@@ -345,12 +351,12 @@ Add to `.github/workflows/ci.yml` deploy job:
 # Check for and download new rollups
 just fetch-rollups
 
-# Force re-download specific week
-curl -o awstats-archives/2025-W43.txt.gz \
-  https://plazaespana.nfshost.com/rollups/2025-W43.txt.gz
+# Force re-download specific week via SCP
+scp "$NFSN_USER@$NFSN_HOST:/home/private/rollups/2025-W43.txt.gz" \
+  awstats-archives/2025-W43.txt.gz
 
-# View rollups index
-curl https://plazaespana.nfshost.com/rollups/index.txt
+# List available rollups on server
+ssh "$NFSN_USER@$NFSN_HOST" "ls -lh /home/private/rollups/"
 ```
 
 ## Storage Estimates
@@ -403,7 +409,7 @@ fetch-rollups:
 tail -50 /home/logs/awstats.log
 
 # List rollup archives
-ls -lh /home/public/rollups/
+ls -lh /home/private/rollups/
 
 # Check AWStats data files
 ls -lh /home/private/awstats-data/
@@ -415,10 +421,7 @@ ls -lh /home/public/stats/
 ### Verify Archive Integrity
 ```bash
 # Test that archives can be extracted
-gunzip -t /home/public/rollups/*.gz
-
-# View rollups index
-cat /home/public/rollups/index.txt
+gunzip -t /home/private/rollups/*.gz
 ```
 
 ## Recovery Scenarios
@@ -441,13 +444,13 @@ done
 ### View Specific Week
 ```bash
 # Extract and view specific week's raw logs
-gunzip -c /home/public/rollups/2025-W43.txt.gz | less
+gunzip -c /home/private/rollups/2025-W43.txt.gz | less
 
 # Count requests in week
-gunzip -c /home/public/rollups/2025-W43.txt.gz | wc -l
+gunzip -c /home/private/rollups/2025-W43.txt.gz | wc -l
 
 # Top 20 IPs for week
-gunzip -c /home/public/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq -c | sort -rn | head -20
+gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq -c | sort -rn | head -20
 ```
 
 ## Alternative: Database Backend
