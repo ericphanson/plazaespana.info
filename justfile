@@ -221,7 +221,7 @@ test-integration:
     @echo "🧪 Running integration tests..."
     @go test -tags=integration ./cmd/buildsite
 
-# Fetch new AWStats rollups and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
-fetch-rollups:
-    @echo "📊 Fetching AWStats rollups..."
-    @./scripts/fetch-rollups.sh
+# Fetch new AWStats statistics archives and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
+fetch-stats-archives:
+    @echo "📊 Fetching AWStats database archives..."
+    @./scripts/fetch-stats-archives.sh

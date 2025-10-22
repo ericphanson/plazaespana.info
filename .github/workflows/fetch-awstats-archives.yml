@@ -1,4 +1,4 @@
-name: Fetch AWStats Rollups
+name: Fetch AWStats Archives
 
 on:
   push:
@@ -11,8 +11,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  fetch-rollups:
-    name: Fetch and archive AWStats rollups
+  fetch-archives:
+    name: Fetch and archive AWStats database snapshots
     runs-on: ubuntu-latest
 
     steps:
@@ -38,10 +38,10 @@ jobs:
       - name: Setup Just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
 
-      - name: Fetch rollups and update/create PR
+      - name: Fetch statistics archives and update/create PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NFSN_HOST: ${{ secrets.NFSN_HOST }}
           NFSN_USER: ${{ secrets.NFSN_USER }}
         run: |
-          just fetch-rollups
+          just fetch-stats-archives

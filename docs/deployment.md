@@ -120,8 +120,8 @@ After upload, binary runs to generate:
 
 AWStats generates (via weekly cron):
 - `/home/public/stats/` - AWStats HTML pages (Basic Auth protected)
-- `/home/private/rollups/` - Weekly compressed access logs (snapshots)
-- `/home/private/awstats-data/` - AWStats database files
+- `/home/private/stats-archives/` - Weekly database snapshots (aggregate stats only, no IPs)
+- `/home/private/awstats-data/` - AWStats database files (current state)
 
 ## NFSN Directory Structure
 

@@ -1,21 +1,17 @@
 #!/bin/bash
-# Weekly AWStats processing, static page generation, and log archiving
+# Weekly AWStats processing and static page generation
 set -euo pipefail
 
 AWSTATS_STATIC=/usr/local/www/awstats/tools/awstats_buildstaticpages.pl
-ROLLUP_DIR=/home/private/rollups
 STATS_DIR=/home/public/stats
 DATA_DIR=/home/private/awstats-data
 ACCESS_LOG=/home/logs/access_log
 LOG_FILE=/home/logs/awstats.log
 
 # Ensure directories exist
-mkdir -p "$ROLLUP_DIR" "$STATS_DIR" "$DATA_DIR"
+mkdir -p "$STATS_DIR" "$DATA_DIR"
 
-# Get current week number (YYYY-Www format)
-WEEK=$(date +%Y-W%V)
-
-echo "=== AWStats Weekly Processing: $WEEK ===" | tee -a "$LOG_FILE"
+echo "=== AWStats Weekly Processing ===" | tee -a "$LOG_FILE"
 echo "Started: $(date)" | tee -a "$LOG_FILE"
 
 # 1. Update AWStats database and generate static pages
@@ -38,32 +34,8 @@ if [ -f "$ACCESS_LOG" ]; then
     rm -f index.html
     ln -s awstats.awstats.html index.html
 
-    # 3. Create weekly rollup (compressed access log) if not empty
-    # Note: We don't truncate the log (no permission - Apache owns it)
-    # AWStats tracks its position, so it won't double-count entries
-    # NFSN handles log rotation automatically
-    if [ -s "$ACCESS_LOG" ]; then
-        echo "Creating weekly rollup: $WEEK.txt.gz" | tee -a "$LOG_FILE"
-
-        # Create compressed rollup
-        if ! gzip -c "$ACCESS_LOG" > "$ROLLUP_DIR/$WEEK.txt.gz"; then
-            echo "ERROR: Failed to create rollup archive" >&2
-            exit 1
-        fi
-
-        # Verify rollup was created successfully
-        if [ ! -s "$ROLLUP_DIR/$WEEK.txt.gz" ]; then
-            echo "ERROR: Rollup archive is empty or missing" >&2
-            exit 1
-        fi
-
-        echo "Weekly rollup created: $ROLLUP_DIR/$WEEK.txt.gz ($(stat -f%z "$ROLLUP_DIR/$WEEK.txt.gz" 2>/dev/null || stat -c%s "$ROLLUP_DIR/$WEEK.txt.gz" 2>/dev/null) bytes)" | tee -a "$LOG_FILE"
-        echo "Note: AWStats tracks log position - no truncation needed" | tee -a "$LOG_FILE"
-    else
-        echo "Skipping rollup - access log is empty" | tee -a "$LOG_FILE"
-    fi
-
     echo "Static pages updated: $STATS_DIR/" | tee -a "$LOG_FILE"
+    echo "Database files in $DATA_DIR will be synced to git via GitHub Actions" | tee -a "$LOG_FILE"
 else
     echo "ERROR: Access log not found at $ACCESS_LOG" >&2
     exit 1
