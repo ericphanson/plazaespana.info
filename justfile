@@ -60,30 +60,11 @@ generate: build hash-css
     echo ""
 
 # Build site and serve locally at :8080
-dev: build hash-css
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo ""
-    echo "🔨 Building Madrid Events site..."
-    echo "   Mode: Development (1hr cache, 5s delays)"
-    echo "   Config: config.toml"
-    echo ""
-
-    ./build/buildsite -config config.toml
-
-    echo ""
-    echo "✅ Site generated successfully!"
-    echo ""
-    echo "📂 Output files:"
-    echo "   ./public/index.html  - Main event listing"
-    echo "   ./public/events.json - JSON API"
-    echo "   ./data/request-audit.json - HTTP request log"
-    echo ""
-    echo "🌐 Starting local server at http://localhost:8080"
-    echo "   Press Ctrl+C to stop"
-    echo ""
-
-    cd public && python3 -m http.server 8080
+dev: generate
+    @echo "🌐 Starting local server at http://localhost:8080"
+    @echo "   Press Ctrl+C to stop"
+    @echo ""
+    @cd public && python3 -m http.server 8080
 
 # Serve existing ./public at :8080 (skip rebuild)
 serve:
