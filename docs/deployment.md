@@ -80,7 +80,7 @@ After first deployment, set up hourly regeneration:
 The wrapper script:
 - Logs all output to `/home/logs/generate.log` with timestamps
 - Only sends email on build failures (non-zero exit code)
-- Includes last 30 lines of log in error emails
+- Includes full log in error emails for complete debugging context
 
 **View logs:**
 ```bash

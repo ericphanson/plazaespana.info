@@ -20,10 +20,11 @@ if ! /home/private/bin/buildsite \
   -template-path /home/private/templates/index-grouped.tmpl.html \
   -fetch-mode production >> "$LOG_FILE" 2>&1; then
 
-    # Build failed - output to stderr to trigger email
+    # Build failed - output full log to stderr to trigger email
     echo "ERROR: Build failed at $(date '+%Y-%m-%d %H:%M:%S')" >&2
-    echo "Last 30 lines of log:" >&2
-    tail -30 "$LOG_FILE" >&2
+    echo "==================== FULL LOG ====================" >&2
+    cat "$LOG_FILE" >&2
+    echo "==================================================" >&2
     exit 1
 fi
 
