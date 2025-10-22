@@ -126,10 +126,16 @@ func GroupEventsByTime(events []event.CulturalEvent, now time.Time) (groups []Ti
 		}
 
 		// Convert to template event
+		// Format time: only show HH:MM if not midnight (00:00 likely means "no time specified")
+		timeFormat := "02/01/2006"
+		if evt.StartTime.Hour() != 0 || evt.StartTime.Minute() != 0 {
+			timeFormat = "02/01/2006 15:04"
+		}
+
 		templateEvt := TemplateEvent{
 			IDEvento:          evt.ID,
 			Titulo:            evt.Title,
-			StartHuman:        evt.StartTime.Format("02/01/2006 15:04"),
+			StartHuman:        evt.StartTime.Format(timeFormat),
 			NombreInstalacion: evt.VenueName,
 			ContentURL:        evt.DetailsURL,
 			Description:       TruncateText(evt.Description, 150),
