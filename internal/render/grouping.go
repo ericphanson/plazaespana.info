@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/madrid-events/internal/filter"
 )
 
 // TimeGroup represents a group of events within a time range.
@@ -228,7 +229,8 @@ func GroupCityEventsByTime(events []event.CityEvent, now time.Time) (groups []Ti
 // Events are merged and sorted chronologically (city events first on ties).
 // Cultural events are marked with EventType="cultural" for CSS filtering.
 // Returns groups, ongoing events, and count of city events in ongoing section.
-func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time) (groups []TimeGroup, ongoing []TemplateEvent, ongoingCityCount int) {
+// Calculates and formats distance from reference point (typically Plaza de España).
+func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time, refLat, refLon float64) (groups []TimeGroup, ongoing []TemplateEvent, ongoingCityCount int) {
 	// Convert both types to a common internal type with metadata
 	type eventWithType struct {
 		evt       event.CulturalEvent
@@ -334,6 +336,10 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 			timeFormat = "02/01/2006 15:04"
 		}
 
+		// Calculate distance from reference point
+		distanceKm := filter.HaversineDistance(refLat, refLon, evt.Latitude, evt.Longitude)
+		distanceStr := FormatDistance(distanceKm)
+
 		// Convert to template event
 		templateEvt := TemplateEvent{
 			IDEvento:          evt.ID,
@@ -344,6 +350,7 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 			ContentURL:        evt.DetailsURL,
 			Description:       TruncateText(evt.Description, 150),
 			EventType:         ewt.eventType,
+			DistanceHuman:     distanceStr,
 		}
 
 		// Ongoing events (5+ days)

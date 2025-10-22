@@ -22,6 +22,7 @@ type TemplateEvent struct {
 	ContentURL        string
 	Description       string // Truncated description
 	EventType         string // "city" or "cultural"
+	DistanceHuman     string // Human-readable distance from Plaza de España (e.g., "250m", "1.2km")
 }
 
 // JSONEvent represents an event in the machine-readable JSON output.

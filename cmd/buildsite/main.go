@@ -728,7 +728,9 @@ func main() {
 	log.Println("\n=== Rendering Output ===")
 
 	// Group events by time (merged: city and cultural together)
-	mergedGroups, ongoingEvents, ongoingCityCount := render.GroupMixedEventsByTime(filteredCityEvents, filteredEvents, now)
+	mergedGroups, ongoingEvents, ongoingCityCount := render.GroupMixedEventsByTime(
+		filteredCityEvents, filteredEvents, now,
+		cfg.Filter.Latitude, cfg.Filter.Longitude)
 
 	// Convert to JSON format (keep original flat structure for API)
 	var culturalJSONEvents []render.JSONEvent

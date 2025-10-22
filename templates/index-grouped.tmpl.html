@@ -97,6 +97,7 @@
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .DistanceHuman}}<p class="distance">📍 {{.DistanceHuman}} de Plaza de España</p>{{end}}
         {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
         {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
       </article>
@@ -126,6 +127,7 @@
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+        {{if .DistanceHuman}}<p class="distance">📍 {{.DistanceHuman}} de Plaza de España</p>{{end}}
         {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
         {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
       </article>
