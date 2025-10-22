@@ -134,11 +134,13 @@ AWStats generates (via weekly cron):
       awstats-weekly.sh # AWStats processor (weekly cron)
     config.toml         # Site generator config
     awstats.conf        # AWStats config
-    .htpasswd           # Basic Auth passwords (for /stats/)
     templates/          # HTML templates
     data/               # Site generator cache, audit logs (auto-created)
     awstats-data/       # AWStats database files (auto-created)
     rollups/            # Weekly access log archives (auto-created)
+
+  protected/            # 🔒 Apache-readable only (not web-accessible)
+    .htpasswd           # Basic Auth passwords
 
   public/               # ✅ Web root (served via HTTP)
     index.html          # Generated event listing
@@ -158,6 +160,7 @@ AWStats generates (via weekly cron):
 **Access control:**
 - Only `/home/public/` is web-accessible via HTTP/HTTPS
 - `/home/public/stats/` requires Basic Auth (username/password)
+- `/home/protected/` is readable by Apache (for .htpasswd) but not web-accessible
 - All other files (`/home/private/`, `/home/logs/`) are SSH-only
 
 ## AWStats Setup (One-Time Configuration)
@@ -172,13 +175,16 @@ Protect the `/stats/` directory with a password:
 # SSH to NFSN
 ssh $NFSN_USER@$NFSN_HOST
 
+# Create protected directory if it doesn't exist
+mkdir -p /home/protected
+
 # Create htpasswd file (username: awstats)
-htpasswd -c /home/private/.htpasswd awstats
+htpasswd -c /home/protected/.htpasswd awstats
 # Enter password when prompted
 
 # Set secure permissions
-chmod 600 /home/private/.htpasswd
-chmod 711 /home/private
+chmod 600 /home/protected/.htpasswd
+chmod 755 /home/protected
 
 # Exit SSH
 exit
@@ -353,11 +359,11 @@ ls -lh /home/private/awstats-data/
 ssh $NFSN_USER@$NFSN_HOST ls -la /home/public/stats/.htaccess
 
 # Verify .htpasswd exists
-ssh $NFSN_USER@$NFSN_HOST ls -la /home/private/.htpasswd
+ssh $NFSN_USER@$NFSN_HOST ls -la /home/protected/.htpasswd
 
 # Check permissions
-ssh $NFSN_USER@$NFSN_HOST "stat -f '%A %N' /home/private/.htpasswd /home/private"
-# Should show: 600 /home/private/.htpasswd and 711 /home/private
+ssh $NFSN_USER@$NFSN_HOST "stat -f '%A %N' /home/protected/.htpasswd /home/protected"
+# Should show: 600 /home/protected/.htpasswd and 755 /home/protected
 ```
 
 ### Rollup fetch workflow fails
@@ -401,8 +407,9 @@ gh auth status
 - [ ] Check `/home/private/data/request-audit.json` for errors (via SSH)
 
 **AWStats setup (after first deployment):**
-- [ ] Create Basic Auth password: `htpasswd -c /home/private/.htpasswd username`
-- [ ] Set permissions: `chmod 600 /home/private/.htpasswd && chmod 711 /home/private`
+- [ ] Create protected directory: `mkdir -p /home/protected`
+- [ ] Create Basic Auth password: `htpasswd -c /home/protected/.htpasswd awstats`
+- [ ] Set permissions: `chmod 600 /home/protected/.htpasswd && chmod 755 /home/protected`
 - [ ] Verify AWStats config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest`
 - [ ] Run initial processing: `/home/private/bin/awstats-weekly.sh`
 - [ ] Test web access: Visit `https://plazaespana.info/stats/` (should prompt for password)

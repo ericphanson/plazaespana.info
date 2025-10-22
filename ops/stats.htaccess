@@ -3,5 +3,5 @@
 
 AuthType Basic
 AuthName "Site Statistics"
-AuthUserFile /home/private/.htpasswd
+AuthUserFile /protected/.htpasswd
 Require valid-user

@@ -40,7 +40,9 @@ Set up AWStats to track weekly traffic statistics indefinitely, archive rollups 
     2025-W44.txt.gz             # Week 44 compressed log
   bin/
     awstats-weekly.sh           # Weekly processing + static page generation
-  .htpasswd                     # Basic auth credentials
+
+/home/protected/
+  .htpasswd                     # Basic auth credentials (Apache-readable)
 
 /home/public/
   stats/                        # Static AWStats HTML (Basic Auth protected)
@@ -216,7 +218,7 @@ Create `/home/public/stats/.htaccess` (note: separate file in stats directory, N
 ```apache
 AuthType Basic
 AuthName "Site Statistics"
-AuthUserFile /home/private/.htpasswd
+AuthUserFile /home/protected/.htpasswd
 Require valid-user
 ```
 
@@ -225,10 +227,11 @@ Require valid-user
 ### Create Password File
 ```bash
 ssh user@nfsn.host
-htpasswd -c /home/private/.htpasswd yourusername
+mkdir -p /home/protected
+htpasswd -c /home/protected/.htpasswd yourusername
 # Enter password when prompted
-chmod 600 /home/private/.htpasswd
-chmod 711 /home/private
+chmod 600 /home/protected/.htpasswd
+chmod 755 /home/protected
 ```
 
 ## CI/PR Automation for Weekly Rollups
@@ -677,8 +680,9 @@ gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq
 
 7. **Setup Basic Auth on NFSN**
    - [ ] SSH to NFSN
-   - [ ] Run `htpasswd -c /home/private/.htpasswd username`
-   - [ ] Set permissions: `chmod 600 /home/private/.htpasswd && chmod 711 /home/private`
+   - [ ] Create protected directory: `mkdir -p /home/protected`
+   - [ ] Run `htpasswd -c /home/protected/.htpasswd username`
+   - [ ] Set permissions: `chmod 600 /home/protected/.htpasswd && chmod 755 /home/protected`
 
 8. **Deploy and test configuration**
    - [ ] Run `just deploy`
@@ -734,7 +738,7 @@ gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq
 
 ### Security & Operational Improvements
 
-5. **Fixed htpasswd permissions**: Added `chmod 600 /home/private/.htpasswd` to secure password file
+5. **Fixed htpasswd permissions**: Added `chmod 600 /home/protected/.htpasswd` to secure password file (stored in /home/protected for Apache access)
 
 6. **Added git state checks to fetch-rollups**: Verifies clean working directory, checks out main, pulls latest before creating PR
 
