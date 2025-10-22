@@ -71,6 +71,9 @@ _deploy-files:
     echo "📤 Uploading templates..."
     scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html"
 
+    echo "🧹 Cleaning up old CSS files..."
+    ssh "$NFSN_USER@$NFSN_HOST" 'rm -f /home/public/assets/site.*.css'
+
     echo "📤 Uploading hashed CSS..."
     scp public/assets/site.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
 
