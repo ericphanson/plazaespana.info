@@ -34,7 +34,15 @@ jobs:
           fi
 
       - name: Run tests
-        run: go test -v ./...
+        run: |
+          # Test each package individually to see exactly where failures occur
+          for pkg in $(go list ./...); do
+            echo "Testing package: $pkg"
+            if ! go test -v "$pkg"; then
+              echo "FAILED: $pkg"
+              exit 1
+            fi
+          done
 
       - name: Build native binary
         run: go build -v -trimpath -ldflags="-s -w" -o build/buildsite ./cmd/buildsite
