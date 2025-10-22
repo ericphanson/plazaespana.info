@@ -28,8 +28,7 @@ Set up AWStats to track weekly traffic statistics indefinitely, archive rollups 
 ### File Locations (NFSN)
 ```
 /home/logs/
-  access_log              # Current Apache access log (truncated weekly after backup)
-  access_log.backup       # Rolling backup (1 week retention, for disaster recovery)
+  access_log              # Current Apache access log (NFSN rotates automatically)
 
 /home/private/
   awstats.conf                  # AWStats config
@@ -132,17 +131,17 @@ echo "Completed: $(date)" | tee -a "$LOG_FILE"
 ```
 
 **Key changes:**
-- Uses NFSN's `-config=nfsn` flag (merges with `/home/private/.awstats.conf`)
+- Uses explicit `-configdir=/home/private -config=awstats` for reliable config loading
 - Single command updates database + generates static pages
 - Creates `index.html` symlink for clean URLs (safely removes old symlink first)
 - Stores rollups in `/home/private/rollups/` (not public)
 - **Creates required directories** (`awstats-data`, `rollups`, `stats`)
 - **Error handling**: Captures AWStats output to log file, exits on failure
-- **Safe rollup creation**: Verifies rollup exists and has non-zero size before truncating
-- **Rolling backup**: Keeps `access_log.backup` before truncating (1 week retention)
-- **Conditional truncation**: Only truncates after successful AWStats processing AND rollup creation
+- **Safe rollup creation**: Verifies rollup exists and has non-zero size
+- **No log truncation**: AWStats tracks position automatically via `KeepBackupOfHistoricFiles=1`
+- **NFSN log rotation**: Relies on NFSN's automatic log rotation (no permission to truncate)
 - **Skips empty logs**: Doesn't create rollup if no traffic that week
-- Each weekly rollup contains exactly one week's data
+- Weekly rollups are snapshots of accumulated log data (NFSN rotates periodically)
 - All output logged to `/home/logs/awstats.log` for debugging
 
 ## AWStats Configuration
@@ -586,11 +585,8 @@ ls -lh /home/private/awstats-data/
 # Check static HTML pages
 ls -lh /home/public/stats/
 
-# Verify backup exists
-ls -lh /home/logs/access_log.backup
-
-# Check current vs backup log sizes
-ls -lh /home/logs/access_log*
+# Check access log size
+ls -lh /home/logs/access_log
 ```
 
 ### Verify Archive Integrity
@@ -600,22 +596,6 @@ gunzip -t /home/private/rollups/*.gz
 ```
 
 ## Recovery Scenarios
-
-### Restore from Backup (Most Recent Week)
-If the current week's rollup failed or was corrupted, use the backup:
-```bash
-# The backup contains the previous week's data before truncation
-# You can re-process it through AWStats
-gzip -c /home/logs/access_log.backup > /home/private/rollups/YYYY-Www.txt.gz
-
-# Or rebuild stats from backup
-gunzip -c /home/logs/access_log.backup | perl /usr/local/www/awstats/tools/awstats_buildstaticpages.pl \
-    -configdir=/home/private \
-    -config=awstats \
-    -update \
-    -dir=/home/public/stats \
-    -LogFile=-
-```
 
 ### Restore from Weekly Archive
 If AWStats data is lost, rebuild from rollup archives:
@@ -786,11 +766,13 @@ gunzip -c /home/private/rollups/2025-W43.txt.gz | awk '{print $1}' | sort | uniq
 
 18. **No duplicate PRs**: Script checks for existing PR and force-pushes to update it instead of creating new ones
 
-19. **Safe truncation with verification**: Only truncates access log after verifying AWStats processing AND rollup creation both succeeded
+19. **No log truncation**: Removed truncation (no permission - Apache owns log). AWStats tracks position via `KeepBackupOfHistoricFiles=1`
 
-20. **Rolling backup**: Creates `access_log.backup` before truncating, providing 1-week disaster recovery option
+20. **NFSN log rotation**: Relies on NFSN's automatic log rotation. Weekly rollups are snapshots of accumulated data between rotations
 
 21. **Pre-flight validation**: fetch-rollups.sh validates required commands (ssh, scp, gh, git) and `gh auth status` before processing to fail fast if environment is misconfigured
+
+22. **LogFormat parameter**: Added required `LogFormat=1` (Apache combined) to config file
 
 ### Remaining Considerations
 

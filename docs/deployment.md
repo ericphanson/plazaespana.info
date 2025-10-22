@@ -120,9 +120,8 @@ After upload, binary runs to generate:
 
 AWStats generates (via weekly cron):
 - `/home/public/stats/` - AWStats HTML pages (Basic Auth protected)
-- `/home/private/rollups/` - Weekly compressed access logs
+- `/home/private/rollups/` - Weekly compressed access logs (snapshots)
 - `/home/private/awstats-data/` - AWStats database files
-- `/home/logs/access_log.backup` - Rolling backup of access log
 
 ## NFSN Directory Structure
 
@@ -151,8 +150,7 @@ AWStats generates (via weekly cron):
     .htaccess           # Apache config (caching, security headers)
 
   logs/                 # Log files
-    access_log          # Apache access log (truncated weekly)
-    access_log.backup   # Previous week's log (rolling backup)
+    access_log          # Apache access log (NFSN rotates automatically)
     generate.log        # Site generation log
     awstats.log         # AWStats processing log
 ```
@@ -222,8 +220,7 @@ ls -lh /home/private/rollups/
 
 **Expected output:**
 - `/home/public/stats/index.html` and other AWStats HTML files
-- `/home/private/rollups/YYYY-Www.txt.gz` (current week's rollup)
-- `/home/logs/access_log.backup` (backup before truncation)
+- `/home/private/rollups/YYYY-Www.txt.gz` (current week's rollup snapshot)
 
 ### 4. Test Web Access
 
@@ -272,6 +269,27 @@ For automated PR creation when new rollups are available:
    - Should create/update PR with new rollups from `/home/private/rollups/`
 
 **Note:** The workflow runs automatically after each push to `main`, or manually via workflow_dispatch.
+
+### 7. Configure NFSN Log Rotation
+
+Since AWStats tracks its position in the log file, NFSN's automatic log rotation won't cause issues. However, you should verify rotation is configured:
+
+1. **NFSN web interface → Sites → your_site → Site Information**
+2. Look for "Log Rotation" settings
+3. **Recommended:** Daily or weekly rotation with compression
+
+**Why this matters:**
+- Without rotation, `access_log` grows indefinitely
+- Weekly rollups are snapshots - they'll grow each week until NFSN rotates the log
+- AWStats uses `KeepBackupOfHistoricFiles=1` to track position across rotations
+- After rotation, AWStats starts fresh with the new log file
+
+**Example rotation schedule:**
+- Rotate: Weekly (matches our AWStats rollup schedule)
+- Keep: 4 weeks of compressed logs
+- Compression: gzip
+
+This way, each weekly rollup captures approximately one week of data (from after last rotation to current time).
 
 ## Troubleshooting
 
@@ -388,6 +406,7 @@ gh auth status
 - [ ] Verify AWStats config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest`
 - [ ] Run initial processing: `/home/private/bin/awstats-weekly.sh`
 - [ ] Test web access: Visit `https://plazaespana.info/stats/` (should prompt for password)
+- [ ] Configure NFSN log rotation: Weekly with compression (NFSN web UI → Site Information)
 - [ ] Configure AWStats cron job: `0 1 * * 0` (Sunday 1 AM)
 - [ ] Setup rollup fetch SSH key and GitHub secrets
 - [ ] Test rollup fetch workflow via workflow_dispatch

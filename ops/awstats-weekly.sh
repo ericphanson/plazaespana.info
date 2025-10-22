@@ -39,6 +39,9 @@ if [ -f "$ACCESS_LOG" ]; then
     ln -s awstats.awstats.html index.html
 
     # 3. Create weekly rollup (compressed access log) if not empty
+    # Note: We don't truncate the log (no permission - Apache owns it)
+    # AWStats tracks its position, so it won't double-count entries
+    # NFSN handles log rotation automatically
     if [ -s "$ACCESS_LOG" ]; then
         echo "Creating weekly rollup: $WEEK.txt.gz" | tee -a "$LOG_FILE"
 
@@ -55,16 +58,7 @@ if [ -f "$ACCESS_LOG" ]; then
         fi
 
         echo "Weekly rollup created: $ROLLUP_DIR/$WEEK.txt.gz ($(stat -f%z "$ROLLUP_DIR/$WEEK.txt.gz" 2>/dev/null || stat -c%s "$ROLLUP_DIR/$WEEK.txt.gz" 2>/dev/null) bytes)" | tee -a "$LOG_FILE"
-
-        # 4. Backup and truncate access log to prevent duplicates in next rollup
-        # Keep rolling backup (overwrite previous backup)
-        echo "Creating backup and truncating access log..." | tee -a "$LOG_FILE"
-        cp "$ACCESS_LOG" "$ACCESS_LOG.backup"
-
-        # Truncate log (NFSN will continue writing to it)
-        : > "$ACCESS_LOG"
-
-        echo "Access log backed up and truncated (backup: $ACCESS_LOG.backup)" | tee -a "$LOG_FILE"
+        echo "Note: AWStats tracks log position - no truncation needed" | tee -a "$LOG_FILE"
     else
         echo "Skipping rollup - access log is empty" | tee -a "$LOG_FILE"
     fi
