@@ -27,6 +27,21 @@
       color: var(--bg);
     }
 
+    /* When checkbox is checked, update label appearance */
+    #toggle-cultural:checked ~ header .toggle-label {
+      background: var(--cultural-accent);
+      color: white;
+    }
+
+    /* Change checkbox symbol when checked */
+    .toggle-label::before {
+      content: "☐ ";
+    }
+
+    #toggle-cultural:checked ~ header .toggle-label::before {
+      content: "☑ ";
+    }
+
     #toggle-cultural {
       display: none;
     }
@@ -44,7 +59,7 @@
 
     {{if gt .TotalCulturalEvents 0}}
     <label for="toggle-cultural" class="toggle-label">
-      ☐ Mostrar eventos culturales ({{.TotalCulturalEvents}})
+      Mostrar eventos culturales ({{.TotalCulturalEvents}})
     </label>
     {{end}}
   </header>
