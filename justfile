@@ -58,17 +58,17 @@ deploy: freebsd hash-css
 
     # Create remote directories if needed
     echo "📁 Creating remote directories..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/bin /home/data /home/public/assets /home/templates'
+    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/public/assets'
 
     # Upload files
     echo "📤 Uploading binary..."
-    scp build/buildsite "$NFSN_USER@$NFSN_HOST:/home/bin/buildsite"
+    scp build/buildsite "$NFSN_USER@$NFSN_HOST:/home/private/bin/buildsite"
 
     echo "📤 Uploading config..."
-    scp config.toml "$NFSN_USER@$NFSN_HOST:/home/config.toml"
+    scp config.toml "$NFSN_USER@$NFSN_HOST:/home/private/config.toml"
 
     echo "📤 Uploading templates..."
-    scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/templates/index-grouped.tmpl.html"
+    scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html"
 
     echo "📤 Uploading hashed CSS..."
     scp public/assets/site.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
@@ -78,11 +78,11 @@ deploy: freebsd hash-css
 
     # Set permissions
     echo "🔐 Setting permissions..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'chmod +x /home/bin/buildsite'
+    ssh "$NFSN_USER@$NFSN_HOST" 'chmod +x /home/private/bin/buildsite'
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
-    ssh "$NFSN_USER@$NFSN_HOST" '/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production'
+    ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production'
 
     echo ""
     echo "✅ Deployment complete!"
@@ -90,7 +90,7 @@ deploy: freebsd hash-css
     echo "📝 Next steps:"
     echo "   1. Verify site at your NFSN URL"
     echo "   2. Setup cron job in NFSN web UI:"
-    echo "      Command: /home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production"
+    echo "      Command: /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production"
     echo "      Schedule: Every hour"
 
 # Generate content-hashed CSS for cache busting

@@ -92,18 +92,18 @@ jobs:
       - name: Create remote directories
         run: |
           ssh ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }} \
-            'mkdir -p /home/bin /home/data /home/public/assets /home/templates'
+            'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/public/assets'
 
       - name: Deploy binary
         run: |
           chmod +x build/buildsite
-          scp build/buildsite ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/bin/buildsite
+          scp build/buildsite ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/private/bin/buildsite
 
       - name: Deploy config
-        run: scp config.toml ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/config.toml
+        run: scp config.toml ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/private/config.toml
 
       - name: Deploy templates
-        run: scp templates/index-grouped.tmpl.html ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/templates/index-grouped.tmpl.html
+        run: scp templates/index-grouped.tmpl.html ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/private/templates/index-grouped.tmpl.html
 
       - name: Deploy CSS
         run: scp public/assets/site.*.css ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/public/assets/
@@ -114,9 +114,9 @@ jobs:
       - name: Set permissions
         run: |
           ssh ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }} \
-            'chmod +x /home/bin/buildsite'
+            'chmod +x /home/private/bin/buildsite'
 
       - name: Regenerate site
         run: |
           ssh ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }} \
-            '/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production'
+            '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production'

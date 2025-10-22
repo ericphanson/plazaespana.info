@@ -40,12 +40,12 @@ The following instructions are kept for reference but are superseded by `just de
    ```
 
 4. **Configure cron (Scheduled Tasks in NFSN web UI):**
-   - **Command:** `/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production`
+   - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production`
    - **Schedule:** Every hour (or `*/10` for 10-minute intervals)
    - **Flags explained:**
-     - `-config /home/config.toml` - Use uploaded config
+     - `-config /home/private/config.toml` - Use uploaded config
      - `-out-dir /home/public` - Override output path to web root
-     - `-data-dir /home/data` - Override data path (outside web root)
+     - `-data-dir /home/private/data` - Override data path (in private/)
      - `-fetch-mode production` - Production fetch settings (30min cache, 2s delays)
 
 ## Configuration File
@@ -115,7 +115,7 @@ The site implements comprehensive respectful fetching to prevent overwhelming up
 
 **Cron Command:**
 ```bash
-/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production
+/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production
 ```
 
 ### Features

@@ -102,11 +102,15 @@ Deployment happens automatically on push to `main` after tests pass.
 
 The deployment process uploads:
 
-1. **Binary:** `build/buildsite` → `/home/bin/buildsite`
-2. **Config:** `config.toml` → `/home/config.toml`
-3. **Template:** `templates/index-grouped.tmpl.html` → `/home/templates/index-grouped.tmpl.html`
+1. **Binary:** `build/buildsite` → `/home/private/bin/buildsite`
+2. **Config:** `config.toml` → `/home/private/config.toml`
+3. **Template:** `templates/index-grouped.tmpl.html` → `/home/private/templates/index-grouped.tmpl.html`
 4. **CSS:** `public/assets/site.*.css` → `/home/public/assets/`
 5. **Apache config:** `ops/htaccess` → `/home/public/.htaccess`
+
+**Simple two-directory structure:**
+- `private/` - All internal files (binary, config, templates, data cache)
+- `public/` - Web root (HTML, JSON, CSS, .htaccess served to visitors)
 
 After uploading, the binary is run to regenerate the site with fresh data.
 
@@ -149,15 +153,16 @@ After deploying, set up hourly site regeneration:
 1. Log into NFSN web interface
 2. Go to Sites → your_site → Scheduled Tasks
 3. Add new task:
-   - **Command:** `/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production`
+   - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production`
    - **Schedule:** `0 * * * *` (every hour at :00)
    - Or use the web UI to select "Every hour"
 
-**Why the flags?**
-- `-config /home/config.toml` - Use the uploaded config
-- `-out-dir /home/public` - Output to web root (overrides config's relative path)
-- `-data-dir /home/data` - Store cache/data outside web root (overrides config)
-- `-fetch-mode production` - Use production fetch settings (30min cache, 2s delays)
+**Command explained:**
+- `/home/private/bin/buildsite` - Run the binary
+- `-config /home/private/config.toml` - Read config
+- `-out-dir /home/public` - Output HTML/JSON to web root
+- `-data-dir /home/private/data` - Store cache/audit in private/
+- `-fetch-mode production` - Production settings (30min cache, 2s delays)
 
 ## Directory Structure on NFSN
 
@@ -165,28 +170,38 @@ After deployment:
 
 ```
 /home/
-  bin/
-    buildsite              # Executable binary (not web-accessible)
-  config.toml              # Configuration file (same as local, uses relative paths)
-  templates/               # (not web-accessible)
-    index-grouped.tmpl.html # HTML template
-  public/                  # ⭐ Web root - Files here are served via HTTP
+  private/                 # ❌ Not web-accessible (all internal files here)
+    bin/
+      buildsite            # Executable binary
+    config.toml            # Configuration file
+    templates/
+      index-grouped.tmpl.html  # HTML template
+    data/                  # Auto-created by binary
+      http-cache/          # Cached HTTP responses
+      request-audit.json   # HTTP request log
+      last_success.json    # Snapshot fallback
+      audit-events.json    # Event audit trail
+
+  public/                  # ✅ Web root - Directly accessible via HTTP
     index.html             # Generated event listing
     events.json            # Generated JSON API
     assets/
       site.<hash>.css      # Hashed CSS file
     .htaccess              # Apache configuration
-  data/                    # Auto-created by binary (not web-accessible)
-    http-cache/            # Cached HTTP responses
-    request-audit.json     # HTTP request log
-    last_success.json      # Snapshot fallback
-    audit-events.json      # Event audit trail
+
+  protected/               # (not used by this project)
+  logs/                    # Apache logs (if enabled)
+  tmp/                     # (not used by this project)
 ```
 
-**Important:**
-- `/home/public/` is the web root - only files here are accessible via HTTP
-- Binary, config, templates, and data are outside the web root for security
-- Command-line flags (`-out-dir`, `-data-dir`) override config's relative paths
+**Simple structure:**
+- `private/` - Everything internal: binary, config, templates, data cache
+- `public/` - Only files meant to be served to visitors
+
+**Security:**
+- Only `public/` contents are accessible via HTTP
+- All internal files stay in `private/` (completely not web-accessible)
+- Command-line flags override config's relative paths to use absolute NFSN paths
 
 ## Troubleshooting
 
@@ -214,7 +229,7 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 SSH into NFSN and run manually to check for errors:
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
-/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production
+/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production
 ```
 
 Look for error messages in the output.
