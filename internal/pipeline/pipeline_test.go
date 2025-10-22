@@ -1,11 +1,26 @@
 package pipeline
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/ericphanson/madrid-events/internal/fetch"
 )
+
+// getFixturePath returns the absolute file:// URL for a fixture file
+func getFixturePath(filename string) string {
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	// Construct path relative to project root
+	// Tests run from project root, so testdata/fixtures/ is directly accessible
+	absPath := filepath.Join(cwd, "..", "..", "testdata", "fixtures", filename)
+	return "file://" + absPath
+}
 
 func TestPipeline_FetchAll_Sequential(t *testing.T) {
 	// This test uses real fixtures to verify sequential fetching works
@@ -20,9 +35,9 @@ func TestPipeline_FetchAll_Sequential(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath("madrid-events.json"),
+		getFixturePath("madrid-events.xml"),
+		getFixturePath("madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -59,8 +74,8 @@ func TestPipeline_FetchAll_ErrorIsolation(t *testing.T) {
 	}
 	pipeline := NewPipeline(
 		"file:///nonexistent/json.json", // Will fail
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath("madrid-events.xml"),
+		getFixturePath("madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -101,9 +116,9 @@ func TestPipeline_Merge_Deduplication(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath("madrid-events.json"),
+		getFixturePath("madrid-events.xml"),
+		getFixturePath("madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -141,9 +156,9 @@ func TestPipeline_Merge_SourceTracking(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath("madrid-events.json"),
+		getFixturePath("madrid-events.xml"),
+		getFixturePath("madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -196,9 +211,9 @@ func TestPipeline_Merge_HandlesFailures(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///nonexistent/json.json",                         // Will fail
-		"file:///workspace/testdata/fixtures/madrid-events.xml", // Will succeed
-		"file:///nonexistent/csv.csv",                           // Will fail
+		"file:///nonexistent/json.json",     // Will fail
+		getFixturePath("madrid-events.xml"), // Will succeed
+		"file:///nonexistent/csv.csv",       // Will fail
 		client,
 		loc,
 	)
@@ -269,9 +284,9 @@ func TestPipeline_Merge_DeduplicatesSources(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath("madrid-events.json"),
+		getFixturePath("madrid-events.xml"),
+		getFixturePath("madrid-events.csv"),
 		client,
 		loc,
 	)
