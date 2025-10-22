@@ -85,9 +85,10 @@ _deploy-files:
     echo "🔨 Regenerating site on server..."
     ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production'
 
-    # Clean up old CSS files (keep only the latest)
+    # Clean up old CSS files (keep only the latest of each type)
     echo "🧹 Cleaning up old CSS files..."
     ssh "$NFSN_USER@$NFSN_HOST" 'cd /home/public/assets && ls -t site.*.css 2>/dev/null | tail -n +2 | xargs -r rm -f || true'
+    ssh "$NFSN_USER@$NFSN_HOST" 'cd /home/public/assets && ls -t build-report.*.css 2>/dev/null | tail -n +2 | xargs -r rm -f || true'
 
     echo ""
     echo "✅ Deployment complete!"
@@ -107,7 +108,7 @@ deploy-only: _deploy-files
 # Generate content-hashed CSS for cache busting
 hash-css:
     @echo "🧹 Cleaning up old CSS files..."
-    @rm -f public/assets/site.*.css
+    @rm -f public/assets/site.*.css public/assets/build-report.*.css
     @./scripts/hash-assets.sh
 
 # Build and generate site (no server)
