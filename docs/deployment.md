@@ -74,7 +74,7 @@ After first deployment, set up hourly regeneration:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
 2. Add task:
-   - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production`
+   - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production`
    - **Schedule:** Every hour (or `0 * * * *`)
 
 The flags override config paths for NFSN's absolute paths and enable production fetch mode (30min cache, 2s delays).
@@ -141,7 +141,7 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 SSH in and run manually to see errors:
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
-/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production
+/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production
 ```
 
 ## Security

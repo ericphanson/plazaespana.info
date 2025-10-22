@@ -86,7 +86,7 @@ _deploy-files:
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
-    ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production'
+    ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production'
 
     echo ""
     echo "✅ Deployment complete!"
@@ -94,7 +94,7 @@ _deploy-files:
     echo "📝 Next steps:"
     echo "   1. Verify site at your NFSN URL"
     echo "   2. Setup cron job in NFSN web UI:"
-    echo "      Command: /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production"
+    echo "      Command: /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production"
     echo "      Schedule: Every hour"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)

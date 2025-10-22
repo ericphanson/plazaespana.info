@@ -77,6 +77,7 @@ func main() {
 	radiusKm := flag.Float64("radius-km", 0, "Filter radius in kilometers (overrides config)")
 	timezone := flag.String("timezone", "Europe/Madrid", "Timezone for event times")
 	fetchMode := flag.String("fetch-mode", "development", "Fetch mode: production or development (affects caching/throttling)")
+	templatePath := flag.String("template-path", "templates/index-grouped.tmpl.html", "Path to HTML template file")
 
 	flag.Parse()
 
@@ -785,7 +786,7 @@ func main() {
 
 	// Render HTML with grouped events
 	htmlStart := time.Now()
-	htmlRenderer := render.NewHTMLRenderer("templates/index-grouped.tmpl.html")
+	htmlRenderer := render.NewHTMLRenderer(*templatePath)
 	htmlData := render.GroupedTemplateData{
 		Lang:                "es",
 		CSSHash:             readCSSHash(outDirPath),
