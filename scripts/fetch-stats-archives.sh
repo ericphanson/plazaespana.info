@@ -44,6 +44,21 @@ if [ "$CURRENT_BRANCH" != "main" ]; then
 fi
 git pull origin main
 
+# Fetch remote branches to check if canonical branch exists on remote
+git fetch origin
+
+# Check if canonical branch exists on remote
+if git show-ref --verify --quiet "refs/remotes/origin/$CANONICAL_BRANCH"; then
+    echo "Canonical branch '$CANONICAL_BRANCH' exists on remote, checking out..."
+    # Checkout remote branch (creates local tracking branch if needed)
+    git checkout -B "$CANONICAL_BRANCH" "origin/$CANONICAL_BRANCH"
+    # Reset to main to ensure clean state
+    git reset --hard main
+else
+    echo "Creating new canonical branch '$CANONICAL_BRANCH'..."
+    git checkout -b "$CANONICAL_BRANCH"
+fi
+
 # Create local directory
 mkdir -p "$LOCAL_DIR"
 
@@ -53,6 +68,7 @@ echo "📊 Syncing AWStats database from $NFSN_HOST:$REMOTE_DIR"
 # This includes monthly stats files like awstatsMMYYYY.awstats.txt
 scp -q "$NFSN_USER@$NFSN_HOST:$REMOTE_DIR/*.txt" "$LOCAL_DIR/" 2>/dev/null || {
     echo "⚠️  No .txt files found on server (AWStats may not have processed logs yet)"
+    git checkout main  # Return to main before exiting
     exit 0
 }
 
@@ -111,6 +127,7 @@ EOF
 # Check if we have any changes
 if [[ -z $(git status --porcelain "$LOCAL_DIR") ]]; then
     echo "✅ No changes detected - database is already in sync"
+    git checkout main  # Return to main before exiting
     exit 0
 fi
 
@@ -119,21 +136,6 @@ echo ""
 echo "📝 Changes detected:"
 git status --short "$LOCAL_DIR"
 echo ""
-
-# Fetch remote branches to check if canonical branch exists on remote
-git fetch origin
-
-# Check if canonical branch exists on remote
-if git show-ref --verify --quiet "refs/remotes/origin/$CANONICAL_BRANCH"; then
-    echo "Canonical branch '$CANONICAL_BRANCH' exists on remote, checking out..."
-    # Checkout remote branch (creates local tracking branch if needed)
-    git checkout -B "$CANONICAL_BRANCH" "origin/$CANONICAL_BRANCH"
-    # Reset to main to ensure clean state
-    git reset --hard main
-else
-    echo "Creating new canonical branch '$CANONICAL_BRANCH'..."
-    git checkout -b "$CANONICAL_BRANCH"
-fi
 
 # Add changes and commit
 git add "$LOCAL_DIR"
