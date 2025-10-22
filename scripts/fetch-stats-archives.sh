@@ -155,7 +155,7 @@ if [ -n "$PR_NUMBER" ]; then
     echo "✅ Updated PR #$PR_NUMBER: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/pull/$PR_NUMBER"
 else
     echo "📝 Creating new pull request..."
-    git push origin "$CANONICAL_BRANCH"
+    git push --force origin "$CANONICAL_BRANCH"
 
     gh pr create \
         --title "Sync AWStats database files" \
