@@ -60,11 +60,7 @@ generate: build hash-css
     echo ""
 
 # Build site and serve locally at :8080
-dev: generate
-    @echo "🌐 Starting local server at http://localhost:8080"
-    @echo "   Press Ctrl+C to stop"
-    @echo ""
-    @cd public && python3 -m http.server 8080
+dev: generate serve
 
 # Serve existing ./public at :8080 (skip rebuild)
 serve:
