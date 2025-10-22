@@ -1,3 +1,5 @@
+[![CI](https://github.com/ericphanson/plaza-espana-calendar/actions/workflows/ci.yml/badge.svg)](https://github.com/ericphanson/plaza-espana-calendar/actions/workflows/ci.yml)
+
 # Madrid Events Near Plaza de España
 
 **Generates a static website showing upcoming events near Plaza de España in Madrid.**
