@@ -63,10 +63,5 @@ tmp/
 temp/
 *.tmp
 
-# Test fixtures (too large to commit)
-testdata/fixtures/madrid-events.json
-testdata/fixtures/madrid-events.xml
-testdata/fixtures/madrid-events.csv
-
 /screenshots
 !/screenshots/capture.sh
