@@ -248,6 +248,8 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 				Description: evt.Description,
 				StartTime:   evt.StartDate,
 				EndTime:     evt.EndDate,
+				Latitude:    evt.Latitude,
+				Longitude:   evt.Longitude,
 				VenueName:   evt.Venue,
 				DetailsURL:  evt.WebURL,
 			},
@@ -336,9 +338,13 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 			timeFormat = "02/01/2006 15:04"
 		}
 
-		// Calculate distance from reference point
-		distanceKm := filter.HaversineDistance(refLat, refLon, evt.Latitude, evt.Longitude)
-		distanceStr := FormatDistance(distanceKm)
+		// Calculate distance from reference point (only for valid coordinates)
+		var distanceStr string
+		if evt.Latitude != 0 || evt.Longitude != 0 {
+			distanceKm := filter.HaversineDistance(refLat, refLon, evt.Latitude, evt.Longitude)
+			distanceStr = FormatDistance(distanceKm)
+		}
+		// If coordinates are 0,0 (invalid), distanceStr remains empty
 
 		// Convert to template event
 		templateEvt := TemplateEvent{
