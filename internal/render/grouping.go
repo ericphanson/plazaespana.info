@@ -9,9 +9,10 @@ import (
 
 // TimeGroup represents a group of events within a time range.
 type TimeGroup struct {
-	Name   string // e.g., "Past Weekend", "Happening Now / Today"
-	Icon   string // emoji icon for the group
-	Events []TemplateEvent
+	Name      string // e.g., "Past Weekend", "Happening Now / Today"
+	Icon      string // emoji icon for the group
+	Events    []TemplateEvent
+	CityCount int // Count of city events (visible by default)
 }
 
 // GroupedTemplateData extends TemplateData with time-grouped events.
@@ -25,6 +26,7 @@ type GroupedTemplateData struct {
 	ShowCulturalDefault bool // Whether cultural events should be shown by default
 	Groups              []TimeGroup
 	OngoingEvents       []TemplateEvent
+	OngoingCityCount    int // Count of city events in ongoing section
 }
 
 // GroupEventsByTime groups events into time-based buckets relative to now.
@@ -225,7 +227,8 @@ func GroupCityEventsByTime(events []event.CityEvent, now time.Time) (groups []Ti
 // GroupMixedEventsByTime groups both city and cultural events into time-based buckets.
 // Events are merged and sorted chronologically (city events first on ties).
 // Cultural events are marked with EventType="cultural" for CSS filtering.
-func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time) (groups []TimeGroup, ongoing []TemplateEvent) {
+// Returns groups, ongoing events, and count of city events in ongoing section.
+func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time) (groups []TimeGroup, ongoing []TemplateEvent, ongoingCityCount int) {
 	// Convert both types to a common internal type with metadata
 	type eventWithType struct {
 		evt       event.CulturalEvent
@@ -307,6 +310,7 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 	thisWeek := TimeGroup{Name: "This Week", Icon: "📆", Events: []TemplateEvent{}}
 	laterThisMonth := TimeGroup{Name: "Later This Month", Icon: "📅", Events: []TemplateEvent{}}
 	ongoingEvents := []TemplateEvent{}
+	ongoingCityCount = 0
 
 	// Group events
 	for _, ewt := range allEvents {
@@ -345,38 +349,57 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 		// Ongoing events (5+ days)
 		if duration >= 5*24*time.Hour {
 			ongoingEvents = append(ongoingEvents, templateEvt)
+			if ewt.eventType == "city" {
+				ongoingCityCount++
+			}
 			continue
 		}
 
 		// Assign to time groups
 		added := false
+		isCityEvent := ewt.eventType == "city"
 
 		if evt.StartTime.Before(pastWeekendEnd) && endTime.After(pastWeekendStart) {
 			pastWeekend.Events = append(pastWeekend.Events, templateEvt)
+			if isCityEvent {
+				pastWeekend.CityCount++
+			}
 			added = true
 		}
 
 		if evt.StartTime.Before(endOfToday) && endTime.After(startOfToday) {
 			happeningNow.Events = append(happeningNow.Events, templateEvt)
+			if isCityEvent {
+				happeningNow.CityCount++
+			}
 			added = true
 		}
 
 		if evt.StartTime.Before(thisWeekendEnd) && evt.StartTime.After(thisWeekendStart) {
 			thisWeekend.Events = append(thisWeekend.Events, templateEvt)
+			if isCityEvent {
+				thisWeekend.CityCount++
+			}
 			added = true
 		}
 
 		if !added && evt.StartTime.Before(thisWeekEnd) && evt.StartTime.After(endOfToday) {
 			thisWeek.Events = append(thisWeek.Events, templateEvt)
+			if isCityEvent {
+				thisWeek.CityCount++
+			}
 			added = true
 		}
 
 		if !added && evt.StartTime.Before(endOfMonth) && evt.StartTime.After(thisWeekEnd) {
 			laterThisMonth.Events = append(laterThisMonth.Events, templateEvt)
+			if isCityEvent {
+				laterThisMonth.CityCount++
+			}
 		}
 	}
 
-	// Build groups list
+	// Build groups list (always include non-empty groups, even if all events are cultural/hidden)
 	groups = []TimeGroup{}
 	if len(pastWeekend.Events) > 0 {
 		groups = append(groups, pastWeekend)
@@ -394,5 +417,5 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 		groups = append(groups, laterThisMonth)
 	}
 
-	return groups, ongoingEvents
+	return groups, ongoingEvents, ongoingCityCount
 }

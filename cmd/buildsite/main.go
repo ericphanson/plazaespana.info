@@ -728,7 +728,7 @@ func main() {
 	log.Println("\n=== Rendering Output ===")
 
 	// Group events by time (merged: city and cultural together)
-	mergedGroups, ongoingEvents := render.GroupMixedEventsByTime(filteredCityEvents, filteredEvents, now)
+	mergedGroups, ongoingEvents, ongoingCityCount := render.GroupMixedEventsByTime(filteredCityEvents, filteredEvents, now)
 
 	// Convert to JSON format (keep original flat structure for API)
 	var culturalJSONEvents []render.JSONEvent
@@ -794,6 +794,7 @@ func main() {
 		ShowCulturalDefault: false, // Cultural events hidden by default
 		Groups:              mergedGroups,
 		OngoingEvents:       ongoingEvents,
+		OngoingCityCount:    ongoingCityCount,
 	}
 	htmlPath := cfg.Output.HTMLPath
 	htmlErr := htmlRenderer.RenderAny(htmlData, htmlPath)

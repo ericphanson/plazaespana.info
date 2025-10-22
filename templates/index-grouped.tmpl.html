@@ -70,7 +70,7 @@
       <h2 class="section-header">
         <span class="section-icon">{{.Icon}}</span>
         {{.Name}}
-        <span class="event-count">{{len .Events}}</span>
+        <span class="event-count">{{.CityCount}}</span>
       </h2>
 
       {{range .Events}}
@@ -96,7 +96,7 @@
       <h2 class="section-header">
         <span class="section-icon">🎪</span>
         Eventos en Curso
-        <span class="event-count">{{len .OngoingEvents}}</span>
+        <span class="event-count">{{.OngoingCityCount}}</span>
       </h2>
 
       {{range .OngoingEvents}}
