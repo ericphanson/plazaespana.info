@@ -8,17 +8,17 @@ import (
 )
 
 // WriteHTML writes an HTML-formatted build report for dual pipeline architecture.
-func (r *BuildReport) WriteHTML(w io.Writer) error {
+func (r *BuildReport) WriteHTML(w io.Writer, cssHash string) error {
 	var b strings.Builder
 
 	// HTML header with external CSS
-	b.WriteString(`<!DOCTYPE html>
+	b.WriteString(fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Build Report - Madrid Events</title>
-  <link rel="stylesheet" href="/assets/build-report.css">
+  <link rel="stylesheet" href="/assets/build-report.%s.css">
 </head>
 <body>
   <header>
@@ -27,7 +27,7 @@ func (r *BuildReport) WriteHTML(w io.Writer) error {
   </header>
 
   <main>
-`)
+`, cssHash))
 
 	// Build Summary
 	b.WriteString(`    <div class="summary-card">

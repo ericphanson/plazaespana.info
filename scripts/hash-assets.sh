@@ -18,11 +18,13 @@ else
   echo "Warning: $CSS_FILE not found"
 fi
 
-# Copy build report CSS (no hash needed - not cache-busted)
+# Hash build report CSS and copy to public/assets
 BUILD_REPORT_CSS="$ASSETS_DIR/build-report.css"
 if [ -f "$BUILD_REPORT_CSS" ]; then
-  cp "$BUILD_REPORT_CSS" "$PUBLIC_ASSETS_DIR/build-report.css"
-  echo "Copied: public/assets/build-report.css"
+  REPORT_HASH=$(sha256sum "$BUILD_REPORT_CSS" | cut -c1-8)
+  cp "$BUILD_REPORT_CSS" "$PUBLIC_ASSETS_DIR/build-report.$REPORT_HASH.css"
+  echo "$REPORT_HASH" > "$PUBLIC_ASSETS_DIR/build-report-css.hash"
+  echo "Generated: public/assets/build-report.$REPORT_HASH.css"
 else
   echo "Warning: $BUILD_REPORT_CSS not found"
 fi

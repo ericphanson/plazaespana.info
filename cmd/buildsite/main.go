@@ -32,6 +32,17 @@ func readCSSHash(outDir string) string {
 	return strings.TrimSpace(string(content))
 }
 
+// readBuildReportCSSHash reads the build report CSS hash from the assets directory.
+// Returns "placeholder" if the file doesn't exist or cannot be read.
+func readBuildReportCSSHash(outDir string) string {
+	hashPath := filepath.Join(outDir, "assets", "build-report-css.hash")
+	content, err := os.ReadFile(hashPath)
+	if err != nil {
+		return "placeholder"
+	}
+	return strings.TrimSpace(string(content))
+}
+
 const version = "2.0.0-dual-pipeline"
 
 func main() {
@@ -44,7 +55,8 @@ func main() {
 		// Write HTML report
 		htmlReportPath := filepath.Join(outputDir, "build-report.html")
 		if f, err := os.Create(htmlReportPath); err == nil {
-			buildReport.WriteHTML(f)
+			reportCSSHash := readBuildReportCSSHash(outputDir)
+			buildReport.WriteHTML(f, reportCSSHash)
 			f.Close()
 			log.Println("Build report written to:", htmlReportPath)
 		}
