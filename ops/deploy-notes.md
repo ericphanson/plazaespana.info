@@ -40,14 +40,13 @@ The following instructions are kept for reference but are superseded by `just de
    ```
 
 4. **Configure cron (Scheduled Tasks in NFSN web UI):**
-   - **Command:** `/home/bin/buildsite -config /home/config.toml -fetch-mode production`
+   - **Command:** `/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production`
    - **Schedule:** Every hour (or `*/10` for 10-minute intervals)
-   - **IMPORTANT:** Use `-fetch-mode production` for cron jobs (30min cache TTL, 2s delays)
-
-   **Alternative (legacy CLI flags):**
-   ```bash
-   /home/bin/buildsite -json-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json -xml-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.xml -csv-url https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.csv -out-dir /home/public -data-dir /home/data -lat 40.42338 -lon -3.71217 -radius-km 0.35 -timezone Europe/Madrid -fetch-mode production
-   ```
+   - **Flags explained:**
+     - `-config /home/config.toml` - Use uploaded config
+     - `-out-dir /home/public` - Override output path to web root
+     - `-data-dir /home/data` - Override data path (outside web root)
+     - `-fetch-mode production` - Production fetch settings (30min cache, 2s delays)
 
 ## Configuration File
 
@@ -116,7 +115,7 @@ The site implements comprehensive respectful fetching to prevent overwhelming up
 
 **Cron Command:**
 ```bash
-/home/bin/buildsite -config /home/config.toml -fetch-mode production
+/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production
 ```
 
 ### Features

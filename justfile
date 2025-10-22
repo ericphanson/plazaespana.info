@@ -82,7 +82,7 @@ deploy: freebsd hash-css
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
-    ssh "$NFSN_USER@$NFSN_HOST" '/home/bin/buildsite -config /home/config.toml -fetch-mode production'
+    ssh "$NFSN_USER@$NFSN_HOST" '/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production'
 
     echo ""
     echo "✅ Deployment complete!"
@@ -90,7 +90,7 @@ deploy: freebsd hash-css
     echo "📝 Next steps:"
     echo "   1. Verify site at your NFSN URL"
     echo "   2. Setup cron job in NFSN web UI:"
-    echo "      Command: /home/bin/buildsite -config /home/config.toml -fetch-mode production"
+    echo "      Command: /home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production"
     echo "      Schedule: Every hour"
 
 # Generate content-hashed CSS for cache busting

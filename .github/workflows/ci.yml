@@ -119,4 +119,4 @@ jobs:
       - name: Regenerate site
         run: |
           ssh ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }} \
-            '/home/bin/buildsite -config /home/config.toml -fetch-mode production'
+            '/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production'

@@ -149,11 +149,15 @@ After deploying, set up hourly site regeneration:
 1. Log into NFSN web interface
 2. Go to Sites → your_site → Scheduled Tasks
 3. Add new task:
-   - **Command:** `/home/bin/buildsite -config /home/config.toml -fetch-mode production`
+   - **Command:** `/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production`
    - **Schedule:** `0 * * * *` (every hour at :00)
    - Or use the web UI to select "Every hour"
 
-**Important:** Always use `-fetch-mode production` for cron jobs (30min cache TTL, 2s delays between requests).
+**Why the flags?**
+- `-config /home/config.toml` - Use the uploaded config
+- `-out-dir /home/public` - Output to web root (overrides config's relative path)
+- `-data-dir /home/data` - Store cache/data outside web root (overrides config)
+- `-fetch-mode production` - Use production fetch settings (30min cache, 2s delays)
 
 ## Directory Structure on NFSN
 
@@ -162,22 +166,27 @@ After deployment:
 ```
 /home/
   bin/
-    buildsite              # Executable binary
-  config.toml              # Configuration file
-  templates/
+    buildsite              # Executable binary (not web-accessible)
+  config.toml              # Configuration file (same as local, uses relative paths)
+  templates/               # (not web-accessible)
     index-grouped.tmpl.html # HTML template
-  public/                  # Web root (served to visitors)
+  public/                  # ⭐ Web root - Files here are served via HTTP
     index.html             # Generated event listing
     events.json            # Generated JSON API
     assets/
       site.<hash>.css      # Hashed CSS file
     .htaccess              # Apache configuration
-  data/                    # Auto-created by binary
+  data/                    # Auto-created by binary (not web-accessible)
     http-cache/            # Cached HTTP responses
     request-audit.json     # HTTP request log
     last_success.json      # Snapshot fallback
     audit-events.json      # Event audit trail
 ```
+
+**Important:**
+- `/home/public/` is the web root - only files here are accessible via HTTP
+- Binary, config, templates, and data are outside the web root for security
+- Command-line flags (`-out-dir`, `-data-dir`) override config's relative paths
 
 ## Troubleshooting
 
@@ -202,11 +211,10 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 
 ### Site not regenerating
 
-SSH into NFSN and check logs:
+SSH into NFSN and run manually to check for errors:
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
-cd /home
-./bin/buildsite -config config.toml -fetch-mode production
+/home/bin/buildsite -config /home/config.toml -out-dir /home/public -data-dir /home/data -fetch-mode production
 ```
 
 Look for error messages in the output.
