@@ -1,40 +1,9 @@
 # Madrid Events Site Generator - Quick Commands
 # Run 'just' to see all available commands
 
-# Show this help message
+[private]
 default:
-    @echo "Madrid Events Site Generator - Available Commands:"
-    @echo ""
-    @echo "🚀 Getting Started:"
-    @echo "  just dev          - Build site and serve locally (http://localhost:8080)"
-    @echo "  just test         - Run all tests"
-    @echo ""
-    @echo "🔨 Build Commands:"
-    @echo "  just build        - Build binary for local use"
-    @echo "  just generate     - Build binary and generate site (no server)"
-    @echo "  just freebsd      - Build for FreeBSD (for NFSN deployment)"
-    @echo "  just hash-css     - Generate content-hashed CSS"
-    @echo ""
-    @echo "🧪 Testing:"
-    @echo "  just test         - Run all tests"
-    @echo "  just test-coverage - Run tests with coverage report"
-    @echo ""
-    @echo "🌐 Development:"
-    @echo "  just serve        - Serve ./public (if already built)"
-    @echo "  just kill         - Stop running dev server"
-    @echo ""
-    @echo "🧹 Maintenance:"
-    @echo "  just clean        - Remove build artifacts"
-    @echo "  just fmt          - Format Go code"
-    @echo "  just lint         - Run Go linter"
-    @echo ""
-    @echo "📝 Configuration:"
-    @echo "  just config       - Validate config.toml"
-    @echo ""
-    @echo "💡 Tips:"
-    @echo "  - 'just dev' uses development mode (1hr cache, safe for rapid testing)"
-    @echo "  - For production, add '-fetch-mode production' to cron command"
-    @echo "  - See README.md for detailed documentation"
+    just --list
 
 # Validate config.toml syntax and settings
 config:
@@ -42,13 +11,13 @@ config:
     @./build/buildsite -config config.toml -validate || (echo "❌ Config validation failed" && exit 1)
     @echo "✅ Config is valid!"
 
-# Build the site generator binary for local use
+# Build binary for local use
 build:
     @echo "🔨 Building binary..."
     @go build -o build/buildsite ./cmd/buildsite
     @echo "✅ Built: build/buildsite"
 
-# Run all tests (fast - uses cached results when possible)
+# Run all tests
 test:
     @echo "🧪 Running tests..."
     @go test ./...
@@ -58,18 +27,18 @@ test-coverage:
     @echo "🧪 Running tests with coverage..."
     @go test -cover ./...
 
-# Build for FreeBSD/amd64 (for NearlyFreeSpeech.NET deployment)
+# Build for FreeBSD/amd64 (for NFSN deployment)
 freebsd:
     @echo "🔨 Cross-compiling for FreeBSD..."
     @./scripts/build-freebsd.sh
     @echo "✅ Built: build/buildsite (FreeBSD binary)"
     @ls -lh build/buildsite
 
-# Generate CSS with content hash for cache busting
+# Generate content-hashed CSS for cache busting
 hash-css:
     @./scripts/hash-assets.sh
 
-# Build binary and generate site (without starting server)
+# Build and generate site (no server)
 generate: build hash-css
     #!/usr/bin/env bash
     set -euo pipefail
@@ -90,8 +59,7 @@ generate: build hash-css
     echo "   ./data/request-audit.json - HTTP request log"
     echo ""
 
-# 🚀 Build site and serve locally (MAIN COMMAND)
-# Uses development mode: 1hr cache TTL, safe for rapid testing
+# Build site and serve locally at :8080
 dev: build hash-css
     #!/usr/bin/env bash
     set -euo pipefail
@@ -117,7 +85,7 @@ dev: build hash-css
 
     cd public && python3 -m http.server 8080
 
-# Serve existing site (skip rebuild, faster startup)
+# Serve existing ./public at :8080 (skip rebuild)
 serve:
     #!/usr/bin/env bash
     if [ ! -d "public" ]; then
@@ -133,7 +101,7 @@ kill:
     #!/usr/bin/env bash
     pkill -f "python3 -m http.server 8080" && echo "✅ Server stopped" || echo "ℹ️  No server running"
 
-# Clean all build artifacts and generated files
+# Remove all build artifacts and generated files
 clean:
     @echo "🧹 Cleaning build artifacts..."
     @rm -rf build/ public/ data/
@@ -145,7 +113,7 @@ fmt:
     @go fmt ./...
     @echo "✅ Code formatted"
 
-# Run Go linter to check for issues
+# Run Go linter (go vet)
 lint:
     @echo "🔍 Running linter..."
     @go vet ./...
@@ -163,7 +131,7 @@ outdated:
     @echo "🔍 Checking for outdated dependencies..."
     @go list -u -m all
 
-# Run integration tests (if any)
+# Run integration tests
 test-integration:
     @echo "🧪 Running integration tests..."
     @go test -tags=integration ./cmd/buildsite
