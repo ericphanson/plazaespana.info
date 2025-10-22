@@ -120,8 +120,7 @@ After upload, binary runs to generate:
 
 AWStats generates (via weekly cron):
 - `/home/public/stats/` - AWStats HTML pages (Basic Auth protected)
-- `/home/private/stats-archives/` - Weekly database snapshots (aggregate stats only, no IPs)
-- `/home/private/awstats-data/` - AWStats database files (current state)
+- `/home/private/awstats-data/` - AWStats database files (synced to git via GitHub Actions)
 
 ## NFSN Directory Structure
 
@@ -136,8 +135,7 @@ AWStats generates (via weekly cron):
     awstats.conf        # AWStats config
     templates/          # HTML templates
     data/               # Site generator cache, audit logs (auto-created)
-    awstats-data/       # AWStats database files (auto-created)
-    rollups/            # Weekly access log archives (auto-created)
+    awstats-data/       # AWStats database files (synced to git)
 
   protected/            # 🔒 Apache-readable only (not web-accessible)
     .htpasswd           # Basic Auth passwords
@@ -221,12 +219,12 @@ tail -50 /home/logs/awstats.log
 
 # Verify files were created
 ls -lh /home/public/stats/
-ls -lh /home/private/rollups/
+ls -lh /home/private/awstats-data/
 ```
 
 **Expected output:**
 - `/home/public/stats/index.html` and other AWStats HTML files
-- `/home/private/rollups/YYYY-Www.txt.gz` (current week's rollup snapshot)
+- `/home/private/awstats-data/*.txt` - AWStats database files (aggregate statistics)
 
 ### 4. Test Web Access
 
@@ -250,11 +248,11 @@ Add weekly AWStats processing to NFSN scheduled tasks:
 - Weekly rollups align with calendar weeks
 - After weekend events (captures full week)
 
-### 6. Setup AWStats Rollup Fetch (GitHub Actions)
+### 6. Setup AWStats Database Sync (GitHub Actions)
 
-For automated PR creation when new rollups are available:
+For automated PR creation when statistics database is updated:
 
-1. **Generate dedicated SSH key for rollup fetch:**
+1. **Generate dedicated SSH key for database sync:**
    ```bash
    ssh-keygen -t ed25519 -f ~/.ssh/nfsn_awstats -N ""
    ```
@@ -271,8 +269,13 @@ For automated PR creation when new rollups are available:
      - `NFSN_USER`: Your NFSN username (format: `username_sitename`)
 
 4. **Test workflow:**
-   - GitHub → Actions → "Fetch AWStats Rollups" → Run workflow
-   - Should create/update PR with new rollups from `/home/private/rollups/`
+   - GitHub → Actions → "Fetch AWStats Archives" → Run workflow
+   - Should create/update PR with AWStats database files from `/home/private/awstats-data/`
+
+**What gets synced:**
+- Monthly statistics files (`awstatsMMYYYY.awstats.txt`)
+- DNS cache and other state files
+- **Privacy:** Only aggregate statistics (no IPs or individual requests)
 
 **Note:** The workflow runs automatically after each push to `main`, or manually via workflow_dispatch.
 
@@ -286,16 +289,14 @@ Since AWStats tracks its position in the log file, NFSN's automatic log rotation
 
 **Why this matters:**
 - Without rotation, `access_log` grows indefinitely
-- Weekly rollups are snapshots - they'll grow each week until NFSN rotates the log
 - AWStats uses `KeepBackupOfHistoricFiles=1` to track position across rotations
-- After rotation, AWStats starts fresh with the new log file
+- After rotation, AWStats automatically detects the new log file and continues processing
+- Historical data is preserved in AWStats database files (synced to git)
 
 **Example rotation schedule:**
-- Rotate: Weekly (matches our AWStats rollup schedule)
+- Rotate: Weekly (recommended)
 - Keep: 4 weeks of compressed logs
 - Compression: gzip
-
-This way, each weekly rollup captures approximately one week of data (from after last rotation to current time).
 
 ## Troubleshooting
 
@@ -366,7 +367,7 @@ ssh $NFSN_USER@$NFSN_HOST "stat -f '%A %N' /home/protected/.htpasswd /home/prote
 # Should show: 600 /home/protected/.htpasswd and 755 /home/protected
 ```
 
-### Rollup fetch workflow fails
+### Database sync workflow fails
 
 **Common causes:**
 1. SSH key not added to NFSN
@@ -376,7 +377,10 @@ ssh $NFSN_USER@$NFSN_HOST "stat -f '%A %N' /home/protected/.htpasswd /home/prote
 **Fix:**
 ```bash
 # Test SSH access locally
-ssh -i ~/.ssh/nfsn_awstats $NFSN_USER@$NFSN_HOST ls /home/private/rollups/
+ssh -i ~/.ssh/nfsn_awstats $NFSN_USER@$NFSN_HOST ls /home/private/awstats-data/
+
+# Test SCP access
+scp "$NFSN_USER@$NFSN_HOST:/home/private/awstats-data/*.txt" /tmp/test-awstats/
 
 # Verify GitHub CLI auth
 gh auth status
@@ -390,7 +394,7 @@ gh auth status
 - Private keys belong in `~/.ssh/` (local) and GitHub Secrets (CI)
 - Public keys are safe to share (uploaded to NFSN)
 - Use `ed25519` keys (more secure than RSA)
-- Keep separate SSH keys for deployment vs. rollup fetch (better security isolation)
+- Keep separate SSH keys for deployment vs. database sync (better security isolation)
 
 ## Deployment Checklist
 
@@ -415,8 +419,8 @@ gh auth status
 - [ ] Test web access: Visit `https://plazaespana.info/stats/` (should prompt for password)
 - [ ] Configure NFSN log rotation: Weekly with compression (NFSN web UI → Site Information)
 - [ ] Configure AWStats cron job: `0 1 * * 0` (Sunday 1 AM)
-- [ ] Setup rollup fetch SSH key and GitHub secrets
-- [ ] Test rollup fetch workflow via workflow_dispatch
+- [ ] Setup database sync SSH key and GitHub secrets
+- [ ] Test database sync workflow: GitHub Actions → "Fetch AWStats Archives" → Run workflow
 
 **After each deployment:**
 - [ ] Verify site updates with new content
