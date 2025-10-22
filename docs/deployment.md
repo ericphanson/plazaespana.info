@@ -212,6 +212,12 @@ Generate the first stats manually:
 
 ```bash
 # Still on NFSN via SSH
+
+# IMPORTANT: If you previously ran AWStats without privacy settings,
+# clean existing database files to remove stored IP addresses
+rm -f /home/private/awstats-data/*.txt
+
+# Run initial processing with privacy-focused config
 /home/private/bin/awstats-weekly.sh
 
 # Check for errors
@@ -224,7 +230,7 @@ ls -lh /home/private/awstats-data/
 
 **Expected output:**
 - `/home/public/stats/index.html` and other AWStats HTML files
-- `/home/private/awstats-data/*.txt` - AWStats database files (aggregate statistics)
+- `/home/private/awstats-data/*.txt` - AWStats database files (aggregate statistics only, no IPs)
 
 ### 4. Test Web Access
 

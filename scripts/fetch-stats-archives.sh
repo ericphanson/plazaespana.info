@@ -76,54 +76,6 @@ scp -q "$NFSN_USER@$NFSN_HOST:$REMOTE_DIR/*.txt" "$LOCAL_DIR/" 2>/dev/null || {
 FILE_COUNT=$(ls -1 "$LOCAL_DIR"/*.txt 2>/dev/null | wc -l)
 echo "✅ Downloaded $FILE_COUNT database file(s)"
 
-# Create README
-cat > "$LOCAL_DIR/README.md" << 'EOF'
-# AWStats Database Files
-
-Synchronized copy of AWStats aggregate statistics database.
-
-## Privacy
-
-These files contain **aggregate statistics only**:
-- ✅ Page views, unique visitors, referrers (counts and percentages)
-- ✅ Browser, OS, country statistics (aggregated)
-- ✅ Monthly trends and historical data
-- ❌ **No individual IP addresses**
-- ❌ **No individual requests**
-- ❌ **No personal information**
-
-## File Format
-
-- **Monthly stats:** `awstatsMMYYYY.awstats.txt` (e.g., `awstats102025.awstats.txt` for October 2025)
-- **DNS cache:** `dnscachelastupdate.awstats.txt` (cached DNS lookups, hostnames only)
-- **Other files:** Various AWStats state files
-
-## Viewing Statistics
-
-These are AWStats internal database files (text format). To view human-readable statistics:
-
-1. Visit the live stats page: https://plazaespana.info/stats/
-2. Or regenerate HTML locally:
-   ```bash
-   perl /usr/local/www/awstats/tools/awstats_buildstaticpages.pl \
-     -configdir=. -config=awstats -update -dir=./html-output
-   ```
-
-## Recovery
-
-To restore from this backup (e.g., after server failure):
-
-```bash
-# Copy to production location (NFSN)
-scp awstats-data/*.txt user@host:/home/private/awstats-data/
-
-# Regenerate HTML from database
-ssh user@host '/home/private/bin/awstats-weekly.sh'
-```
-
-The database files preserve all historical visitor trends without storing any personal information.
-EOF
-
 # Check if we have any changes
 if [[ -z $(git status --porcelain "$LOCAL_DIR") ]]; then
     echo "✅ No changes detected - database is already in sync"
