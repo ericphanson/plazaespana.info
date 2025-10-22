@@ -18,8 +18,8 @@ func TestMultiVenueFiltering(t *testing.T) {
 
 	// Time references (using fixed time for reproducibility)
 	now := time.Date(2025, 10, 20, 12, 0, 0, 0, time.UTC)
-	futureDate := now.Add(7 * 24 * time.Hour) // 1 week future
-	oldDate := now.Add(-30 * 24 * time.Hour)  // 30 days ago (beyond cutoff)
+	futureDate := now.Add(7 * 24 * time.Hour)  // 1 week future
+	oldDate := now.Add(-30 * 24 * time.Hour)   // 30 days ago (beyond cutoff)
 	cutoffTime := now.Add(-7 * 24 * time.Hour) // 1 week cutoff
 
 	tests := []struct {
@@ -49,7 +49,7 @@ func TestMultiVenueFiltering(t *testing.T) {
 			name: "city_event_outside_radius_with_text_match_kept",
 			evt: event.CityEvent{
 				Title:       "Mercadillos navideños",
-				Latitude:    40.41794,  // Plaza Mayor (~0.96 km away)
+				Latitude:    40.41794, // Plaza Mayor (~0.96 km away)
 				Longitude:   -3.70736,
 				StartDate:   futureDate,
 				EndDate:     futureDate.Add(24 * time.Hour),

@@ -350,7 +350,7 @@ When executing implementation plans:
    - Track progress, issues encountered, and resolutions
 
 2. **Commit workflow**: After each subtask:
-   - Format/lint the code
+   - **Format code**: Always run `gofmt -w .` before committing (CI will fail if code is not formatted)
    - Run tests to verify functionality
    - Update the log file
    - Commit with yourself as coauthor:
