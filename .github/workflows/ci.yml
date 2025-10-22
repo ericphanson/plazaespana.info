@@ -25,35 +25,17 @@ jobs:
           go-version: '1.25'
           cache: true
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Check formatting
-        run: |
-          if [ -n "$(gofmt -l .)" ]; then
-            echo "The following files are not formatted:"
-            gofmt -l .
-            exit 1
-          fi
+        run: just fmt-check
 
       - name: Run tests
-        run: |
-          # Test each package individually to see exactly where failures occur
-          for pkg in $(go list ./...); do
-            echo "Testing package: $pkg"
-            if ! go test -v "$pkg"; then
-              echo "FAILED: $pkg"
-              exit 1
-            fi
-          done
+        run: just test
 
-      - name: Build native binary
-        run: go build -v -trimpath -ldflags="-s -w" -o build/buildsite ./cmd/buildsite
-
-      - name: Build FreeBSD binary (cross-compile)
-        run: GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o build/buildsite ./cmd/buildsite
-
-      - name: Verify FreeBSD binary was created
-        run: |
-          ls -lh build/buildsite
-          file build/buildsite
+      - name: Build FreeBSD binary
+        run: just freebsd
 
       - name: Upload FreeBSD binary
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -68,10 +50,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      NFSN_HOST: ${{ secrets.NFSN_HOST }}
+      NFSN_USER: ${{ secrets.NFSN_USER }}
 
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+
+      - name: Install just
+        uses: extractions/setup-just@v2
 
       - name: Download FreeBSD binary
         uses: actions/download-artifact@v4
@@ -80,7 +68,7 @@ jobs:
           path: build/
 
       - name: Hash CSS
-        run: ./scripts/hash-assets.sh
+        run: just hash-css
 
       - name: Setup SSH key
         run: |
@@ -89,34 +77,5 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.NFSN_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Create remote directories
-        run: |
-          ssh ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }} \
-            'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/public/assets'
-
-      - name: Deploy binary
-        run: |
-          chmod +x build/buildsite
-          scp build/buildsite ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/private/bin/buildsite
-
-      - name: Deploy config
-        run: scp config.toml ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/private/config.toml
-
-      - name: Deploy templates
-        run: scp templates/index-grouped.tmpl.html ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/private/templates/index-grouped.tmpl.html
-
-      - name: Deploy CSS
-        run: scp public/assets/site.*.css ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/public/assets/
-
-      - name: Deploy .htaccess
-        run: scp ops/htaccess ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }}:/home/public/.htaccess
-
-      - name: Set permissions
-        run: |
-          ssh ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }} \
-            'chmod +x /home/private/bin/buildsite'
-
-      - name: Regenerate site
-        run: |
-          ssh ${{ secrets.NFSN_USER }}@${{ secrets.NFSN_HOST }} \
-            '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production'
+      - name: Deploy to NFSN
+        run: just deploy-only

@@ -34,8 +34,9 @@ freebsd:
     @echo "✅ Built: build/buildsite (FreeBSD binary)"
     @ls -lh build/buildsite
 
-# Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
-deploy: freebsd hash-css
+# Deploy files to NFSN (internal helper, assumes binary already built)
+[private]
+_deploy-files:
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -93,6 +94,12 @@ deploy: freebsd hash-css
     echo "      Command: /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -fetch-mode production"
     echo "      Schedule: Every hour"
 
+# Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
+deploy: freebsd hash-css _deploy-files
+
+# Deploy to NFSN (for CI - assumes binary already built and CSS hashed)
+deploy-only: _deploy-files
+
 # Generate content-hashed CSS for cache busting
 hash-css:
     @./scripts/hash-assets.sh
@@ -148,6 +155,16 @@ fmt:
     @echo "✨ Formatting Go code..."
     @go fmt ./...
     @echo "✅ Code formatted"
+
+# Check if code is properly formatted (for CI)
+fmt-check:
+    @echo "🔍 Checking code formatting..."
+    @if [ -n "$$(gofmt -l .)" ]; then \
+        echo "❌ The following files are not formatted:"; \
+        gofmt -l .; \
+        exit 1; \
+    fi
+    @echo "✅ All files properly formatted"
 
 # Run Go linter (go vet)
 lint:
