@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "The following files are not formatted:"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Run tests
+        run: |
+          # Test each package individually to see exactly where failures occur
+          for pkg in $(go list ./...); do
+            echo "Testing package: $pkg"
+            if ! go test -v "$pkg"; then
+              echo "FAILED: $pkg"
+              exit 1
+            fi
+          done
+
+      - name: Build native binary
+        run: go build -v -trimpath -ldflags="-s -w" -o build/buildsite ./cmd/buildsite
+
+      - name: Build FreeBSD binary (cross-compile)
+        run: GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o build/buildsite-freebsd ./cmd/buildsite
+
+      - name: Verify FreeBSD binary was created
+        run: |
+          ls -lh build/buildsite-freebsd
+          file build/buildsite-freebsd

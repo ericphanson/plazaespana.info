@@ -212,7 +212,7 @@ func TestFetchXML_FieldMapping(t *testing.T) {
 	}
 
 	// Use file:// URL to load local fixture
-	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.xml"
+	fixtureURL := getFixturePath(t, "madrid-events.xml")
 	result := client.FetchXML(fixtureURL, loc)
 
 	// Should have successfully parsed events
@@ -269,7 +269,7 @@ func TestFetchXML_PartialFailure(t *testing.T) {
 	}
 
 	// Use file:// URL to load local fixture
-	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.xml"
+	fixtureURL := getFixturePath(t, "madrid-events.xml")
 	result := client.FetchXML(fixtureURL, loc)
 
 	// We should have both successes and potentially some errors

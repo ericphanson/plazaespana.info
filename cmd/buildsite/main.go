@@ -428,9 +428,9 @@ func main() {
 		RefLon:        cfg.Filter.Longitude,
 		Radius:        cfg.Filter.RadiusKm,
 		Input:         len(allEvents),
-		MissingCoords: missingCoords,   // FIXED: Only events with "missing location data" reason
-		OutsideRadius: outsideRadius,   // FIXED: Only "outside GPS radius" events
-		Kept:          keptEvents,      // FIXED: Only kept events
+		MissingCoords: missingCoords, // FIXED: Only events with "missing location data" reason
+		OutsideRadius: outsideRadius, // FIXED: Only "outside GPS radius" events
+		Kept:          keptEvents,    // FIXED: Only kept events
 		Duration:      geoDuration,
 	}
 
@@ -444,10 +444,10 @@ func main() {
 		ReferenceTime: now,
 		Timezone:      *timezone,
 		Input:         len(allEvents),
-		ParseFailures: 0,       // No parse failures with CulturalEvent
-		PastEvents:    tooOld,  // FIXED: Only "event too old" events
+		ParseFailures: 0,          // No parse failures with CulturalEvent
+		PastEvents:    tooOld,     // FIXED: Only "event too old" events
 		Kept:          keptEvents, // FIXED: Only kept events
-		Duration:      0,       // Included in geo filter duration
+		Duration:      0,          // Included in geo filter duration
 	}
 
 	// Add warnings if needed
@@ -657,8 +657,8 @@ func main() {
 		RefLon:         cfg.Filter.Longitude,
 		Radius:         cfg.Filter.RadiusKm,
 		Input:          len(allCityEvents),
-		MissingCoords:  cityMissingCoords,  // FIXED: Track actual missing coordinates
-		OutsideRadius:  cityOutsideRadius,  // FIXED: Only "outside GPS radius" events
+		MissingCoords:  cityMissingCoords, // FIXED: Track actual missing coordinates
+		OutsideRadius:  cityOutsideRadius, // FIXED: Only "outside GPS radius" events
 		Kept:           len(filteredCityEvents),
 		MultiVenueKept: cityMultiVenueKept, // NEW: Count of events kept via Plaza de España text match
 		Duration:       cityFilterDuration,

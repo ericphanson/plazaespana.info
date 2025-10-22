@@ -8,7 +8,7 @@ import (
 
 func TestFetchCSV_FieldMapping(t *testing.T) {
 	// Use file:// URL to load fixture
-	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.csv"
+	fixtureURL := getFixturePath(t, "madrid-events.csv")
 
 	loc, err := time.LoadLocation("Europe/Madrid")
 	if err != nil {
@@ -69,7 +69,7 @@ func TestFetchCSV_FieldMapping(t *testing.T) {
 
 func TestFetchCSV_EncodingConversion(t *testing.T) {
 	// Use file:// URL to load fixture (contains Windows-1252 encoded characters)
-	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.csv"
+	fixtureURL := getFixturePath(t, "madrid-events.csv")
 
 	loc, err := time.LoadLocation("Europe/Madrid")
 	if err != nil {

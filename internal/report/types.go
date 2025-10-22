@@ -89,7 +89,7 @@ type GeoFilterStats struct {
 	MissingCoords  int
 	OutsideRadius  int
 	Kept           int
-	MultiVenueKept int           `json:"multi_venue_kept,omitempty"` // City events only: kept via Plaza de España text match
+	MultiVenueKept int `json:"multi_venue_kept,omitempty"` // City events only: kept via Plaza de España text match
 	Duration       time.Duration
 }
 

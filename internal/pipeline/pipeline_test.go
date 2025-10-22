@@ -1,11 +1,45 @@
 package pipeline
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/ericphanson/madrid-events/internal/fetch"
 )
+
+// getFixturePath returns the absolute file:// URL for a fixture file
+func getFixturePath(t *testing.T, filename string) string {
+	// Try multiple possible paths since go test working directory can vary
+	possiblePaths := []string{
+		filepath.Join("testdata", "fixtures", filename),             // From project root
+		filepath.Join("..", "..", "testdata", "fixtures", filename), // From package dir
+	}
+
+	cwd, _ := os.Getwd()
+	t.Logf("Current working directory: %s", cwd)
+
+	for _, relPath := range possiblePaths {
+		absPath, err := filepath.Abs(relPath)
+		if err != nil {
+			t.Logf("Failed to get absolute path for %s: %v", relPath, err)
+			continue
+		}
+		t.Logf("Trying path: %s", absPath)
+		if _, err := os.Stat(absPath); err == nil {
+			t.Logf("Found fixture at: %s", absPath)
+			return "file://" + absPath
+		} else {
+			t.Logf("File not found at %s: %v", absPath, err)
+		}
+	}
+
+	// If we get here, no fixtures found - fail with helpful message
+	t.Fatalf("Could not find fixture file %s. Tried paths: %v (from CWD: %s)",
+		filename, possiblePaths, cwd)
+	return ""
+}
 
 func TestPipeline_FetchAll_Sequential(t *testing.T) {
 	// This test uses real fixtures to verify sequential fetching works
@@ -20,9 +54,9 @@ func TestPipeline_FetchAll_Sequential(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath(t, "madrid-events.json"),
+		getFixturePath(t, "madrid-events.xml"),
+		getFixturePath(t, "madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -59,8 +93,8 @@ func TestPipeline_FetchAll_ErrorIsolation(t *testing.T) {
 	}
 	pipeline := NewPipeline(
 		"file:///nonexistent/json.json", // Will fail
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath(t, "madrid-events.xml"),
+		getFixturePath(t, "madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -101,9 +135,9 @@ func TestPipeline_Merge_Deduplication(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath(t, "madrid-events.json"),
+		getFixturePath(t, "madrid-events.xml"),
+		getFixturePath(t, "madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -141,9 +175,9 @@ func TestPipeline_Merge_SourceTracking(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath(t, "madrid-events.json"),
+		getFixturePath(t, "madrid-events.xml"),
+		getFixturePath(t, "madrid-events.csv"),
 		client,
 		loc,
 	)
@@ -196,9 +230,9 @@ func TestPipeline_Merge_HandlesFailures(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///nonexistent/json.json",                         // Will fail
-		"file:///workspace/testdata/fixtures/madrid-events.xml", // Will succeed
-		"file:///nonexistent/csv.csv",                           // Will fail
+		"file:///nonexistent/json.json",        // Will fail
+		getFixturePath(t, "madrid-events.xml"), // Will succeed
+		"file:///nonexistent/csv.csv",          // Will fail
 		client,
 		loc,
 	)
@@ -269,9 +303,9 @@ func TestPipeline_Merge_DeduplicatesSources(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 	pipeline := NewPipeline(
-		"file:///workspace/testdata/fixtures/madrid-events.json",
-		"file:///workspace/testdata/fixtures/madrid-events.xml",
-		"file:///workspace/testdata/fixtures/madrid-events.csv",
+		getFixturePath(t, "madrid-events.json"),
+		getFixturePath(t, "madrid-events.xml"),
+		getFixturePath(t, "madrid-events.csv"),
 		client,
 		loc,
 	)

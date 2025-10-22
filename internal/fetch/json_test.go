@@ -207,7 +207,7 @@ func TestFetchJSON_FieldMapping(t *testing.T) {
 	}
 
 	// Use file:// URL to load local fixture
-	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.json"
+	fixtureURL := getFixturePath(t, "madrid-events.json")
 	result := client.FetchJSON(fixtureURL, loc)
 
 	// Should have successfully parsed events
@@ -264,7 +264,7 @@ func TestFetchJSON_PartialFailure(t *testing.T) {
 	}
 
 	// Use file:// URL to load local fixture
-	fixtureURL := "file:///workspace/testdata/fixtures/madrid-events.json"
+	fixtureURL := getFixturePath(t, "madrid-events.json")
 	result := client.FetchJSON(fixtureURL, loc)
 
 	// We should have both successes and potentially some errors

@@ -166,9 +166,9 @@ func TestMatchesPlazaEspana(t *testing.T) {
 			want:        true,
 		},
 		{
-			name:        "abbreviated_pl_no_period",
-			venue:       "Pl España",
-			want:        true,
+			name:  "abbreviated_pl_no_period",
+			venue: "Pl España",
+			want:  true,
 		},
 		{
 			name:        "combined_fields",
