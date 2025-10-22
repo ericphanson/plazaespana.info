@@ -7,8 +7,7 @@
   <link rel="stylesheet" href="/assets/site.{{.CSSHash}}.css">
   <style>
     /* Toggle cultural events visibility */
-    #toggle-cultural:not(:checked) ~ main .cultural-section,
-    #toggle-cultural:not(:checked) ~ main .ongoing-cultural {
+    #toggle-cultural:not(:checked) ~ main .event-card.cultural {
       display: none;
     }
 
@@ -65,9 +64,9 @@
   </header>
 
   <main>
-    {{/* City event time groups */}}
-    {{range .CityGroups}}
-    <section class="event-section time-group city-section">
+    {{/* Merged time groups with both city and cultural events */}}
+    {{range .Groups}}
+    <section class="event-section time-group">
       <h2 class="section-header">
         <span class="section-icon">{{.Icon}}</span>
         {{.Name}}
@@ -75,30 +74,12 @@
       </h2>
 
       {{range .Events}}
-      <article class="event-card city" id="ev-{{.IDEvento}}">
+      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}">
+        {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
-        <h3>{{.Titulo}}</h3>
-        <p class="when">{{.StartHuman}}</p>
-        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
-        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
-      </article>
-      {{end}}
-    </section>
-    {{end}}
-
-    {{/* Cultural event time groups (hidden by default) */}}
-    {{range .CulturalGroups}}
-    <section class="event-section time-group cultural-section">
-      <h2 class="section-header">
-        <span class="section-icon">{{.Icon}}</span>
-        {{.Name}} <span style="color: var(--cultural-accent);">(Cultural)</span>
-        <span class="event-count">{{len .Events}}</span>
-      </h2>
-
-      {{range .Events}}
-      <article class="event-card cultural" id="ev-{{.IDEvento}}">
+        {{else}}
         <span class="event-badge cultural-badge">Cultural</span>
+        {{end}}
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
@@ -109,40 +90,22 @@
     </section>
     {{end}}
 
-    {{/* Ongoing city events */}}
-    {{if gt (len .OngoingCityEvents) 0}}
-    <section class="event-section time-group city-section">
+    {{/* Ongoing events (merged) */}}
+    {{if gt (len .OngoingEvents) 0}}
+    <section class="event-section time-group">
       <h2 class="section-header">
         <span class="section-icon">🎪</span>
         Eventos en Curso
-        <span class="event-count">{{len .OngoingCityEvents}}</span>
+        <span class="event-count">{{len .OngoingEvents}}</span>
       </h2>
 
-      {{range .OngoingCityEvents}}
-      <article class="event-card city" id="ev-{{.IDEvento}}">
+      {{range .OngoingEvents}}
+      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}">
+        {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
-        <h3>{{.Titulo}}</h3>
-        <p class="when">{{.StartHuman}}</p>
-        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
-        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
-      </article>
-      {{end}}
-    </section>
-    {{end}}
-
-    {{/* Ongoing cultural events (hidden by default) */}}
-    {{if gt (len .OngoingCulturalEvents) 0}}
-    <section class="event-section time-group cultural-section ongoing-cultural">
-      <h2 class="section-header">
-        <span class="section-icon">🎪</span>
-        Eventos en Curso <span style="color: var(--cultural-accent);">(Cultural)</span>
-        <span class="event-count">{{len .OngoingCulturalEvents}}</span>
-      </h2>
-
-      {{range .OngoingCulturalEvents}}
-      <article class="event-card cultural" id="ev-{{.IDEvento}}">
+        {{else}}
         <span class="event-badge cultural-badge">Cultural</span>
+        {{end}}
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
@@ -153,7 +116,7 @@
     </section>
     {{end}}
 
-    {{if and (eq (len .CityGroups) 0) (eq (len .OngoingCityEvents) 0)}}
+    {{if and (eq (len .Groups) 0) (eq (len .OngoingEvents) 0)}}
     <p class="no-events">No hay eventos próximos.</p>
     {{end}}
   </main>

@@ -727,9 +727,8 @@ func main() {
 	// =====================================================================
 	log.Println("\n=== Rendering Output ===")
 
-	// Group events by time
-	cityGroups, ongoingCity := render.GroupCityEventsByTime(filteredCityEvents, now)
-	culturalGroups, ongoingCultural := render.GroupEventsByTime(filteredEvents, now)
+	// Group events by time (merged: city and cultural together)
+	mergedGroups, ongoingEvents := render.GroupMixedEventsByTime(filteredCityEvents, filteredEvents, now)
 
 	// Convert to JSON format (keep original flat structure for API)
 	var culturalJSONEvents []render.JSONEvent
@@ -756,14 +755,24 @@ func main() {
 		})
 	}
 
-	// Count total events in groups
-	totalCityEvents := len(ongoingCity)
-	for _, group := range cityGroups {
-		totalCityEvents += len(group.Events)
+	// Count total events in merged groups by type
+	totalCityEvents := 0
+	totalCulturalEvents := 0
+	for _, group := range mergedGroups {
+		for _, evt := range group.Events {
+			if evt.EventType == "city" {
+				totalCityEvents++
+			} else {
+				totalCulturalEvents++
+			}
+		}
 	}
-	totalCulturalEvents := len(ongoingCultural)
-	for _, group := range culturalGroups {
-		totalCulturalEvents += len(group.Events)
+	for _, evt := range ongoingEvents {
+		if evt.EventType == "city" {
+			totalCityEvents++
+		} else {
+			totalCulturalEvents++
+		}
 	}
 
 	// Render outputs
@@ -776,17 +785,15 @@ func main() {
 	htmlStart := time.Now()
 	htmlRenderer := render.NewHTMLRenderer("templates/index-grouped.tmpl.html")
 	htmlData := render.GroupedTemplateData{
-		Lang:                  "es",
-		CSSHash:               readCSSHash(outDirPath),
-		LastUpdated:           now.Format("2006-01-02 15:04 MST"),
-		TotalEvents:           totalCityEvents + totalCulturalEvents,
-		TotalCityEvents:       totalCityEvents,
-		TotalCulturalEvents:   totalCulturalEvents,
-		ShowCulturalDefault:   false, // Cultural events hidden by default
-		CityGroups:            cityGroups,
-		CulturalGroups:        culturalGroups,
-		OngoingCityEvents:     ongoingCity,
-		OngoingCulturalEvents: ongoingCultural,
+		Lang:                "es",
+		CSSHash:             readCSSHash(outDirPath),
+		LastUpdated:         now.Format("2006-01-02 15:04 MST"),
+		TotalEvents:         totalCityEvents + totalCulturalEvents,
+		TotalCityEvents:     totalCityEvents,
+		TotalCulturalEvents: totalCulturalEvents,
+		ShowCulturalDefault: false, // Cultural events hidden by default
+		Groups:              mergedGroups,
+		OngoingEvents:       ongoingEvents,
 	}
 	htmlPath := cfg.Output.HTMLPath
 	htmlErr := htmlRenderer.RenderAny(htmlData, htmlPath)

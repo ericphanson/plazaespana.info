@@ -1,6 +1,7 @@
 package render
 
 import (
+	"sort"
 	"time"
 
 	"github.com/ericphanson/madrid-events/internal/event"
@@ -15,17 +16,15 @@ type TimeGroup struct {
 
 // GroupedTemplateData extends TemplateData with time-grouped events.
 type GroupedTemplateData struct {
-	Lang                  string
-	CSSHash               string
-	LastUpdated           string
-	TotalEvents           int
-	TotalCityEvents       int
-	TotalCulturalEvents   int
-	ShowCulturalDefault   bool // Whether cultural events should be shown by default
-	CityGroups            []TimeGroup
-	CulturalGroups        []TimeGroup
-	OngoingCityEvents     []TemplateEvent
-	OngoingCulturalEvents []TemplateEvent
+	Lang                string
+	CSSHash             string
+	LastUpdated         string
+	TotalEvents         int
+	TotalCityEvents     int
+	TotalCulturalEvents int
+	ShowCulturalDefault bool // Whether cultural events should be shown by default
+	Groups              []TimeGroup
+	OngoingEvents       []TemplateEvent
 }
 
 // GroupEventsByTime groups events into time-based buckets relative to now.
@@ -136,9 +135,11 @@ func GroupEventsByTime(events []event.CulturalEvent, now time.Time) (groups []Ti
 			IDEvento:          evt.ID,
 			Titulo:            evt.Title,
 			StartHuman:        evt.StartTime.Format(timeFormat),
+			StartTime:         evt.StartTime,
 			NombreInstalacion: evt.VenueName,
 			ContentURL:        evt.DetailsURL,
 			Description:       TruncateText(evt.Description, 150),
+			EventType:         "cultural", // Default for this function
 		}
 
 		// Classify: ongoing events (5+ days) go to separate section
@@ -219,4 +220,179 @@ func GroupCityEventsByTime(events []event.CityEvent, now time.Time) (groups []Ti
 	}
 
 	return GroupEventsByTime(culturalEvents, now)
+}
+
+// GroupMixedEventsByTime groups both city and cultural events into time-based buckets.
+// Events are merged and sorted chronologically (city events first on ties).
+// Cultural events are marked with EventType="cultural" for CSS filtering.
+func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time) (groups []TimeGroup, ongoing []TemplateEvent) {
+	// Convert both types to a common internal type with metadata
+	type eventWithType struct {
+		evt       event.CulturalEvent
+		eventType string // "city" or "cultural"
+	}
+
+	// Combine both event lists
+	allEvents := make([]eventWithType, 0, len(cityEvents)+len(culturalEvents))
+
+	for _, evt := range cityEvents {
+		allEvents = append(allEvents, eventWithType{
+			evt: event.CulturalEvent{
+				ID:          evt.ID,
+				Title:       evt.Title,
+				Description: evt.Description,
+				StartTime:   evt.StartDate,
+				EndTime:     evt.EndDate,
+				VenueName:   evt.Venue,
+				DetailsURL:  evt.WebURL,
+			},
+			eventType: "city",
+		})
+	}
+
+	for _, evt := range culturalEvents {
+		allEvents = append(allEvents, eventWithType{
+			evt:       evt,
+			eventType: "cultural",
+		})
+	}
+
+	// Sort: chronological order, city first on ties
+	sort.Slice(allEvents, func(i, j int) bool {
+		if allEvents[i].evt.StartTime.Equal(allEvents[j].evt.StartTime) {
+			// Tie: city events come first
+			return allEvents[i].eventType == "city" && allEvents[j].eventType == "cultural"
+		}
+		return allEvents[i].evt.StartTime.Before(allEvents[j].evt.StartTime)
+	})
+
+	// Use the same time grouping logic
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfToday := startOfToday.Add(24 * time.Hour)
+
+	// Past Weekend calculation (same as GroupEventsByTime)
+	var pastWeekendStart, pastWeekendEnd time.Time
+	if now.Weekday() == time.Saturday {
+		pastWeekendStart = startOfToday.AddDate(0, 0, -7)
+		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)
+	} else if now.Weekday() == time.Sunday {
+		pastWeekendStart = startOfToday.AddDate(0, 0, -8)
+		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)
+	} else {
+		daysToLastSunday := int(now.Weekday())
+		pastWeekendStart = startOfToday.AddDate(0, 0, -daysToLastSunday-1)
+		pastWeekendEnd = pastWeekendStart.Add(48 * time.Hour)
+	}
+
+	// This weekend calculation
+	var thisWeekendStart, thisWeekendEnd time.Time
+	if now.Weekday() >= time.Friday {
+		thisWeekendStart = startOfToday.AddDate(0, 0, -(int(now.Weekday()) - int(time.Friday)))
+		thisWeekendEnd = thisWeekendStart.Add(72 * time.Hour)
+	} else {
+		daysToFriday := int(time.Friday - now.Weekday())
+		thisWeekendStart = startOfToday.AddDate(0, 0, daysToFriday)
+		thisWeekendEnd = thisWeekendStart.Add(72 * time.Hour)
+	}
+
+	thisWeekEnd := startOfToday.AddDate(0, 0, 7)
+	endOfMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location())
+	futureLimit := now.AddDate(0, 0, 30)
+	oldEventCutoff := now.AddDate(0, 0, -60)
+
+	// Initialize groups
+	pastWeekend := TimeGroup{Name: "Past Weekend", Icon: "📅", Events: []TemplateEvent{}}
+	happeningNow := TimeGroup{Name: "Happening Now / Today", Icon: "⏰", Events: []TemplateEvent{}}
+	thisWeekend := TimeGroup{Name: "This Weekend", Icon: "🎉", Events: []TemplateEvent{}}
+	thisWeek := TimeGroup{Name: "This Week", Icon: "📆", Events: []TemplateEvent{}}
+	laterThisMonth := TimeGroup{Name: "Later This Month", Icon: "📅", Events: []TemplateEvent{}}
+	ongoingEvents := []TemplateEvent{}
+
+	// Group events
+	for _, ewt := range allEvents {
+		evt := ewt.evt
+
+		// Calculate duration
+		endTime := evt.EndTime
+		if endTime.IsZero() {
+			endTime = evt.StartTime.Add(2 * time.Hour)
+		}
+		duration := endTime.Sub(evt.StartTime)
+
+		// Skip old/future events
+		if endTime.Before(pastWeekendStart) || evt.StartTime.Before(oldEventCutoff) || evt.StartTime.After(futureLimit) {
+			continue
+		}
+
+		// Format time
+		timeFormat := "02/01/2006"
+		if evt.StartTime.Hour() != 0 || evt.StartTime.Minute() != 0 {
+			timeFormat = "02/01/2006 15:04"
+		}
+
+		// Convert to template event
+		templateEvt := TemplateEvent{
+			IDEvento:          evt.ID,
+			Titulo:            evt.Title,
+			StartHuman:        evt.StartTime.Format(timeFormat),
+			StartTime:         evt.StartTime,
+			NombreInstalacion: evt.VenueName,
+			ContentURL:        evt.DetailsURL,
+			Description:       TruncateText(evt.Description, 150),
+			EventType:         ewt.eventType,
+		}
+
+		// Ongoing events (5+ days)
+		if duration >= 5*24*time.Hour {
+			ongoingEvents = append(ongoingEvents, templateEvt)
+			continue
+		}
+
+		// Assign to time groups
+		added := false
+
+		if evt.StartTime.Before(pastWeekendEnd) && endTime.After(pastWeekendStart) {
+			pastWeekend.Events = append(pastWeekend.Events, templateEvt)
+			added = true
+		}
+
+		if evt.StartTime.Before(endOfToday) && endTime.After(startOfToday) {
+			happeningNow.Events = append(happeningNow.Events, templateEvt)
+			added = true
+		}
+
+		if evt.StartTime.Before(thisWeekendEnd) && evt.StartTime.After(thisWeekendStart) {
+			thisWeekend.Events = append(thisWeekend.Events, templateEvt)
+			added = true
+		}
+
+		if !added && evt.StartTime.Before(thisWeekEnd) && evt.StartTime.After(endOfToday) {
+			thisWeek.Events = append(thisWeek.Events, templateEvt)
+			added = true
+		}
+
+		if !added && evt.StartTime.Before(endOfMonth) && evt.StartTime.After(thisWeekEnd) {
+			laterThisMonth.Events = append(laterThisMonth.Events, templateEvt)
+		}
+	}
+
+	// Build groups list
+	groups = []TimeGroup{}
+	if len(pastWeekend.Events) > 0 {
+		groups = append(groups, pastWeekend)
+	}
+	if len(happeningNow.Events) > 0 {
+		groups = append(groups, happeningNow)
+	}
+	if len(thisWeekend.Events) > 0 {
+		groups = append(groups, thisWeekend)
+	}
+	if len(thisWeek.Events) > 0 {
+		groups = append(groups, thisWeek)
+	}
+	if len(laterThisMonth.Events) > 0 {
+		groups = append(groups, laterThisMonth)
+	}
+
+	return groups, ongoingEvents
 }

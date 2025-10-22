@@ -1,5 +1,7 @@
 package render
 
+import "time"
+
 // TemplateData holds data for HTML template rendering.
 type TemplateData struct {
 	Lang           string
@@ -15,9 +17,11 @@ type TemplateEvent struct {
 	IDEvento          string
 	Titulo            string
 	StartHuman        string
+	StartTime         time.Time // For sorting
 	NombreInstalacion string
 	ContentURL        string
 	Description       string // Truncated description
+	EventType         string // "city" or "cultural"
 }
 
 // JSONEvent represents an event in the machine-readable JSON output.
