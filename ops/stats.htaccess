@@ -3,5 +3,5 @@
 
 AuthType Basic
 AuthName "Site Statistics"
-AuthUserFile /protected/.htpasswd
+AuthUserFile /ginger/plazaespana/protected/.htpasswd
 Require valid-user
