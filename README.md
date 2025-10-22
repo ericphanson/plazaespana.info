@@ -157,17 +157,21 @@ data/
 ### For NearlyFreeSpeech.NET (FreeBSD)
 
 ```bash
-# 1. Build for FreeBSD
-just freebsd
-just hash-css
+# Set environment variables
+export NFSN_HOST=ssh.phx.nearlyfreespeech.net
+export NFSN_USER=your_username
 
-# 2. Upload files via SFTP (see ops/deploy-notes.md)
-
-# 3. Set up cron job (hourly)
-/home/bin/buildsite -config /home/config.toml -fetch-mode production
+# Deploy (builds, uploads, and regenerates site)
+just deploy
 ```
 
-**Complete deployment guide:** See [`ops/deploy-notes.md`](ops/deploy-notes.md)
+**Automatic deployment:** GitHub Actions deploys automatically on push to `main`.
+
+**Complete deployment guide:** See [`docs/deployment.md`](docs/deployment.md) for:
+- SSH key setup for local and GitHub Actions deployment
+- Required GitHub Secrets configuration
+- Cron job setup on NFSN
+- Troubleshooting tips
 
 ## How It Works
 

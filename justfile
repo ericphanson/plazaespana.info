@@ -34,6 +34,65 @@ freebsd:
     @echo "✅ Built: build/buildsite (FreeBSD binary)"
     @ls -lh build/buildsite
 
+# Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
+deploy: freebsd hash-css
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Check required environment variables
+    if [ -z "${NFSN_HOST:-}" ]; then
+        echo "❌ Error: NFSN_HOST environment variable not set"
+        echo "   Example: export NFSN_HOST=ssh.phx.nearlyfreespeech.net"
+        exit 1
+    fi
+    if [ -z "${NFSN_USER:-}" ]; then
+        echo "❌ Error: NFSN_USER environment variable not set"
+        echo "   Example: export NFSN_USER=username"
+        exit 1
+    fi
+
+    echo "🚀 Deploying to NearlyFreeSpeech.NET..."
+    echo "   Host: $NFSN_HOST"
+    echo "   User: $NFSN_USER"
+    echo ""
+
+    # Create remote directories if needed
+    echo "📁 Creating remote directories..."
+    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/bin /home/data /home/public/assets /home/templates'
+
+    # Upload files
+    echo "📤 Uploading binary..."
+    scp build/buildsite "$NFSN_USER@$NFSN_HOST:/home/bin/buildsite"
+
+    echo "📤 Uploading config..."
+    scp config.toml "$NFSN_USER@$NFSN_HOST:/home/config.toml"
+
+    echo "📤 Uploading templates..."
+    scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/templates/index-grouped.tmpl.html"
+
+    echo "📤 Uploading hashed CSS..."
+    scp public/assets/site.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
+
+    echo "📤 Uploading .htaccess..."
+    scp ops/htaccess "$NFSN_USER@$NFSN_HOST:/home/public/.htaccess"
+
+    # Set permissions
+    echo "🔐 Setting permissions..."
+    ssh "$NFSN_USER@$NFSN_HOST" 'chmod +x /home/bin/buildsite'
+
+    # Run buildsite to regenerate the site
+    echo "🔨 Regenerating site on server..."
+    ssh "$NFSN_USER@$NFSN_HOST" '/home/bin/buildsite -config /home/config.toml -fetch-mode production'
+
+    echo ""
+    echo "✅ Deployment complete!"
+    echo ""
+    echo "📝 Next steps:"
+    echo "   1. Verify site at your NFSN URL"
+    echo "   2. Setup cron job in NFSN web UI:"
+    echo "      Command: /home/bin/buildsite -config /home/config.toml -fetch-mode production"
+    echo "      Schedule: Every hour"
+
 # Generate content-hashed CSS for cache busting
 hash-css:
     @./scripts/hash-assets.sh

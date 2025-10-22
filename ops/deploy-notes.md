@@ -1,5 +1,21 @@
 # Deployment to NearlyFreeSpeech.NET
 
+**⚠️ This document is for reference only.**
+
+**For current deployment instructions, see:** [`../docs/deployment.md`](../docs/deployment.md)
+
+The new deployment guide covers:
+- `just deploy` command for automated deployment
+- GitHub Actions automatic deployment on push to `main`
+- SSH key setup for both local and CI/CD
+- Complete troubleshooting guide
+
+---
+
+## Legacy Manual Deployment Instructions
+
+The following instructions are kept for reference but are superseded by `just deploy`.
+
 ## Initial Setup
 
 1. **Build FreeBSD binary locally:**
