@@ -157,9 +157,10 @@ data/
 ### For NearlyFreeSpeech.NET (FreeBSD)
 
 ```bash
-# Set environment variables
-export NFSN_HOST=ssh.phx.nearlyfreespeech.net
-export NFSN_USER=your_username
+# One-time setup: Configure credentials with direnv
+cp .envrc.local.example .envrc.local
+# Edit .envrc.local with your NFSN credentials
+direnv allow
 
 # Deploy (builds, uploads, and regenerates site)
 just deploy

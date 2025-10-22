@@ -1,0 +1,11 @@
+# Local Environment Configuration (Example)
+# Copy this to .envrc.local and fill in your values
+# .envrc.local is gitignored and won't be committed
+
+# NearlyFreeSpeech.NET deployment credentials
+# Required for: just deploy
+export NFSN_HOST=ssh.phx.nearlyfreespeech.net
+export NFSN_USER=your_username
+
+# Optional: Add other local development settings here
+# export MY_DEBUG_FLAG=true

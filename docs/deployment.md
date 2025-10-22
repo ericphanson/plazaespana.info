@@ -6,17 +6,39 @@ This guide covers deploying the Madrid Events site to NearlyFreeSpeech.NET (NFSN
 
 - SSH access to your NFSN account
 - SSH key pair for authentication
+- **direnv** (recommended) - [Install direnv](https://direnv.net/docs/installation.html)
 
 ## Quick Start
+
+### Setup Environment Variables (One Time)
+
+**Recommended: Using direnv**
+
+```bash
+# Copy the example file
+cp .envrc.local.example .envrc.local
+
+# Edit with your credentials
+# .envrc.local (this file is gitignored)
+export NFSN_HOST=ssh.phx.nearlyfreespeech.net
+export NFSN_USER=your_actual_username
+
+# Allow direnv to load the file
+direnv allow
+```
+
+**Alternative: Manual export (not recommended)**
+
+```bash
+# Set environment variables each time
+export NFSN_HOST=ssh.phx.nearlyfreespeech.net
+export NFSN_USER=your_username
+```
 
 ### Local Deployment
 
 ```bash
-# Set environment variables
-export NFSN_HOST=ssh.phx.nearlyfreespeech.net
-export NFSN_USER=your_username
-
-# Deploy
+# Deploy (environment variables loaded automatically by direnv)
 just deploy
 ```
 
@@ -198,16 +220,23 @@ Look for error messages in the output.
 - The public key is safe to share and goes on NFSN
 - Use `ed25519` keys (more secure than older RSA)
 
-## Local Environment Variables
+## Managing Environment Variables
 
-For convenience, add to your `~/.bashrc` or `~/.zshrc`:
+**Using direnv (recommended):**
 
-```bash
-export NFSN_HOST=ssh.phx.nearlyfreespeech.net
-export NFSN_USER=your_username
-```
+The repository includes `.envrc` (tracked) which automatically sources `.envrc.local` (gitignored).
 
-Then you can just run `just deploy` without setting variables each time.
+1. Install direnv: https://direnv.net/docs/installation.html
+2. Copy `.envrc.local.example` to `.envrc.local`
+3. Edit `.envrc.local` with your credentials
+4. Run `direnv allow` to enable
+5. Variables load automatically when you `cd` into the project
+
+**Why direnv?**
+- ✅ Variables load automatically when entering the directory
+- ✅ Gitignored config keeps credentials safe
+- ✅ No global shell pollution
+- ✅ Per-project configuration
 
 ## Deployment Checklist
 

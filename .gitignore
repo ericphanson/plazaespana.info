@@ -65,3 +65,6 @@ temp/
 
 /screenshots
 !/screenshots/capture.sh
+
+# Environment variables (use .envrc.local for local config)
+.envrc.local
