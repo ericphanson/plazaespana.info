@@ -158,6 +158,9 @@ HostAliases="plazaespana.nfshost.com plazaespana.info www.plazaespana.info"
 # Log location (NFSN standard)
 LogFile="/home/logs/access_log"
 
+# Log format (1 = Apache combined log format)
+LogFormat=1
+
 # Don't purge old records - keep history indefinitely
 KeepBackupOfHistoricFiles=1
 PurgeLogFile=0
