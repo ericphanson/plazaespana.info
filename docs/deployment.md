@@ -243,10 +243,21 @@ Add weekly AWStats processing to NFSN scheduled tasks:
    - **Schedule:** `0 1 * * 0` (Sunday at 1 AM)
    - **Tag:** `awstats-weekly` (optional, for identification)
 
+The wrapper script:
+- Logs all output to `/home/logs/awstats.log` with timestamps
+- Only sends email on processing failures (non-zero exit code)
+- Includes full log in error emails for complete debugging context
+
 **Why Sunday 1 AM?**
-- Low traffic time (minimal data loss during log truncation)
-- Weekly rollups align with calendar weeks
+- Low traffic time
 - After weekend events (captures full week)
+- Weekly processing schedule
+
+**View logs:**
+```bash
+ssh your_username@ssh.phx.nearlyfreespeech.net
+tail -f /home/logs/awstats.log
+```
 
 ### 6. Setup AWStats Database Sync (GitHub Actions)
 
