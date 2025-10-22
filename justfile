@@ -97,8 +97,9 @@ _deploy-files:
     echo "📝 Next steps:"
     echo "   1. Verify site at your NFSN URL"
     echo "   2. Setup cron job in NFSN web UI:"
-    echo "      Command: /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production"
+    echo "      Command: /home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production > /dev/null"
     echo "      Schedule: Every hour"
+    echo "      Note: > /dev/null suppresses output (no cron emails unless errors occur)"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
 deploy: freebsd hash-css _deploy-files

@@ -74,10 +74,12 @@ After first deployment, set up hourly regeneration:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
 2. Add task:
-   - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production`
+   - **Command:** `/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production > /dev/null`
    - **Schedule:** Every hour (or `0 * * * *`)
 
 The flags override config paths for NFSN's absolute paths and enable production fetch mode (30min cache, 2s delays).
+
+**Note:** The `> /dev/null` suppresses normal output to avoid cron emails on successful runs. Errors (stderr) still trigger emails.
 
 ## What Gets Deployed
 
