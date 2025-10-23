@@ -17,6 +17,9 @@ type BuildReport struct {
 
 	TotalEvents int // Sum of both pipelines
 
+	// Weather integration
+	Weather *WeatherReport
+
 	DataQuality []DataQualityIssue
 	Output      OutputReport
 
@@ -146,6 +149,19 @@ type OutputFile struct {
 	Status   string // "SUCCESS", "FAILED", "SKIPPED"
 	Error    string
 	Duration time.Duration
+}
+
+// WeatherReport tracks weather forecast integration.
+type WeatherReport struct {
+	FetchTimestamp  time.Time
+	Municipality    string
+	DaysCovered     int
+	EventsMatched   int
+	EventsUnmatched int
+	CacheHit        bool
+	APIKeyPresent   bool
+	Error           string
+	Duration        time.Duration
 }
 
 // NewBuildReport creates a new report initialized with defaults.

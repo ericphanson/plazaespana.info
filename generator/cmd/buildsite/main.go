@@ -741,37 +741,48 @@ func main() {
 	}
 
 	// =====================================================================
-	// WEATHER: Fetch weather forecast (optional)
+	// WEATHER: Fetch weather forecast
 	// =====================================================================
 	var weatherMap map[string]*render.Weather
-	if cfg.Weather.Enabled {
-		log.Println("\n=== Fetching Weather ===")
+	log.Println("\n=== Fetching Weather ===")
+	weatherStart := time.Now()
 
-		// Get API key from environment
-		apiKey := os.Getenv(cfg.Weather.APIKeyEnv)
-		if apiKey == "" {
-			log.Printf("Warning: %s not set - weather integration disabled", cfg.Weather.APIKeyEnv)
-		} else {
-			// Create weather client
-			weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
-
-			// Fetch forecast
-			log.Printf("Fetching 7-day forecast for municipality %s...", cfg.Weather.MunicipalityCode)
-			forecast, err := weatherClient.FetchForecast()
-			if err != nil {
-				log.Printf("Warning: Weather fetch failed: %v (continuing without weather)", err)
-				buildReport.AddWarning("Weather fetch failed: %v", err)
-			} else {
-				log.Printf("Weather forecast received: %d days", len(forecast.Prediction.Days))
-
-				// Build weather map for fast lookup by date
-				weatherMap = weather.BuildWeatherMap(forecast, *basePath)
-				log.Printf("Weather map built: %d dates", len(weatherMap))
-			}
-		}
-	} else {
-		log.Println("Weather integration disabled")
+	// Initialize weather report
+	buildReport.Weather = &report.WeatherReport{
+		FetchTimestamp: time.Now(),
+		Municipality:   cfg.Weather.MunicipalityCode,
 	}
+
+	// Get API key from environment
+	apiKey := os.Getenv(cfg.Weather.APIKeyEnv)
+	buildReport.Weather.APIKeyPresent = (apiKey != "")
+
+	if apiKey == "" {
+		fmt.Fprintf(os.Stderr, "Warning: %s not set - continuing without weather forecasts\n", cfg.Weather.APIKeyEnv)
+		log.Printf("Warning: %s not set - continuing without weather forecasts", cfg.Weather.APIKeyEnv)
+		buildReport.Weather.Error = fmt.Sprintf("%s not set", cfg.Weather.APIKeyEnv)
+	} else {
+		// Create weather client
+		weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
+
+		// Fetch forecast
+		log.Printf("Fetching 7-day forecast for municipality %s...", cfg.Weather.MunicipalityCode)
+		forecast, err := weatherClient.FetchForecast()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Weather fetch failed: %v (continuing without weather)\n", err)
+			log.Printf("Warning: Weather fetch failed: %v (continuing without weather)", err)
+			buildReport.AddWarning("Weather fetch failed: %v", err)
+			buildReport.Weather.Error = err.Error()
+		} else {
+			log.Printf("Weather forecast received: %d days", len(forecast.Prediction.Days))
+			buildReport.Weather.DaysCovered = len(forecast.Prediction.Days)
+
+			// Build weather map for fast lookup by date
+			weatherMap = weather.BuildWeatherMap(forecast, *basePath)
+			log.Printf("Weather map built: %d dates", len(weatherMap))
+		}
+	}
+	buildReport.Weather.Duration = time.Since(weatherStart)
 
 	// =====================================================================
 	// RENDERING: Render both cultural and city events
@@ -782,6 +793,31 @@ func main() {
 	mergedGroups, ongoingEvents, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby := render.GroupMixedEventsByTime(
 		filteredCityEvents, filteredEvents, now,
 		cfg.Filter.Latitude, cfg.Filter.Longitude, weatherMap)
+
+	// Count events with/without weather
+	if buildReport.Weather != nil {
+		eventsMatched := 0
+		eventsUnmatched := 0
+		for _, group := range mergedGroups {
+			for _, evt := range group.Events {
+				if evt.Weather != nil {
+					eventsMatched++
+				} else {
+					eventsUnmatched++
+				}
+			}
+		}
+		for _, evt := range ongoingEvents {
+			if evt.Weather != nil {
+				eventsMatched++
+			} else {
+				eventsUnmatched++
+			}
+		}
+		buildReport.Weather.EventsMatched = eventsMatched
+		buildReport.Weather.EventsUnmatched = eventsUnmatched
+		log.Printf("Weather matching: %d events with weather, %d without", eventsMatched, eventsUnmatched)
+	}
 
 	// Convert to JSON format (keep original flat structure for API)
 	var culturalJSONEvents []render.JSONEvent

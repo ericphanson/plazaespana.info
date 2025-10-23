@@ -101,7 +101,7 @@ config.toml         # Runtime configuration
 
 ### Weather Integration (AEMET)
 
-**Status:** ✅ Implemented (opt-in, disabled by default)
+**Status:** ✅ Implemented (always enabled)
 
 Enriches event cards with weather forecasts from AEMET (Spanish State Meteorological Agency):
 
@@ -112,9 +112,9 @@ Enriches event cards with weather forecasts from AEMET (Spanish State Meteorolog
 - Template integration: conditional weather display on event cards
 
 **Configuration:**
-- `config.toml`: `[weather]` section (enabled, api_key_env, municipality_code)
+- `config.toml`: `[weather]` section (api_key_env, municipality_code)
 - Environment variable: `AEMET_API_KEY` (register at https://opendata.aemet.es/)
-- Default: disabled (requires API key setup)
+- Always attempts to fetch weather; if API key missing or fetch fails, logs to stderr and continues
 
 **Data displayed:**
 - Max temperature for event date
@@ -129,9 +129,9 @@ Enriches event cards with weather forecasts from AEMET (Spanish State Meteorolog
 - License: Spain Law 18/2015 (open data, attribution required)
 
 **Graceful degradation:**
-- If API key missing: weather disabled silently
-- If AEMET fetch fails: events render without weather
-- If no forecast for event date: no weather shown
+- If API key missing: logs warning to stderr, continues without weather
+- If AEMET fetch fails: logs error to stderr, continues without weather
+- If no forecast for event date: no weather shown for that event
 
 **API details:**
 - Municipality: Madrid (code 28079)

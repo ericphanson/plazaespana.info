@@ -55,13 +55,12 @@ audit_path = "data/request-audit.json"
 port = 8080
 
 [weather]
-# AEMET weather integration
-enabled = false  # Set to true to enable weather forecasts on event cards
+# AEMET weather integration (always enabled)
 api_key_env = "AEMET_API_KEY"  # Environment variable containing AEMET API key
 municipality_code = "28079"  # Madrid municipality code for AEMET API
 
-# To enable weather:
+# Weather forecast setup:
 # 1. Register for free API key at: https://opendata.aemet.es/centrodedescargas/altaUsuario
 # 2. Set environment variable: export AEMET_API_KEY=your_key_here
-# 3. Set enabled = true above
+# 3. If API key missing or fetch fails, site generates without weather (logged to stderr)
 # 4. Weather icons are served from /assets/weather-icons/ (copied from fixtures during build)

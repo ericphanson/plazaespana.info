@@ -57,7 +57,6 @@ type ServerConfig struct {
 
 // WeatherConfig holds weather integration settings.
 type WeatherConfig struct {
-	Enabled          bool   `toml:"enabled"`
 	APIKeyEnv        string `toml:"api_key_env"`
 	MunicipalityCode string `toml:"municipality_code"`
 }
@@ -91,7 +90,6 @@ func DefaultConfig() *Config {
 			Port: 8080,
 		},
 		Weather: WeatherConfig{
-			Enabled:          false, // Disabled by default (requires API key)
 			APIKeyEnv:        "AEMET_API_KEY",
 			MunicipalityCode: "28079", // Madrid
 		},
@@ -166,14 +164,12 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("server.port must be between 1 and 65535, got %d", c.Server.Port)
 	}
 
-	// Validate weather config (only if enabled)
-	if c.Weather.Enabled {
-		if c.Weather.APIKeyEnv == "" {
-			return fmt.Errorf("weather.api_key_env must not be empty when weather is enabled")
-		}
-		if c.Weather.MunicipalityCode == "" {
-			return fmt.Errorf("weather.municipality_code must not be empty when weather is enabled")
-		}
+	// Validate weather config
+	if c.Weather.APIKeyEnv == "" {
+		return fmt.Errorf("weather.api_key_env must not be empty")
+	}
+	if c.Weather.MunicipalityCode == "" {
+		return fmt.Errorf("weather.municipality_code must not be empty")
 	}
 
 	return nil

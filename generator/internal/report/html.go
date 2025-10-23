@@ -333,6 +333,69 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 	b.WriteString(`    </div>
 `)
 
+	// Weather Integration
+	if r.Weather != nil {
+		b.WriteString(`    <h2>⛅ Weather Integration</h2>
+    <div class="section">
+`)
+		statusSymbol := iconSuccess
+		if r.Weather.Error != "" {
+			statusSymbol = iconWarning
+		} else if !r.Weather.APIKeyPresent {
+			statusSymbol = iconWarning
+		}
+
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>%sStatus</span>
+        <span>%s</span>
+      </div>
+`, statusSymbol, func() string {
+			if r.Weather.Error != "" {
+				return "Failed: " + r.Weather.Error
+			}
+			if !r.Weather.APIKeyPresent {
+				return "API key not set"
+			}
+			return "Success"
+		}()))
+
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Municipality</span>
+        <span>%s</span>
+      </div>
+`, r.Weather.Municipality))
+
+		if r.Weather.DaysCovered > 0 {
+			b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Forecast Days</span>
+        <span>%d days</span>
+      </div>
+`, r.Weather.DaysCovered))
+		}
+
+		if r.Weather.EventsMatched > 0 || r.Weather.EventsUnmatched > 0 {
+			total := r.Weather.EventsMatched + r.Weather.EventsUnmatched
+			pct := 0
+			if total > 0 {
+				pct = (r.Weather.EventsMatched * 100) / total
+			}
+			b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Events with Weather</span>
+        <span>%d / %d (%d%%)</span>
+      </div>
+`, r.Weather.EventsMatched, total, pct))
+		}
+
+		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
+        <span>Duration</span>
+        <span>%s</span>
+      </div>
+`, formatDuration(r.Weather.Duration)))
+
+		b.WriteString(`    </div>
+`)
+	}
+
 	// Output Files
 	b.WriteString(`    <h2>Output Files</h2>
     <div class="section">
