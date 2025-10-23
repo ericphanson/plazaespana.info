@@ -220,6 +220,62 @@ footer {
   margin-top: 2rem;
 }
 
+/* Footer main section - three columns */
+.footer-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-top: 1px solid var(--muted);
+  border-bottom: 1px solid var(--muted);
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.footer-left,
+.footer-right {
+  flex: 0 0 auto;
+}
+
+.footer-center {
+  flex: 1 1 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.footer-date {
+  font-size: 0.9rem;
+}
+
+.footer-commit {
+  font-size: 0.8rem;
+  font-family: monospace;
+  opacity: 0.8;
+}
+
+.footer-attribution {
+  text-align: center;
+}
+
+.footer-attribution p {
+  margin: 0.25rem 0;
+}
+
+/* Mobile: stack footer on small screens */
+@media (max-width: 600px) {
+  .footer-main {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+
+  .footer-center {
+    order: -1; /* Move to top on mobile */
+  }
+}
+
 /* Toggle cultural events visibility */
 #toggle-cultural:not(:checked) ~ main .event-card.cultural {
   display: none;

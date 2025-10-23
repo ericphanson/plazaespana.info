@@ -13,9 +13,12 @@ config:
 
 # Build binary for local use
 build:
-    @echo "🔨 Building binary..."
-    @cd generator && go build -o ../build/buildsite ./cmd/buildsite
-    @echo "✅ Built: build/buildsite"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔨 Building binary..."
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    cd generator && go build -ldflags="-X github.com/ericphanson/plazaespana.info/internal/version.GitCommit=$GIT_COMMIT" -o ../build/buildsite ./cmd/buildsite
+    echo "✅ Built: build/buildsite (git: $GIT_COMMIT)"
 
 # Run all tests
 test:
@@ -239,8 +242,9 @@ preview-build PREVIEW:
     echo "   Base path: /previews/{{PREVIEW}}"
     echo ""
 
-    # Build binary
-    cd generator && go build -o ../build/buildsite ./cmd/buildsite
+    # Build binary with git hash
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    cd generator && go build -ldflags="-X github.com/ericphanson/plazaespana.info/internal/version.GitCommit=$GIT_COMMIT" -o ../build/buildsite ./cmd/buildsite
     cd ..
 
     # Hash CSS

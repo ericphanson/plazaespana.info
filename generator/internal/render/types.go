@@ -8,6 +8,7 @@ type TemplateData struct {
 	CSSHash        string
 	BasePath       string
 	LastUpdated    string
+	GitCommit      string // Git commit hash (set at build time)
 	CulturalEvents []TemplateEvent
 	CityEvents     []TemplateEvent
 	TotalEvents    int
