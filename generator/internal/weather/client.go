@@ -3,8 +3,6 @@ package weather
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"time"
 
 	"github.com/ericphanson/plazaespana.info/internal/fetch"
 )
@@ -14,7 +12,6 @@ type Client struct {
 	apiKey           string
 	fetchClient      *fetch.Client
 	municipalityCode string
-	httpClient       *http.Client
 }
 
 // NewClient creates a new weather client
@@ -23,9 +20,6 @@ func NewClient(apiKey, municipalityCode string, fetchClient *fetch.Client) *Clie
 		apiKey:           apiKey,
 		fetchClient:      fetchClient,
 		municipalityCode: municipalityCode,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
 	}
 }
 
@@ -80,37 +74,12 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 }
 
 // fetchWithAPIKey makes an HTTP request with the AEMET API key header
+// Uses the fetch client's HTTPCache system for caching, throttling, and audit trail
 func (c *Client) fetchWithAPIKey(url string) ([]byte, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
+	// Use fetch client with custom header for API key
+	// AEMET uses lowercase "api_key" header
+	headers := map[string]string{
+		"api_key": c.apiKey,
 	}
-
-	// Add API key header (AEMET uses lowercase "api_key" header)
-	req.Header.Set("api_key", c.apiKey)
-	req.Header.Set("User-Agent", "plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
-	}
-
-	body := make([]byte, 0)
-	buf := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(buf)
-		if n > 0 {
-			body = append(body, buf[:n]...)
-		}
-		if err != nil {
-			break
-		}
-	}
-
-	return body, nil
+	return c.fetchClient.FetchWithHeaders(url, headers)
 }
