@@ -385,3 +385,30 @@ input[name="distance-filter"] {
 #toggle-cultural:checked ~ #distance-plaza:checked ~ main .count-plaza-all {
   display: inline;
 }
+
+/* Section reordering: empty sections sink to bottom based on filter state
+   Uses data attributes computed at build time (no JavaScript needed) */
+
+/* Filter state 1: En Plaza + Cultural shown
+   Sink sections with no plaza events (all types) */
+#toggle-cultural:checked ~ #distance-plaza:checked ~ main .event-section[data-count-plaza="0"] {
+  order: 999;
+}
+
+/* Filter state 2: En Plaza + Cultural hidden
+   Sink sections with no city plaza events */
+#toggle-cultural:not(:checked) ~ #distance-plaza:checked ~ main .event-section[data-count-plaza-city="0"] {
+  order: 999;
+}
+
+/* Filter state 3: Cerca (nearby) + Cultural shown
+   Sink sections with no nearby events (all types) */
+#toggle-cultural:checked ~ #distance-nearby:checked ~ main .event-section[data-count-nearby="0"] {
+  order: 999;
+}
+
+/* Filter state 4: Cerca (nearby) + Cultural hidden
+   Sink sections with no city nearby events */
+#toggle-cultural:not(:checked) ~ #distance-nearby:checked ~ main .event-section[data-count-nearby-city="0"] {
+  order: 999;
+}

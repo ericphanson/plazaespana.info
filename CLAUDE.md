@@ -131,6 +131,39 @@ justfile                           # Task automation (just command runner)
 - **Graceful degradation**: Missing fields (e.g., HORA) treated as all-day events
 - **Timezone normalization**: All times parsed to Europe/Madrid
 
+### Static Site Architecture - No JavaScript Required
+
+**CRITICAL: This is a pure static site. All interactivity is CSS-only.**
+
+**Why no JavaScript:**
+1. **Security**: `.htaccess` enforces strict Content-Security-Policy that blocks JavaScript and inline styles
+2. **Performance**: No JS = instant load, no runtime overhead
+3. **Accessibility**: Works without JS enabled, on ancient browsers
+4. **Simplicity**: All data is known at build time, no need for client-side computation
+
+**How we achieve interactivity without JS:**
+- **Filter toggles**: CSS-only using checkbox hack (`#toggle-cultural:checked ~ main`)
+- **Section reordering**: Data attributes computed at build time + CSS `order` property
+- **Distance filtering**: CSS display rules based on `data-at-plaza` attributes
+- **Event counts**: Multiple count values embedded in template, CSS shows/hides relevant ones
+
+**Example: Section Reordering**
+```html
+<!-- Template computes counts for all filter states at build time -->
+<section data-count-plaza="5" data-count-nearby="10"
+         data-count-plaza-city="3" data-count-nearby-city="7">
+```
+
+```css
+/* CSS selects which count to check based on filter state */
+#toggle-cultural:checked ~ #distance-plaza:checked ~ main
+  .event-section[data-count-plaza="0"] {
+  order: 999; /* Sink empty sections to bottom */
+}
+```
+
+**Key principle**: Generate all possible state information at build time, use CSS selectors to show/hide based on user input. Never compute or manipulate data at runtime.
+
 ### Respectful Upstream Fetching
 
 **Problem:** During development, we run builds 10-20+ times per hour to test changes. Without throttling, this looks like an attack to upstream servers (datos.madrid.es, esmadrid.com) and could get us blocked.
