@@ -72,13 +72,32 @@ just deploy
 
 Add these secrets in repository Settings → Secrets and variables → Actions:
 
-| Secret Name    | Description           | Value                               |
-|----------------|-----------------------|-------------------------------------|
-| `NFSN_SSH_KEY` | Private SSH key       | Contents of `~/.ssh/id_ed25519`     |
-| `NFSN_HOST`    | NFSN SSH hostname     | `ssh.phx.nearlyfreespeech.net`      |
-| `NFSN_USER`    | NFSN username         | `your_username`                     |
+| Secret Name        | Description                  | Value                               |
+|--------------------|------------------------------|-------------------------------------|
+| `NFSN_SSH_KEY`     | Private SSH key              | Contents of `~/.ssh/id_ed25519`     |
+| `NFSN_HOST`        | NFSN SSH hostname            | `ssh.phx.nearlyfreespeech.net`      |
+| `NFSN_USER`        | NFSN username                | `your_username`                     |
+| `NFSN_KNOWN_HOST`  | SSH host key (for security)  | Output from `ssh-keyscan` command   |
 
 ⚠️ Use the **private key** that matches the public key uploaded to NFSN.
+
+### How to populate NFSN_KNOWN_HOST
+
+To securely verify the NFSN host key, run this command **from a trusted machine** (not in CI):
+
+```bash
+ssh-keyscan -H ssh.phx.nearlyfreespeech.net
+```
+
+This will output something like:
+```
+|1|abc123...= ssh-ed25519 AAAA...
+|1|def456...= ssh-rsa AAAA...
+```
+
+**Copy the entire output** and paste it as the value for the `NFSN_KNOWN_HOST` secret.
+
+**Why this matters:** This prevents man-in-the-middle attacks during GitHub Actions deployments. By capturing the host key once from a trusted network and storing it as a secret, all future CI runs will verify they're connecting to the legitimate NFSN server.
 
 ## Cron Setup on NFSN
 

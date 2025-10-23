@@ -31,14 +31,15 @@ jobs:
         env:
           NFSN_SSH_KEY: ${{ secrets.NFSN_SSH_KEY }}
           NFSN_HOST: ${{ secrets.NFSN_HOST }}
+          NFSN_KNOWN_HOST: ${{ secrets.NFSN_KNOWN_HOST }}
         run: |
           mkdir -p ~/.ssh
           echo "$NFSN_SSH_KEY" > ~/.ssh/nfsn_awstats
           chmod 600 ~/.ssh/nfsn_awstats
+          echo "$NFSN_KNOWN_HOST" >> ~/.ssh/known_hosts
           cat >> ~/.ssh/config <<EOF
           Host $NFSN_HOST
             IdentityFile ~/.ssh/nfsn_awstats
-            StrictHostKeyChecking accept-new
           EOF
 
       - name: Setup Just
