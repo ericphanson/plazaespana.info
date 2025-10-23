@@ -6,6 +6,7 @@ ASSETS_DIR="assets"
 PUBLIC_ASSETS_DIR="public/assets"
 
 mkdir -p "$PUBLIC_ASSETS_DIR"
+mkdir -p "public"
 
 # Hash main site CSS and copy to public/assets
 CSS_FILE="$ASSETS_DIR/site.css"
@@ -27,4 +28,13 @@ if [ -f "$BUILD_REPORT_CSS" ]; then
   echo "Generated: public/assets/build-report.$REPORT_HASH.css"
 else
   echo "Warning: $BUILD_REPORT_CSS not found"
+fi
+
+# Copy robots.txt to public root
+ROBOTS_FILE="robots.txt"
+if [ -f "$ROBOTS_FILE" ]; then
+  cp "$ROBOTS_FILE" "public/robots.txt"
+  echo "Copied: public/robots.txt"
+else
+  echo "Warning: $ROBOTS_FILE not found"
 fi

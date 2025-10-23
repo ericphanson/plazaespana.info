@@ -1,0 +1,6 @@
+# robots.txt for Plaza de España events site
+User-agent: *
+Allow: /
+
+# Sitemap (if added in future)
+# Sitemap: https://your-domain.com/sitemap.xml
