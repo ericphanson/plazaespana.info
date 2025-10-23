@@ -22,7 +22,8 @@
 5. [Summary Risk Matrix](#summary-risk-matrix)
 6. [Pre-Release Checklist](#pre-release-checklist)
 7. [Post-Release Monitoring](#post-release-monitoring)
-8. [Conclusion](#conclusion)
+8. [Repository Architecture Alternatives](#repository-architecture-alternatives)
+9. [Conclusion](#conclusion)
 
 ---
 
@@ -759,6 +760,457 @@ After open sourcing, monitor for:
 
 ---
 
+## Repository Architecture Alternatives
+
+This section analyzes different approaches to separating deployment from source code, especially considering plans to create multiple similar sites.
+
+### Current Architecture: Unified Single-Repo Model
+
+**Structure:**
+```
+plaza-espana-calendar/ (single public repo)
+├── Source code (Go, templates, CSS)
+├── Deployment docs (NFSN-specific)
+├── GitHub Actions (deployment + previews)
+├── Production config (config.toml)
+└── Secrets (GitHub Secrets)
+```
+
+**Characteristics:**
+- ✅ Everything in one place
+- ✅ PR previews work seamlessly
+- ✅ Claude Code generates deployment-ready PRs
+- ✅ Simple clone-and-run experience
+- ✅ Code and deployment stay in sync
+- ⚠️ Deployment details are public
+- ⚠️ Infrastructure exposure (mitigated with disclaimers)
+- ⚠️ Hard to reuse deployment logic across sites
+
+**Best for:** Single-site projects where transparency is acceptable and PR workflow is critical.
+
+---
+
+### Alternative 1: Split Per-Site Repos
+
+Split each site into public source + private deployment repos.
+
+**Structure:**
+```
+plaza-espana-calendar/ (public)          plaza-espana-deployment/ (private)
+├── Source code                          ├── Production config.toml
+├── Tests                                ├── NFSN deployment scripts
+├── Generic deployment docs              ├── Secrets/credentials
+├── Example config.toml.example          ├── GitHub Actions (deploy only)
+└── Development workflows                └── Site-specific infrastructure
+```
+
+**Pros:**
+- 🔒 **Security:** Infrastructure details completely private
+- 🎯 **Clean separation:** Code contributors don't need deployment access
+- 🔑 **Better secrets management:** Private repo for all sensitive data
+- 📝 **Cleaner public repo:** No deployment noise, pure source code
+- 🤝 **Easier handoff:** Can transfer public repo ownership without exposing infrastructure
+- 🎓 **Educational:** Public repo becomes better teaching resource
+
+**Cons:**
+- 📦 **Two repos per site:** More overhead to manage
+- 🔄 **PR previews complex:** Need coordination between repos
+  - Option A: Deployment repo watches public repo PRs (complex webhooks)
+  - Option B: Manual trigger from public repo (breaks automation)
+  - Option C: Deployment repo has read access to public repo (doable but awkward)
+- 🤖 **Claude Code workflow disrupted:** PRs don't auto-deploy
+- 🔧 **CI/CD complexity:** Need to sync state between repos
+- ⏱️ **Slower iteration:** Deploy requires push to two repos
+
+**Implementation Approach:**
+
+Public repo (plaza-espana-calendar):
+```yaml
+# .github/workflows/notify-deployment.yml
+# On PR merge, trigger deployment repo via repository_dispatch
+on:
+  push:
+    branches: [main]
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+          repository: ericphanson/plaza-espana-deployment
+          event-type: source-updated
+```
+
+Private deployment repo:
+```yaml
+# .github/workflows/deploy.yml
+on:
+  repository_dispatch:
+    types: [source-updated]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone public source
+        run: git clone https://github.com/ericphanson/plaza-espana-calendar
+      - name: Build with private config
+        run: |
+          cd plaza-espana-calendar
+          cp ../config.toml .
+          just freebsd
+      - name: Deploy to NFSN
+        # ... deployment steps with private credentials
+```
+
+**PR Previews:** Would need deployment repo to watch public repo PRs:
+```yaml
+# In deployment repo
+on:
+  repository_dispatch:
+    types: [preview-requested]
+  # Triggered by public repo PR workflow
+```
+
+**Best for:**
+- Single site with high security requirements
+- Contributors who shouldn't have deployment access
+- Want to eventually hand off the public repo
+
+**Multi-site scaling:** Doesn't scale well (2N repos for N sites).
+
+---
+
+### Alternative 2: Multi-Site Shared Deployment Repo
+
+Multiple public source repos, single private deployment orchestrator.
+
+**Structure:**
+```
+Public Repos:                            Private Repo:
+plaza-espana-calendar/                   sites-deployment/
+├── Source code                          ├── configs/
+├── Tests                                │   ├── plaza-espana/
+├── Example configs                      │   │   ├── config.toml
+└── Self-contained                       │   │   └── env.production
+                                         │   ├── barcelona-calendar/
+barcelona-calendar/                      │   │   └── config.toml
+├── Source code                          │   └── valencia-calendar/
+├── Tests                                │       └── config.toml
+└── Self-contained                       ├── shared-workflows/
+                                         │   ├── deploy-nfsn.sh
+valencia-calendar/                       │   ├── build-freebsd.sh
+├── Source code                          │   └── preview-manager.sh
+└── Self-contained                       ├── .github/workflows/
+                                         │   ├── deploy-all-sites.yml
+                                         │   └── deploy-site.yml
+                                         └── secrets/
+                                             ├── nfsn-credentials
+                                             └── ssh-keys
+```
+
+**Pros:**
+- 🔄 **Deployment reuse:** Write deployment logic once, use for all sites
+- 🎯 **Centralized secrets:** All credentials in one place
+- 📊 **Unified monitoring:** See all sites' deployment status together
+- 🚀 **Efficient scaling:** Add new site = new config file, not new repo
+- 🔧 **Easy global updates:** Update deployment strategy for all sites at once
+- 💰 **CI/CD efficiency:** Shared runners, cached builds
+- 🎓 **Public repos pure:** Each is standalone, forkable example
+
+**Cons:**
+- 🏗️ **High initial complexity:** Orchestration logic is non-trivial
+- 🔗 **Coupling risk:** Bug in deployment affects all sites
+- 🎯 **PR preview complexity:** Need to determine which site a PR belongs to
+  - Could use repository name mapping
+  - Could use labels or PR metadata
+- 🤖 **Claude Code challenges:** PRs in public repos don't directly trigger previews
+- 🔍 **Harder to debug:** More layers between code change and deployment
+- 📦 **Handoff difficulty:** Can't give someone a single site easily (they get source but not deployment)
+
+**Implementation Approach:**
+
+Public repos trigger deployment via webhook:
+```yaml
+# In each public repo: .github/workflows/trigger-deploy.yml
+on:
+  push:
+    branches: [main]
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+          repository: ericphanson/sites-deployment
+          event-type: deploy-site
+          client-payload: |
+            {
+              "site": "plaza-espana-calendar",
+              "ref": "${{ github.sha }}"
+            }
+```
+
+Deployment repo orchestrates:
+```yaml
+# sites-deployment/.github/workflows/deploy-site.yml
+on:
+  repository_dispatch:
+    types: [deploy-site]
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Which site to deploy'
+        required: true
+        type: choice
+        options:
+          - plaza-espana-calendar
+          - barcelona-calendar
+          - valencia-calendar
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout deployment repo
+        uses: actions/checkout@v4
+
+      - name: Clone source repo
+        run: |
+          SITE=${{ github.event.client_payload.site || inputs.site }}
+          git clone https://github.com/ericphanson/$SITE
+
+      - name: Build with site-specific config
+        run: |
+          SITE=${{ github.event.client_payload.site || inputs.site }}
+          cp configs/$SITE/config.toml $SITE/
+          cd $SITE
+          just freebsd
+
+      - name: Deploy to NFSN
+        run: |
+          SITE=${{ github.event.client_payload.site || inputs.site }}
+          ./shared-workflows/deploy-nfsn.sh $SITE
+```
+
+**PR Previews:** Need intelligent routing:
+```yaml
+# In deployment repo
+on:
+  repository_dispatch:
+    types: [preview-requested]
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine site from repository
+        run: |
+          REPO=${{ github.event.client_payload.repository }}
+          # Map repo name to site config
+          SITE=$(echo $REPO | sed 's/.*\///')
+          echo "SITE=$SITE" >> $GITHUB_ENV
+
+      - name: Deploy preview
+        run: ./shared-workflows/preview-manager.sh $SITE $PR_NUMBER
+```
+
+**Best for:**
+- Managing 3+ similar sites
+- Deployment complexity worth the reuse benefits
+- Centralized operations team
+- Sites share infrastructure patterns
+
+**Trade-off:** Significantly more complex initially, pays off at scale.
+
+---
+
+### Alternative 3: Hybrid Approach (Recommended)
+
+Keep unified repos but design for future multi-site deployment.
+
+**Current State:** Single repo per site (unified model)
+**Future State:** Optional shared deployment orchestrator
+
+**Strategy:**
+
+**Phase 1: Current (1 site):**
+- Keep plaza-espana-calendar as unified repo
+- Add security disclaimers to deployment docs
+- Use `.gitignore` for production-specific configs
+- Maintain PR preview workflow
+
+**Phase 2: Add Sites (2-3 sites):**
+- Create new sites as unified repos (barcelona-calendar, valencia-calendar)
+- Each is self-contained and deployable
+- Share deployment patterns via copy-paste initially
+- Keep PR previews working per-site
+
+**Phase 3: Scale (4+ sites):**
+- **Now** create shared deployment repo
+- Each public repo can still self-deploy (unified model preserved)
+- **Additionally** trigger shared deployment for orchestration benefits
+- Public repos become "deployment-optional" (work standalone or with orchestrator)
+
+**Implementation:**
+
+Each public repo has two deployment paths:
+
+```yaml
+# .github/workflows/deploy.yml (works standalone)
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy-direct:
+    runs-on: ubuntu-latest
+    if: secrets.NFSN_SSH_KEY != ''  # Only if secrets configured
+    steps:
+      # Deploy directly from this repo
+
+  deploy-orchestrated:
+    runs-on: ubuntu-latest
+    if: secrets.DEPLOYMENT_REPO_TOKEN != ''  # Only if orchestrator available
+    steps:
+      # Trigger shared deployment repo
+```
+
+**Pros:**
+- ✅ **Preserves PR preview workflow** (critical for Claude Code)
+- ✅ **Simple to start:** Begin with unified model
+- ✅ **Scales gracefully:** Add orchestrator when needed (4+ sites)
+- ✅ **Flexible:** Each repo can work standalone or orchestrated
+- ✅ **No premature complexity:** Don't build orchestrator until it's valuable
+- ✅ **Best of both worlds:** Simplicity when small, efficiency when large
+
+**Cons:**
+- ⚠️ **Dual paths complexity:** Two ways to deploy (can be confusing)
+- ⚠️ **Gradual migration:** Need to update each repo to support orchestrator
+- ⚠️ **Secrets duplication:** Some secrets in repo, some in orchestrator
+
+**Best for:** Your exact situation - starting with one site, planning for more.
+
+---
+
+### Decision Matrix
+
+| Factor | Unified Single-Repo | Split Per-Site | Multi-Site Orchestrator | Hybrid |
+|--------|---------------------|----------------|-------------------------|---------|
+| **Security (infra hidden)** | ⚠️ Moderate | ✅ Excellent | ✅ Excellent | ⚠️ Moderate |
+| **PR Preview Simplicity** | ✅ Trivial | ❌ Complex | ❌ Very Complex | ✅ Trivial |
+| **Claude Code Integration** | ✅ Perfect | ⚠️ Harder | ❌ Difficult | ✅ Perfect |
+| **Multi-Site Scaling** | ❌ Poor (N repos) | ❌ Poor (2N repos) | ✅ Excellent | ✅ Good |
+| **Deployment Reuse** | ❌ Copy-paste | ❌ Copy-paste | ✅ Shared code | ⚠️ Optional sharing |
+| **Initial Complexity** | ✅ Simple | ⚠️ Moderate | ❌ High | ✅ Simple |
+| **Maintenance Overhead** | ✅ Low (1 site)<br>❌ High (N sites) | ⚠️ Moderate | ✅ Low (after setup) | ✅ Low → Scales well |
+| **Educational Value** | ⚠️ Good | ✅ Excellent | ✅ Excellent | ✅ Excellent |
+| **Handoff Simplicity** | ✅ Easy | ✅ Easy | ❌ Hard | ✅ Easy |
+| **Open Source Friendliness** | ⚠️ Requires disclaimers | ✅ Clean | ✅ Clean | ⚠️ Requires disclaimers |
+
+---
+
+### Recommendations
+
+**For Your Current Situation (1 site, planning more):**
+
+**Recommendation: Hybrid Approach**
+
+**Rationale:**
+1. **Preserve PR preview workflow** - Critical for Claude Code productivity
+2. **Start simple** - Don't build orchestrator until site #3 or #4
+3. **Keep flexibility** - Each repo can work standalone (easy to hand off)
+4. **Scale when needed** - Add orchestrator when copy-paste becomes painful
+
+**Action Plan:**
+
+**Now (Site #1: plaza-espana-calendar):**
+- ✅ Keep unified repo model
+- ✅ Add security disclaimers (per risk assessment)
+- ✅ Create `.envrc.local` pattern for production configs
+- ✅ Document deployment in generic terms with NFSN as example
+- ✅ Open source with mitigations from this document
+
+**Later (Site #2-3):**
+- 🔄 Clone plaza-espana-calendar architecture for each site
+- 🔄 Each is self-contained with own deployment
+- 🔄 Share deployment patterns via documented examples
+- 🔄 Accept some duplication (worth it for simplicity)
+
+**Future (Site #4+):**
+- 🚀 Create sites-deployment private repo
+- 🚀 Extract common deployment patterns
+- 🚀 Add orchestrator workflows
+- 🚀 Public repos gain optional orchestration support
+- 🚀 **But keep standalone deployment working** (for flexibility)
+
+**Key Principle:** "Make it work standalone, optimize for scale later."
+
+---
+
+### Special Case: If Security is Critical Priority
+
+If infrastructure exposure is unacceptable (e.g., high-value target, compliance requirements):
+
+**Recommendation: Split Per-Site Repos**
+
+Accept the PR preview complexity trade-off for complete infrastructure privacy.
+
+**Mitigation for PR Preview Loss:**
+
+1. **Local development previews:**
+   ```bash
+   # In public repo, developers run:
+   just dev  # Local preview on :8080
+   ```
+
+2. **Deployment repo preview trigger:**
+   ```bash
+   # Deployment repo has manual workflow:
+   gh workflow run preview-pr.yml -f repo=plaza-espana-calendar -f pr=123
+   ```
+
+3. **Claude Code adaptation:**
+   - PRs to public repo for code changes
+   - Manual trigger for deployment previews
+   - Separate PRs to deployment repo for config changes
+
+**Trade-off accepted:** Slower iteration for better security.
+
+---
+
+### Architecture Evolution Path
+
+```
+Current State:
+[plaza-espana-calendar] (unified, public ready with disclaimers)
+           ↓
+
+Site #2-3:
+[plaza-espana-calendar] (unified)
+[barcelona-calendar] (unified)
+[valencia-calendar] (unified)
+           ↓
+
+Site #4+:
+[plaza-espana-calendar] ────┐
+[barcelona-calendar] ────────┤
+[valencia-calendar] ─────────┼──→ [sites-deployment] (private orchestrator)
+[lisboa-calendar] ───────────┤       ↓
+[porto-calendar] ────────────┘   (optional shared deployment)
+                                     ↓
+                                 (but each repo still self-deploys if needed)
+```
+
+**Timeline:**
+- **Now:** Open source site #1 with unified model + disclaimers
+- **Months 1-6:** Build sites #2-3 as clones, self-contained
+- **Months 6-12:** Evaluate if orchestrator is needed (4+ sites?)
+- **Year 2:** Build orchestrator if managing 4+ sites becomes painful
+
+**Decision point:** Build orchestrator when deployment maintenance > orchestrator build cost.
+
+---
+
 ## Conclusion
 
 The plaza-espana-calendar repository is **safe to open source** with the mitigations outlined above. The primary blocker is the **missing LICENSE file** (critical priority). Once licensing is resolved and deployment documentation is generalized, the repository presents minimal risk.
@@ -780,5 +1232,12 @@ The plaza-espana-calendar repository is **safe to open source** with the mitigat
 
 ---
 
-**Last Updated:** 2025-10-23
+**Last Updated:** 2025-10-23 (Repository Architecture section added)
 **Next Review:** After implementing critical mitigations
+
+---
+
+## Document Change Log
+
+- **2025-10-23 (v2):** Added "Repository Architecture Alternatives" section analyzing split vs. unified repo strategies for multi-site scaling
+- **2025-10-23 (v1):** Initial comprehensive risk assessment with 7 risk categories and mitigation roadmap
