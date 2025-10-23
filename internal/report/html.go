@@ -7,6 +7,22 @@ import (
 	"time"
 )
 
+// Emoji icon constants for build report
+const (
+	iconTheater   = "🎭"
+	iconCelebrate = "🎉"
+	iconBroadcast = "📍"
+	iconSync      = "🔄"
+	iconMap       = "🗺️"
+	iconTarget    = "🎯"
+	iconClock     = "⏰"
+	iconTag       = "🏷️"
+	iconWarning   = "⚠️"
+	iconSuccess   = "✅"
+	iconFailed    = "❌"
+	iconSkipped   = "⏭️"
+)
+
 // WriteHTML writes an HTML-formatted build report for dual pipeline architecture.
 func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) error {
 	var b strings.Builder
@@ -61,7 +77,7 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 	// Cultural Pipeline Card
 	b.WriteString(fmt.Sprintf(`      <div class="pipeline-card cultural">
         <div class="pipeline-header">
-          <span class="icon">🎭</span>
+          <span class="icon">%s</span>
           <h3 class="cultural-title">%s</h3>
         </div>
         <div class="pipeline-stat">
@@ -77,12 +93,12 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
           <span>%s</span>
         </div>
       </div>
-`, r.CulturalPipeline.Name, r.CulturalPipeline.Source, r.CulturalPipeline.EventCount, formatDuration(r.CulturalPipeline.Duration)))
+`, iconTheater, r.CulturalPipeline.Name, r.CulturalPipeline.Source, r.CulturalPipeline.EventCount, formatDuration(r.CulturalPipeline.Duration)))
 
 	// City Pipeline Card
 	b.WriteString(fmt.Sprintf(`      <div class="pipeline-card city">
         <div class="pipeline-header">
-          <span class="icon">🎉</span>
+          <span class="icon">%s</span>
           <h3 class="city-title">%s</h3>
         </div>
         <div class="pipeline-stat">
@@ -98,34 +114,34 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
           <span>%s</span>
         </div>
       </div>
-`, r.CityPipeline.Name, r.CityPipeline.Source, r.CityPipeline.EventCount, formatDuration(r.CityPipeline.Duration)))
+`, iconCelebrate, r.CityPipeline.Name, r.CityPipeline.Source, r.CityPipeline.EventCount, formatDuration(r.CityPipeline.Duration)))
 
 	b.WriteString(`    </div>
 `)
 
 	// Cultural Events Pipeline Detailed
-	b.WriteString(fmt.Sprintf(`    <h2 class="cultural-title">🎭 Cultural Events Pipeline</h2>
+	b.WriteString(fmt.Sprintf(`    <h2 class="cultural-title">%s Cultural Events Pipeline</h2>
     <div class="section">
-      <h3>📡 Data Fetching</h3>
-`))
+      <h3>%s Data Fetching</h3>
+`, iconTheater, iconBroadcast))
 
 	for _, attempt := range r.CulturalPipeline.Fetching.Attempts {
-		statusSymbol := "✅"
+		statusSymbol := iconSuccess
 		if attempt.Status == "FAILED" {
-			statusSymbol = "❌"
+			statusSymbol = iconFailed
 		} else if attempt.Status == "SKIPPED" {
-			statusSymbol = "⏭️"
+			statusSymbol = iconSkipped
 		}
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
-        <span>%s %s</span>
+        <span>%s%s</span>
         <span>%s</span>
       </div>
 `, statusSymbol, attempt.Source, formatAttempt(attempt)))
 	}
 
 	if r.CulturalPipeline.Merging != nil {
-		b.WriteString(`      <h3>🔄 Deduplication</h3>
-`)
+		b.WriteString(fmt.Sprintf(`      <h3>%s Deduplication</h3>
+`, iconSync))
 		merge := r.CulturalPipeline.Merging
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
         <span>Input events</span>
@@ -144,8 +160,8 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 
 	// Cultural Filtering
 	if r.CulturalPipeline.Filtering.DistrictoFilter != nil {
-		b.WriteString(`      <h3>🗺️ Distrito Filtering</h3>
-`)
+		b.WriteString(fmt.Sprintf(`      <h3>%s Distrito Filtering</h3>
+`, iconMap))
 		df := r.CulturalPipeline.Filtering.DistrictoFilter
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
         <span>Allowed districts</span>
@@ -163,8 +179,8 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 	}
 
 	if r.CulturalPipeline.Filtering.GeoFilter != nil {
-		b.WriteString(`      <h3>🎯 Geographic Filtering</h3>
-`)
+		b.WriteString(fmt.Sprintf(`      <h3>%s Geographic Filtering</h3>
+`, iconTarget))
 		gf := r.CulturalPipeline.Filtering.GeoFilter
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
         <span>Reference point</span>
@@ -190,8 +206,8 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 	}
 
 	if r.CulturalPipeline.Filtering.TimeFilter != nil {
-		b.WriteString(`      <h3>⏰ Time Filtering</h3>
-`)
+		b.WriteString(fmt.Sprintf(`      <h3>%s Time Filtering</h3>
+`, iconClock))
 		tf := r.CulturalPipeline.Filtering.TimeFilter
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
         <span>Reference time</span>
@@ -216,20 +232,20 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 `)
 
 	// City Events Pipeline Detailed
-	b.WriteString(fmt.Sprintf(`    <h2 class="city-title">🎉 City Events Pipeline</h2>
+	b.WriteString(fmt.Sprintf(`    <h2 class="city-title">%s City Events Pipeline</h2>
     <div class="section">
-      <h3>📡 Data Fetching</h3>
-`))
+      <h3>%s Data Fetching</h3>
+`, iconCelebrate, iconBroadcast))
 
 	for _, attempt := range r.CityPipeline.Fetching.Attempts {
-		statusSymbol := "✅"
+		statusSymbol := iconSuccess
 		if attempt.Status == "FAILED" {
-			statusSymbol = "❌"
+			statusSymbol = iconFailed
 		} else if attempt.Status == "SKIPPED" {
-			statusSymbol = "⏭️"
+			statusSymbol = iconSkipped
 		}
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
-        <span>%s %s</span>
+        <span>%s%s</span>
         <span>%s</span>
       </div>
 `, statusSymbol, attempt.Source, formatAttempt(attempt)))
@@ -237,8 +253,8 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 
 	// City Filtering
 	if r.CityPipeline.Filtering.GeoFilter != nil {
-		b.WriteString(`      <h3>🎯 Geographic Filtering</h3>
-`)
+		b.WriteString(fmt.Sprintf(`      <h3>%s Geographic Filtering</h3>
+`, iconTarget))
 		gf := r.CityPipeline.Filtering.GeoFilter
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
         <span>Reference point</span>
@@ -264,8 +280,8 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 	}
 
 	if r.CityPipeline.Filtering.CategoryFilter != nil {
-		b.WriteString(`      <h3>🏷️ Category Filtering</h3>
-`)
+		b.WriteString(fmt.Sprintf(`      <h3>%s Category Filtering</h3>
+`, iconTag))
 		cf := r.CityPipeline.Filtering.CategoryFilter
 		if len(cf.AllowedCategories) > 0 {
 			b.WriteString(fmt.Sprintf(`      <div class="metric-row">
@@ -292,8 +308,8 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 	}
 
 	if r.CityPipeline.Filtering.TimeFilter != nil {
-		b.WriteString(`      <h3>⏰ Time Filtering</h3>
-`)
+		b.WriteString(fmt.Sprintf(`      <h3>%s Time Filtering</h3>
+`, iconClock))
 		tf := r.CityPipeline.Filtering.TimeFilter
 		b.WriteString(fmt.Sprintf(`      <div class="metric-row">
         <span>Reference time</span>
@@ -335,10 +351,10 @@ func (r *BuildReport) WriteHTML(w io.Writer, cssHash string, basePath string) er
 
 	// Warnings
 	if len(r.Warnings) > 0 {
-		b.WriteString(`    <div class="warning-box">
-      <h3>⚠️ Warnings</h3>
+		b.WriteString(fmt.Sprintf(`    <div class="warning-box">
+      <h3>%s Warnings</h3>
       <ul>
-`)
+`, iconWarning))
 		for _, warning := range r.Warnings {
 			b.WriteString(fmt.Sprintf("        <li>%s</li>\n", warning))
 		}
