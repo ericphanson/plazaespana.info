@@ -59,7 +59,7 @@ jobs:
 
             Your preview has been deployed!
 
-            **Preview URL:** https://YOUR-SITE.nfshost.com/previews/PR${{ github.event.pull_request.number }}/
+            **Preview URL:** https://plazaespana.info/previews/PR${{ github.event.pull_request.number }}/
 
             This preview will be automatically updated when you push new commits to this PR.
             It will be removed when the PR is closed or merged.
