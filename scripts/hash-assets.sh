@@ -2,7 +2,7 @@
 # Generate content-hash filenames for CSS assets
 set -euo pipefail
 
-ASSETS_DIR="assets"
+ASSETS_DIR="generator/assets"
 PUBLIC_ASSETS_DIR="public/assets"
 
 mkdir -p "$PUBLIC_ASSETS_DIR"

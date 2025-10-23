@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-FIXTURES_DIR="testdata/fixtures"
+FIXTURES_DIR="generator/testdata/fixtures"
 mkdir -p "$FIXTURES_DIR"
 
 echo "Fetching Madrid event data fixtures..."

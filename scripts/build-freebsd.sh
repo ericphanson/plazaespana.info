@@ -8,11 +8,13 @@ echo "Building for FreeBSD/amd64..."
 mkdir -p build
 
 # Build the static binary for FreeBSD
+cd generator
 GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build \
   -trimpath \
   -ldflags="-s -w" \
-  -o build/buildsite \
+  -o ../build/buildsite \
   ./cmd/buildsite
+cd ..
 
 echo "Build complete: build/buildsite"
 echo "Binary info:"

@@ -14,18 +14,18 @@ config:
 # Build binary for local use
 build:
     @echo "🔨 Building binary..."
-    @go build -o build/buildsite ./cmd/buildsite
+    @cd generator && go build -o ../build/buildsite ./cmd/buildsite
     @echo "✅ Built: build/buildsite"
 
 # Run all tests
 test:
     @echo "🧪 Running tests..."
-    @go test ./...
+    @cd generator && go test ./...
 
 # Run tests with coverage report
 test-coverage:
     @echo "🧪 Running tests with coverage..."
-    @go test -cover ./...
+    @cd generator && go test -cover ./...
 
 # Build for FreeBSD/amd64 (for NFSN deployment)
 freebsd:
@@ -69,7 +69,7 @@ _deploy-files:
     scp config.toml "$NFSN_USER@$NFSN_HOST:/home/private/config.toml.new"
 
     echo "📤 Uploading templates..."
-    scp templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html.new"
+    scp generator/templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html.new"
 
     echo "📤 Uploading cron wrapper script..."
     scp ops/cron-generate.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/cron-generate.sh.new"
@@ -185,7 +185,7 @@ clean:
 # Format all Go source code
 fmt:
     @echo "✨ Formatting Go code..."
-    @go fmt ./...
+    @cd generator && go fmt ./...
     @echo "✅ Code formatted"
 
 # Check if code is properly formatted (for CI)
@@ -193,7 +193,7 @@ fmt-check:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "🔍 Checking code formatting..."
-    FILES=$(gofmt -l .)
+    FILES=$(cd generator && gofmt -l .)
     if [ -n "$FILES" ]; then
         echo "❌ The following files are not formatted:"
         echo "$FILES"
@@ -204,25 +204,25 @@ fmt-check:
 # Run Go linter (go vet)
 lint:
     @echo "🔍 Running linter..."
-    @go vet ./...
+    @cd generator && go vet ./...
     @echo "✅ No issues found"
 
 # Download and verify Go module dependencies
 deps:
     @echo "📦 Downloading dependencies..."
-    @go mod download
-    @go mod verify
+    @cd generator && go mod download
+    @cd generator && go mod verify
     @echo "✅ Dependencies verified"
 
 # Check for outdated Go module dependencies
 outdated:
     @echo "🔍 Checking for outdated dependencies..."
-    @go list -u -m all
+    @cd generator && go list -u -m all
 
 # Run integration tests
 test-integration:
     @echo "🧪 Running integration tests..."
-    @go test -tags=integration ./cmd/buildsite
+    @cd generator && go test -tags=integration ./cmd/buildsite
 
 # Fetch new AWStats statistics archives and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
 fetch-stats-archives:
@@ -240,7 +240,8 @@ preview-build PREVIEW:
     echo ""
 
     # Build binary
-    go build -o build/buildsite ./cmd/buildsite
+    cd generator && go build -o ../build/buildsite ./cmd/buildsite
+    cd ..
 
     # Hash CSS
     ./scripts/hash-assets.sh
