@@ -14,6 +14,29 @@ type TimeGroup struct {
 	Icon      string // emoji icon for the group
 	Events    []TemplateEvent
 	CityCount int // Count of city events (visible by default)
+
+	// Distance-filtered counts (for dynamic count display)
+	CountPlaza  int // Events at Plaza de España (En Plaza filter)
+	CountNearby int // All nearby events (default filter, same as len(Events))
+	CityPlaza   int // City events at Plaza
+	CityNearby  int // All city events (same as CityCount)
+}
+
+// incrementDistanceCounts updates the distance-filtered counts for a time group.
+func (g *TimeGroup) incrementDistanceCounts(evt TemplateEvent, isCityEvent bool) {
+	// All events count toward "Nearby"
+	g.CountNearby++
+	if isCityEvent {
+		g.CityNearby++
+	}
+
+	// Only events at Plaza de España count toward "En Plaza"
+	if evt.AtPlaza {
+		g.CountPlaza++
+		if isCityEvent {
+			g.CityPlaza++
+		}
+	}
 }
 
 // GroupedTemplateData extends TemplateData with time-grouped events.
@@ -29,6 +52,18 @@ type GroupedTemplateData struct {
 	Groups              []TimeGroup
 	OngoingEvents       []TemplateEvent
 	OngoingCityCount    int // Count of city events in ongoing section
+
+	// Distance-filtered counts for ongoing events
+	OngoingPlaza      int
+	OngoingNearby     int
+	OngoingCityPlaza  int
+	OngoingCityNearby int
+
+	// Total distance-filtered counts (for filter button labels)
+	TotalPlaza      int // All events at Plaza de España
+	TotalNearby     int // All events (same as TotalEvents)
+	TotalCityPlaza  int // City events at Plaza
+	TotalCityNearby int // All city events (same as TotalCityEvents)
 }
 
 // GroupEventsByTime groups events into time-based buckets relative to now.
@@ -229,9 +264,9 @@ func GroupCityEventsByTime(events []event.CityEvent, now time.Time) (groups []Ti
 // GroupMixedEventsByTime groups both city and cultural events into time-based buckets.
 // Events are merged and sorted chronologically (city events first on ties).
 // Cultural events are marked with EventType="cultural" for CSS filtering.
-// Returns groups, ongoing events, and count of city events in ongoing section.
+// Returns groups, ongoing events, and counts for ongoing section.
 // Calculates and formats distance from reference point (typically Plaza de España).
-func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time, refLat, refLon float64) (groups []TimeGroup, ongoing []TemplateEvent, ongoingCityCount int) {
+func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time, refLat, refLon float64) (groups []TimeGroup, ongoing []TemplateEvent, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby int) {
 	// Convert both types to a common internal type with metadata
 	type eventWithType struct {
 		evt       event.CulturalEvent
@@ -341,11 +376,24 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 
 		// Calculate distance from reference point (only for valid coordinates)
 		var distanceStr string
+		var distanceMeters int
+		var atPlaza bool
 		if evt.Latitude != 0 || evt.Longitude != 0 {
 			distanceKm := filter.HaversineDistance(refLat, refLon, evt.Latitude, evt.Longitude)
 			distanceStr = FormatDistance(distanceKm)
+			distanceMeters = int(distanceKm * 1000) // Convert to meters
+
+			// Check if event is at Plaza de España (distance ~0m OR text mentions it)
+			if distanceMeters <= 50 || filter.MatchesPlazaEspana(evt.Title, evt.VenueName, evt.Address, evt.Description) {
+				atPlaza = true
+			}
+		} else {
+			// No coordinates - check all text fields for Plaza de España mentions
+			atPlaza = filter.MatchesPlazaEspana(evt.Title, evt.VenueName, evt.Address, evt.Description)
+			if atPlaza {
+				distanceMeters = 0 // Treat as 0 meters if venue name matches
+			}
 		}
-		// If coordinates are 0,0 (invalid), distanceStr remains empty
 
 		// Convert to template event
 		templateEvt := TemplateEvent{
@@ -358,14 +406,30 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 			Description:       TruncateText(evt.Description, 150),
 			EventType:         ewt.eventType,
 			DistanceHuman:     distanceStr,
+			DistanceMeters:    distanceMeters,
+			AtPlaza:           atPlaza,
 		}
 
 		// Ongoing events (5+ days)
 		if duration >= 5*24*time.Hour {
 			ongoingEvents = append(ongoingEvents, templateEvt)
-			if ewt.eventType == "city" {
+			isCityEvent := ewt.eventType == "city"
+			if isCityEvent {
 				ongoingCityCount++
 			}
+
+			// Track distance-filtered counts for ongoing events
+			ongoingNearby++
+			if isCityEvent {
+				ongoingCityNearby++
+			}
+			if templateEvt.AtPlaza {
+				ongoingPlaza++
+				if isCityEvent {
+					ongoingCityPlaza++
+				}
+			}
+
 			continue
 		}
 
@@ -375,6 +439,7 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 
 		if evt.StartTime.Before(pastWeekendEnd) && endTime.After(pastWeekendStart) {
 			pastWeekend.Events = append(pastWeekend.Events, templateEvt)
+			pastWeekend.incrementDistanceCounts(templateEvt, isCityEvent)
 			if isCityEvent {
 				pastWeekend.CityCount++
 			}
@@ -383,6 +448,7 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 
 		if evt.StartTime.Before(endOfToday) && endTime.After(startOfToday) {
 			happeningNow.Events = append(happeningNow.Events, templateEvt)
+			happeningNow.incrementDistanceCounts(templateEvt, isCityEvent)
 			if isCityEvent {
 				happeningNow.CityCount++
 			}
@@ -391,6 +457,7 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 
 		if evt.StartTime.Before(thisWeekendEnd) && evt.StartTime.After(thisWeekendStart) {
 			thisWeekend.Events = append(thisWeekend.Events, templateEvt)
+			thisWeekend.incrementDistanceCounts(templateEvt, isCityEvent)
 			if isCityEvent {
 				thisWeekend.CityCount++
 			}
@@ -399,6 +466,7 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 
 		if !added && evt.StartTime.Before(thisWeekEnd) && evt.StartTime.After(endOfToday) {
 			thisWeek.Events = append(thisWeek.Events, templateEvt)
+			thisWeek.incrementDistanceCounts(templateEvt, isCityEvent)
 			if isCityEvent {
 				thisWeek.CityCount++
 			}
@@ -407,6 +475,7 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 
 		if !added && evt.StartTime.Before(endOfMonth) && evt.StartTime.After(thisWeekEnd) {
 			laterThisMonth.Events = append(laterThisMonth.Events, templateEvt)
+			laterThisMonth.incrementDistanceCounts(templateEvt, isCityEvent)
 			if isCityEvent {
 				laterThisMonth.CityCount++
 			}
@@ -431,5 +500,5 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 		groups = append(groups, laterThisMonth)
 	}
 
-	return groups, ongoingEvents, ongoingCityCount
+	return groups, ongoingEvents, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby
 }

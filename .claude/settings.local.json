@@ -3,7 +3,18 @@
     "allow": [
       "WebFetch(domain:github.com)",
       "Read(//Users/eph/.config/superpowers/skills/skills/debugging/systematic-debugging/**)",
-      "Bash(just dev:*)"
+      "Bash(just dev:*)",
+      "Bash(go test:*)",
+      "Bash(find:*)",
+      "Bash(go build:*)",
+      "Bash(just dev:generate:*)",
+      "Bash(just dev:build:*)",
+      "Bash(just hash-css:*)",
+      "Bash(just generate:*)",
+      "Bash(just serve)",
+      "Bash(curl:*)",
+      "Bash(shot-scraper:*)",
+      "Bash(gofmt:*)"
     ],
     "deny": [],
     "ask": []

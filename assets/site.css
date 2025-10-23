@@ -218,25 +218,37 @@ footer {
   display: none;
 }
 
+/* Cultural filter section */
+.cultural-filter {
+  display: flex;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--muted);
+}
+
 .toggle-label {
   display: inline-block;
   cursor: pointer;
   padding: 0.5rem 1rem;
-  background: var(--card);
+  background: var(--bg);
+  border: 2px solid var(--muted);
   border-radius: 8px;
   user-select: none;
-  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
 .toggle-label:hover {
-  background: var(--accent);
-  color: var(--bg);
+  border-color: var(--cultural-accent);
+  background: var(--card);
 }
 
 /* When checkbox is checked, update label appearance */
-#toggle-cultural:checked ~ header .toggle-label {
+#toggle-cultural:checked ~ header .filters-container .toggle-label {
   background: var(--cultural-accent);
+  border-color: var(--cultural-accent);
   color: white;
+  font-weight: 600;
 }
 
 /* Change checkbox symbol when checked */
@@ -244,10 +256,131 @@ footer {
   content: "☐ ";
 }
 
-#toggle-cultural:checked ~ header .toggle-label::before {
+#toggle-cultural:checked ~ header .filters-container .toggle-label::before {
   content: "☑ ";
 }
 
 #toggle-cultural {
   display: none;
+}
+
+/* Filters container - groups distance and cultural filters */
+.filters-container {
+  margin: 1rem 0;
+  padding: 1.25rem;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Distance filter */
+input[name="distance-filter"] {
+  display: none;
+}
+
+.distance-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.filter-title {
+  display: block;
+  font-weight: 600;
+  color: var(--fg);
+  font-size: 0.95rem;
+}
+
+.distance-options {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.distance-label {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border: 2px solid var(--muted);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  user-select: none;
+  transition: all 0.2s;
+}
+
+.distance-label:hover {
+  border-color: var(--accent);
+  background: var(--card);
+}
+
+/* Filter button counts - show/hide based on cultural toggle */
+.distance-label .filter-count-city {
+  display: inline; /* Show city counts by default (cultural hidden) */
+}
+.distance-label .filter-count-all {
+  display: none; /* Hide all counts by default */
+}
+
+/* When cultural events are shown, switch to showing all counts */
+#toggle-cultural:checked ~ header .filters-container .distance-label .filter-count-city {
+  display: none;
+}
+#toggle-cultural:checked ~ header .filters-container .distance-label .filter-count-all {
+  display: inline;
+}
+
+/* Active state for selected distance filter */
+#distance-plaza:checked ~ header .filters-container .distance-filter label[for="distance-plaza"],
+#distance-nearby:checked ~ header .filters-container .distance-filter label[for="distance-nearby"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+/* Distance filtering rules */
+/* When "En Plaza" is selected: show only events at Plaza de España */
+#distance-plaza:checked ~ main .event-card:not([data-at-plaza="true"]) {
+  display: none;
+}
+
+/* When "Nearby" (default): show all events (no hiding needed) */
+
+/* Dynamic event counts based on distance + cultural toggle */
+/* Hide all count variants by default */
+.event-count span {
+  display: none;
+}
+
+/* Show nearby counts when "Nearby" (Cerca) filter is active */
+#distance-nearby:checked ~ main .count-nearby-city {
+  display: inline; /* Show by default (city-only) */
+}
+#distance-nearby:checked ~ main .count-nearby-all {
+  display: none; /* Hidden by default */
+}
+/* When cultural events are shown, switch to showing all count */
+#toggle-cultural:checked ~ #distance-nearby:checked ~ main .count-nearby-city {
+  display: none;
+}
+#toggle-cultural:checked ~ #distance-nearby:checked ~ main .count-nearby-all {
+  display: inline;
+}
+
+/* Show plaza counts when "En Plaza" filter is active */
+#distance-plaza:checked ~ main .count-plaza-city {
+  display: inline; /* Show by default (city-only) */
+}
+#distance-plaza:checked ~ main .count-plaza-all {
+  display: none; /* Hidden by default */
+}
+/* When cultural events are shown, switch to showing all count */
+#toggle-cultural:checked ~ #distance-plaza:checked ~ main .count-plaza-city {
+  display: none;
+}
+#toggle-cultural:checked ~ #distance-plaza:checked ~ main .count-plaza-all {
+  display: inline;
 }

@@ -12,7 +12,7 @@ xml_url = "https://www.esmadrid.com/opendata/agenda_v1_es.xml"
 # Plaza de España coordinates
 latitude = 40.42338
 longitude = -3.71217
-radius_km = 0.35
+radius_km = 1.0  # Maximum radius for event fetching (supports distance slider UI)
 
 # Distrito filtering
 distritos = ["CENTRO", "MONCLOA-ARAVACA"]

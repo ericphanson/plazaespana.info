@@ -744,7 +744,7 @@ func main() {
 	log.Println("\n=== Rendering Output ===")
 
 	// Group events by time (merged: city and cultural together)
-	mergedGroups, ongoingEvents, ongoingCityCount := render.GroupMixedEventsByTime(
+	mergedGroups, ongoingEvents, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby := render.GroupMixedEventsByTime(
 		filteredCityEvents, filteredEvents, now,
 		cfg.Filter.Latitude, cfg.Filter.Longitude)
 
@@ -799,6 +799,14 @@ func main() {
 		log.Fatalf("Failed to create output directory: %v", err)
 	}
 
+	// Calculate total distance-filtered counts across all groups
+	totalPlaza := ongoingPlaza
+	totalCityPlaza := ongoingCityPlaza
+	for _, group := range mergedGroups {
+		totalPlaza += group.CountPlaza
+		totalCityPlaza += group.CityPlaza
+	}
+
 	// Render HTML with grouped events
 	htmlStart := time.Now()
 	htmlRenderer := render.NewHTMLRenderer(*templatePath)
@@ -810,10 +818,18 @@ func main() {
 		TotalEvents:         totalCityEvents + totalCulturalEvents,
 		TotalCityEvents:     totalCityEvents,
 		TotalCulturalEvents: totalCulturalEvents,
-		ShowCulturalDefault: false, // Cultural events hidden by default
+		ShowCulturalDefault: true, // Cultural events shown by default
 		Groups:              mergedGroups,
 		OngoingEvents:       ongoingEvents,
 		OngoingCityCount:    ongoingCityCount,
+		OngoingPlaza:        ongoingPlaza,
+		OngoingNearby:       ongoingNearby,
+		OngoingCityPlaza:    ongoingCityPlaza,
+		OngoingCityNearby:   ongoingCityNearby,
+		TotalPlaza:          totalPlaza,
+		TotalNearby:         totalCityEvents + totalCulturalEvents,
+		TotalCityPlaza:      totalCityPlaza,
+		TotalCityNearby:     totalCityEvents,
 	}
 	htmlPath := cfg.Output.HTMLPath
 	htmlErr := htmlRenderer.RenderAny(htmlData, htmlPath)
