@@ -71,6 +71,18 @@ _deploy-files:
     echo "📤 Uploading config..."
     scp config.toml "$NFSN_USER@$NFSN_HOST:/home/private/config.toml.new"
 
+    # Upload AEMET API key if present in environment
+    if [ -n "${AEMET_API_KEY:-}" ]; then
+        echo "📤 Uploading AEMET API key file..."
+        echo -n "$AEMET_API_KEY" > build/aemet-api-key.txt
+        chmod 600 build/aemet-api-key.txt
+        scp build/aemet-api-key.txt "$NFSN_USER@$NFSN_HOST:/home/private/aemet-api-key.txt"
+        rm build/aemet-api-key.txt
+        echo "✅ API key uploaded to /home/private/aemet-api-key.txt"
+    else
+        echo "⚠️  AEMET_API_KEY not set - skipping API key upload (weather will be disabled)"
+    fi
+
     echo "📤 Uploading templates..."
     scp generator/templates/index.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index.tmpl.html.new"
 

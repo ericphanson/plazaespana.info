@@ -134,21 +134,39 @@ The site integrates weather forecasts from AEMET (Spanish Meteorological Agency)
 
 ### Configure for Production (NFSN)
 
-Add the API key as an environment variable in your scheduled task:
+The AEMET API key is stored in a secure file on NFSN (`/home/private/aemet-api-key.txt`).
 
-1. NFSN web interface → Sites → your_site → Scheduled Tasks
-2. Edit your hourly site generation task
-3. Update the command to include the API key:
+**Setup (one-time):**
 
-```bash
-export AEMET_API_KEY=your_aemet_api_key_here && /home/private/bin/cron-generate.sh
-```
+1. Set the `AEMET_API_KEY` environment variable locally:
+   ```bash
+   export AEMET_API_KEY=your_aemet_api_key_here
+   ```
 
-The cron wrapper script will pass this environment variable to the buildsite binary.
+2. Deploy the site:
+   ```bash
+   just deploy
+   ```
+
+   The deployment automatically:
+   - Reads `AEMET_API_KEY` from your local environment
+   - Writes it to a temporary file (`build/aemet-api-key.txt`)
+   - Uploads the file to `/home/private/aemet-api-key.txt` on NFSN
+   - Sets secure permissions (600)
+   - Cleans up the local temporary file
+
+3. Your cron job will automatically read the key from the file (no changes needed)
 
 **To update the key:**
-- Just edit the scheduled task and replace the value
-- No need to redeploy or SSH to the server
+1. Update your local `AEMET_API_KEY` environment variable
+2. Run `just deploy` again
+3. The new key is automatically uploaded and used on next site generation
+
+**Security benefits:**
+- API key stored in `/home/private` (not web-accessible)
+- Not visible in NFSN cron command interface
+- File permissions set to 600 (owner read/write only)
+- No need to edit cron jobs to change the key
 
 ### Configure for GitHub Actions
 
@@ -183,6 +201,7 @@ Local → Remote
 build/buildsite                      → /home/private/bin/buildsite
 ops/cron-generate.sh                 → /home/private/bin/cron-generate.sh
 config.toml                          → /home/private/config.toml
+$AEMET_API_KEY (env)                 → /home/private/aemet-api-key.txt (if set)
 templates/index-grouped.tmpl.html    → /home/private/templates/index-grouped.tmpl.html
 
 # Static assets
@@ -217,6 +236,7 @@ AWStats generates (via weekly cron):
       cron-generate.sh  # Site generation wrapper (hourly cron)
       awstats-weekly.sh # AWStats processor (weekly cron)
     config.toml         # Site generator config
+    aemet-api-key.txt   # AEMET API key (optional, mode 600)
     awstats.conf        # AWStats config
     templates/          # HTML templates
     data/               # Site generator cache, audit logs (auto-created)

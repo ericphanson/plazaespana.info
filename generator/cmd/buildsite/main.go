@@ -753,14 +753,40 @@ func main() {
 		Municipality:   cfg.Weather.MunicipalityCode,
 	}
 
-	// Get API key from environment
-	apiKey := os.Getenv(cfg.Weather.APIKeyEnv)
+	// Get API key - try file first, then environment variable
+	var apiKey string
+
+	// Try reading from file first (preferred for production)
+	if cfg.Weather.APIKeyFile != "" {
+		keyBytes, err := os.ReadFile(cfg.Weather.APIKeyFile)
+		if err != nil {
+			log.Printf("Warning: Could not read API key file %s: %v", cfg.Weather.APIKeyFile, err)
+		} else {
+			apiKey = strings.TrimSpace(string(keyBytes))
+			log.Printf("Loaded AEMET API key from file: %s", cfg.Weather.APIKeyFile)
+		}
+	}
+
+	// Fall back to environment variable if file not available
+	if apiKey == "" && cfg.Weather.APIKeyEnv != "" {
+		apiKey = os.Getenv(cfg.Weather.APIKeyEnv)
+		if apiKey != "" {
+			log.Printf("Loaded AEMET API key from environment: %s", cfg.Weather.APIKeyEnv)
+		}
+	}
+
 	buildReport.Weather.APIKeyPresent = (apiKey != "")
 
 	if apiKey == "" {
-		fmt.Fprintf(os.Stderr, "Warning: %s not set - continuing without weather forecasts\n", cfg.Weather.APIKeyEnv)
-		log.Printf("Warning: %s not set - continuing without weather forecasts", cfg.Weather.APIKeyEnv)
-		buildReport.Weather.Error = fmt.Sprintf("%s not set", cfg.Weather.APIKeyEnv)
+		var keySourceMsg string
+		if cfg.Weather.APIKeyFile != "" {
+			keySourceMsg = fmt.Sprintf("file %s or env %s", cfg.Weather.APIKeyFile, cfg.Weather.APIKeyEnv)
+		} else {
+			keySourceMsg = fmt.Sprintf("env %s", cfg.Weather.APIKeyEnv)
+		}
+		fmt.Fprintf(os.Stderr, "Warning: AEMET API key not found (%s) - continuing without weather forecasts\n", keySourceMsg)
+		log.Printf("Warning: AEMET API key not found (%s) - continuing without weather forecasts", keySourceMsg)
+		buildReport.Weather.Error = fmt.Sprintf("API key not found (%s)", keySourceMsg)
 	} else {
 		// Create weather client
 		weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)

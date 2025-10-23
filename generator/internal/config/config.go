@@ -57,7 +57,8 @@ type ServerConfig struct {
 
 // WeatherConfig holds weather integration settings.
 type WeatherConfig struct {
-	APIKeyEnv        string `toml:"api_key_env"`
+	APIKeyEnv        string `toml:"api_key_env"`  // Environment variable name containing API key
+	APIKeyFile       string `toml:"api_key_file"` // Path to file containing API key (preferred for production)
 	MunicipalityCode string `toml:"municipality_code"`
 }
 
