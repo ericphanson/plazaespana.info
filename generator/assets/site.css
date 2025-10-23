@@ -463,3 +463,52 @@ input[name="distance-filter"] {
 #toggle-cultural:not(:checked) ~ #distance-nearby:checked ~ main .event-section[data-count-nearby-city="0"] {
   order: 999;
 }
+
+/* ===================================================================
+   WEATHER INFO - AEMET forecast display on event cards
+   =================================================================== */
+
+/* Weather info container */
+.weather-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .weather-info {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+/* Weather icon from AEMET */
+.weather-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* Temperature display */
+.weather-temp {
+  font-weight: 600;
+  color: var(--city-accent);
+  font-size: 1rem;
+}
+
+/* Precipitation probability (only shown if >30%) */
+.weather-precip {
+  color: #3b82f6;
+  font-size: 0.85rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .weather-precip {
+    color: #60a5fa;
+  }
+}

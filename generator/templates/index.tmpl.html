@@ -80,6 +80,15 @@
         {{else}}
         <span class="event-badge cultural-badge">Cultural</span>
         {{end}}
+        {{if .Weather}}
+        <div class="weather-info weather-{{.Weather.WeatherCategory}}" title="Pronóstico: {{.Weather.SkyDescription}}">
+          <img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">
+          <span class="weather-temp">{{.Weather.TempMax}}°</span>
+          {{if gt .Weather.PrecipProb 30}}
+          <span class="weather-precip">💧{{.Weather.PrecipProb}}%</span>
+          {{end}}
+        </div>
+        {{end}}
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
@@ -114,6 +123,15 @@
         <span class="event-badge city-badge">Evento Ciudad</span>
         {{else}}
         <span class="event-badge cultural-badge">Cultural</span>
+        {{end}}
+        {{if .Weather}}
+        <div class="weather-info weather-{{.Weather.WeatherCategory}}" title="Pronóstico: {{.Weather.SkyDescription}}">
+          <img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">
+          <span class="weather-temp">{{.Weather.TempMax}}°</span>
+          {{if gt .Weather.PrecipProb 30}}
+          <span class="weather-precip">💧{{.Weather.PrecipProb}}%</span>
+          {{end}}
+        </div>
         {{end}}
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
