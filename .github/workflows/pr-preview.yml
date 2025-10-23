@@ -11,6 +11,8 @@ permissions:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
+    # Skip preview deployments for Dependabot PRs
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
 
     steps:
       - name: Checkout code
