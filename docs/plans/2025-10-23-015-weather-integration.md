@@ -642,6 +642,25 @@ All tests use fixtures from `generator/testdata/fixtures/`:
 - Represents real API responses (structure validation)
 - Enables offline development
 
+### When API Key is Needed vs Fixtures
+
+**API Key REQUIRED (real AEMET API calls):**
+- ✅ **PR preview deployments** (CI runs generator → needs `AEMET_API_KEY` in GitHub Secrets)
+- ✅ **Production deployment** (NFSN cron runs generator → needs `AEMET_API_KEY` in NFSN env)
+- ✅ **Local development** (running `just dev` → reads from `.envrc.local`)
+- ✅ **Fixture refresh** (running `scripts/fetch-fixtures.sh` → needs env var)
+
+**Fixtures ONLY (no API key needed):**
+- ✅ **Unit tests** (`just test` → uses `testdata/fixtures/*.json`)
+- ✅ **Integration tests** (CI build-and-test job → uses fixtures)
+- ✅ **Offline development** (tests can run without network)
+
+**Summary:**
+- Tests never hit real APIs (use fixtures)
+- Site generation always hits real APIs (needs key)
+- PR previews = site generation = needs key in GitHub Secrets
+- Production = site generation = needs key in NFSN env
+
 ### Unit Tests (Use Fixtures)
 
 1. **weather/client_test.go:**
@@ -735,14 +754,49 @@ All tests use fixtures from `generator/testdata/fixtures/`:
   ```
 
 - [ ] **Task 0.6:** Update deployment documentation (docs/deployment.md)
-  - Add section for AEMET API key setup on NFSN
-  - Add env var to cron command example: `AEMET_API_KEY=...`
-  - Document how to update key if changed
 
-- [ ] **Task 0.7:** Update CI configuration (.github/workflows/ci.yml)
-  - **Do NOT add API key to CI** (fixtures only)
-  - Add comment explaining why: "Weather tests use fixtures, no API key needed"
-  - Consider adding workflow to refresh fixtures monthly (manual trigger)
+  **NFSN Production Environment:**
+  - Add section for AEMET API key setup on NFSN server
+  - Explain how to set environment variable in NFSN Scheduled Tasks UI
+  - Update cron command example to include: `AEMET_API_KEY=your_key_here`
+  - Document how to update key if changed (edit scheduled task, update env var)
+
+  **GitHub Actions (PR Previews):**
+  - Document that AEMET_API_KEY must be added to GitHub repository secrets
+  - Path: Repository Settings → Secrets and variables → Actions → New repository secret
+  - Name: `AEMET_API_KEY`
+  - Value: (your AEMET API key)
+  - Note: Used by PR preview deployments to generate weather data
+
+  **Graceful Degradation:**
+  - If API key is missing or invalid, site generates without weather data
+  - Build report will show weather fetch errors
+  - Events still render normally (weather is optional enhancement)
+
+- [ ] **Task 0.7:** Update CI configuration and GitHub Secrets
+
+  **For tests (.github/workflows/ci.yml - build-and-test job):**
+  - Tests use fixtures only (no API key needed)
+  - Add comment in workflow: `# Tests use fixtures from testdata/ - no AEMET_API_KEY needed`
+
+  **For PR previews (.github/workflows/pr-preview.yml):**
+  - PR previews run the generator in CI (need API key)
+  - Add to "Build and deploy preview" step:
+    ```yaml
+    - name: Build and deploy preview
+      env:
+        NFSN_HOST: ${{ secrets.NFSN_HOST }}
+        NFSN_USER: ${{ secrets.NFSN_USER }}
+        AEMET_API_KEY: ${{ secrets.AEMET_API_KEY }}  # NEW: needed for preview generation
+      run: |
+        just preview-deploy PR${{ github.event.pull_request.number }}
+    ```
+  - Add `AEMET_API_KEY` to GitHub repository secrets (Settings → Secrets → Actions)
+  - Document graceful degradation: if key missing, previews work but without weather data
+
+  **Optional: Fixture refresh workflow:**
+  - Consider adding monthly fixture refresh workflow (manual trigger)
+  - Would need AEMET_API_KEY to run
 
 - [ ] **Task 0.8:** Document fixture usage in CLAUDE.md
   - How to refresh fixtures: `just fetch-fixtures`
@@ -814,10 +868,32 @@ All tests use fixtures from `generator/testdata/fixtures/`:
 
 ### Phase 8: Deployment (30 min)
 
-- [ ] **Task 8.1:** Add AEMET_API_KEY to NFSN environment
-- [ ] **Task 8.2:** Update cron command with `-weather-enabled` flag
-- [ ] **Task 8.3:** Test on production
-- [ ] **Task 8.4:** Monitor for errors in first 24 hours
+- [ ] **Task 8.1:** Add AEMET_API_KEY to GitHub Secrets (for PR previews)
+  - Go to repository Settings → Secrets and variables → Actions
+  - Click "New repository secret"
+  - Name: `AEMET_API_KEY`
+  - Value: (your AEMET API key)
+  - Verify PR preview workflow has access
+
+- [ ] **Task 8.2:** Add AEMET_API_KEY to NFSN environment (for production)
+  - Log into NFSN control panel
+  - Navigate to Scheduled Tasks
+  - Edit hourly buildsite task
+  - Add environment variable: `AEMET_API_KEY=your_key_here`
+
+- [ ] **Task 8.3:** Update cron command with `-weather-enabled` flag
+  - Modify buildsite command to enable weather
+  - Verify all other flags still present
+
+- [ ] **Task 8.4:** Test on production
+  - Wait for hourly cron to run
+  - Check build report for weather data
+  - Verify event cards show weather icons
+
+- [ ] **Task 8.5:** Monitor for errors in first 24 hours
+  - Check build reports for AEMET fetch failures
+  - Verify weather icons load from AEMET CDN
+  - Monitor for any rate limiting issues
 
 **Total estimated time:** 12-13 hours (including 1 hour for Phase 0 setup)
 
