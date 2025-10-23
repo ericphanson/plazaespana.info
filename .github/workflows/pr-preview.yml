@@ -25,6 +25,7 @@ jobs:
 
       - name: Post deployment started comment
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        id: create-comment
         with:
           comment-id: ${{ steps.find-comment.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -71,7 +72,7 @@ jobs:
       - name: Update comment with deployment success
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          comment-id: ${{ steps.create-comment.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           edit-mode: replace
           body: |
