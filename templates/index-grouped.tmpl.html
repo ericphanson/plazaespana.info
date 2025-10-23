@@ -50,8 +50,7 @@
   </header>
 
   <main>
-    {{/* Ongoing events (merged) - shown first */}}
-    {{if gt (len .OngoingEvents) 0}}
+    {{/* Ongoing events (merged) - shown first by default, reordered dynamically if empty */}}
     <section class="event-section time-group">
       <h2 class="section-header">
         <span class="section-icon">🎪</span>
@@ -80,7 +79,6 @@
       </article>
       {{end}}
     </section>
-    {{end}}
 
     {{/* Merged time groups with both city and cultural events */}}
     {{range .Groups}}
