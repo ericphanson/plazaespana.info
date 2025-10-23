@@ -765,6 +765,10 @@ func main() {
 		// Create weather client
 		weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
 
+		// Wait 2 seconds before weather fetch (respectful delay)
+		log.Println("Waiting 2 seconds before weather fetch (respectful delay)...")
+		time.Sleep(2 * time.Second)
+
 		// Fetch forecast
 		log.Printf("Fetching 7-day forecast for municipality %s...", cfg.Weather.MunicipalityCode)
 		forecast, err := weatherClient.FetchForecast()
