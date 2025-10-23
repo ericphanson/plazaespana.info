@@ -15,6 +15,34 @@ jobs:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
 
     steps:
+      - name: Find existing comment
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- preview-deployment -->'
+
+      - name: Post deployment started comment
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        id: create-comment
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- preview-deployment -->
+            ## 🚀 Preview Deployment
+
+            **Status:** ⏳ Deploying preview...
+
+            **Preview URL:** https://plazaespana.info/previews/PR${{ github.event.pull_request.number }}/
+
+            Please wait while the preview is being built and deployed.
+
+            ---
+            *Started: ${{ github.event.pull_request.updated_at }}*
+
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
@@ -41,25 +69,17 @@ jobs:
         run: |
           just preview-deploy PR${{ github.event.pull_request.number }}
 
-      - name: Find existing comment
-        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
-        id: find-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: '<!-- preview-deployment -->'
-
-      - name: Create or update PR comment
+      - name: Update comment with deployment success
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          comment-id: ${{ steps.create-comment.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           edit-mode: replace
           body: |
             <!-- preview-deployment -->
             ## 🚀 Preview Deployment
 
-            Your preview has been deployed!
+            **Status:** ✅ Deployed successfully!
 
             **Preview URL:** https://plazaespana.info/previews/PR${{ github.event.pull_request.number }}/
 
