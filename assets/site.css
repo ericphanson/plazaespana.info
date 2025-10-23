@@ -105,7 +105,7 @@ main {
 }
 
 .section-icon {
-  font-size: 1.8rem;
+  font-size: 1.26rem;
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -113,8 +113,8 @@ main {
 }
 
 .section-icon svg {
-  width: 1.4em;
-  height: 1.4em;
+  width: 1em;
+  height: 1em;
   display: block;
 }
 
