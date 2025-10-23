@@ -1,0 +1,903 @@
+# Weather Integration Plan (AEMET)
+
+**Date:** 2025-10-23
+**Priority:** MEDIUM
+**Status:** 📋 Planning
+
+---
+
+## Problem Statement
+
+Events displayed on the site lack weather context. Users planning to attend outdoor events need to know:
+- Will it rain?
+- What's the temperature?
+- What are the general sky conditions (sunny/cloudy/overcast)?
+
+This information helps users make informed decisions about which events to attend.
+
+---
+
+## Solution Overview
+
+Integrate weather forecasts from **AEMET** (Agencia Estatal de Meteorología - Spanish State Meteorological Agency) into event cards.
+
+**Data source:** AEMET OpenData API
+- **Endpoint:** `https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/28079`
+- **Municipality:** Madrid (ID: 28079)
+- **Authentication:** Free API key (valid 3 months, renewable)
+- **Forecast range:** Up to 7 days daily forecast
+- **Rate limits:** Respectful usage (hourly updates acceptable)
+
+**Display approach:**
+- Add weather icons/indicators to event cards
+- Show high temperature for the day
+- Show precipitation probability
+- Show sky state (sun/clouds/rain icons)
+- CSS-only presentation (no JavaScript, consistent with site architecture)
+
+---
+
+## AEMET API Details
+
+### Registration Process
+
+1. Visit https://opendata.aemet.es/centrodedescargas/altaUsuario
+2. Register with email address
+3. Receive API key by email
+4. Key validity: 3 months (renewable)
+5. Store in config or environment variable
+
+### API Request Flow (Two-Step Process)
+
+AEMET uses an indirect data access pattern:
+
+**Step 1:** Request forecast endpoint with API key
+```bash
+GET https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/28079
+Header: api_key: YOUR_API_KEY
+```
+
+**Response 1:** Metadata with data URL
+```json
+{
+  "descripcion": "exito",
+  "estado": 200,
+  "datos": "https://opendata.aemet.es/opendata/sh/abc123...",
+  "metadatos": "https://opendata.aemet.es/opendata/sh/meta456..."
+}
+```
+
+**Step 2:** Fetch actual forecast data from `datos` URL
+```bash
+GET https://opendata.aemet.es/opendata/sh/abc123...
+```
+
+**Response 2:** Actual forecast JSON (see data structure below)
+
+### Forecast Data Structure
+
+```json
+[
+  {
+    "origen": {
+      "productor": "Agencia Estatal de Meteorología - AEMET",
+      "web": "https://www.aemet.es",
+      "enlace": "...",
+      "language": "es",
+      "copyright": "© AEMET. Autorizado el uso de la información...",
+      "notaLegal": "..."
+    },
+    "elaborado": "2025-10-23T12:34:56",
+    "nombre": "Madrid",
+    "provincia": "Madrid",
+    "prediccion": {
+      "dia": [
+        {
+          "fecha": "2025-10-23T00:00:00",
+          "orto": "08:15",
+          "ocaso": "19:30",
+          "temperatura": {
+            "maxima": 24,
+            "minima": 12,
+            "dato": [
+              {"value": 14, "hora": 6},
+              {"value": 18, "hora": 12},
+              {"value": 22, "hora": 15},
+              ...
+            ]
+          },
+          "estadoCielo": [
+            {"value": "11", "periodo": "00-06", "descripcion": "Despejado"},
+            {"value": "14", "periodo": "06-12", "descripcion": "Nuboso"},
+            {"value": "15", "periodo": "12-18", "descripcion": "Muy nuboso"},
+            {"value": "16", "periodo": "18-24", "descripcion": "Cubierto"}
+          ],
+          "precipitacion": [
+            {"value": "0", "periodo": "00-06"},
+            {"value": "2", "periodo": "06-12"},
+            {"value": "5", "periodo": "12-18"},
+            {"value": "1", "periodo": "18-24"}
+          ],
+          "probPrecipitacion": [
+            {"value": 10, "periodo": "00-12"},
+            {"value": 65, "periodo": "12-24"}
+          ],
+          "viento": [...],
+          "rachaMax": [...],
+          "humedadRelativa": {...},
+          "sensTermica": {...},
+          "uvMax": 6
+        },
+        // ... more days (up to 7 days)
+      ]
+    }
+  }
+]
+```
+
+### Sky State Codes (estadoCielo.value)
+
+Based on AEMET documentation:
+- **11-13**: Clear/Despejado (day/night variations)
+- **14**: Few clouds/Poco nuboso
+- **15**: Partly cloudy/Intervalos nubosos
+- **16**: Very cloudy/Muy nuboso
+- **17**: Overcast/Cubierto
+- **23-27**: Rain variations (light/moderate/heavy)
+- **43-46**: Snow variations
+- **51-53**: Storm variations
+
+Codes ending in 'n' (e.g., "11n") indicate nighttime conditions.
+
+### Key Fields to Extract
+
+For each event date:
+1. **Temperature max** (`temperatura.maxima`): High temp for the day
+2. **Precipitation probability** (`probPrecipitacion`): % chance of rain (use highest period covering event time)
+3. **Sky state** (`estadoCielo`): Icon representation (use period covering event time)
+4. **Precipitation amount** (`precipitacion`): Total mm (use period covering event time)
+
+---
+
+## Implementation Architecture
+
+### New Package: `internal/weather`
+
+```
+internal/weather/
+  client.go          # AEMET API client (two-step fetch)
+  types.go           # Forecast, DayForecast, Weather structs
+  matcher.go         # Match event dates to forecast days
+  icons.go           # Map sky codes to CSS classes/display info
+  cache.go           # Cache AEMET responses (reuse existing fetch.HTTPCache)
+```
+
+### Data Flow
+
+```
+Pipeline (existing)
+    ↓
+Fetch Events (existing)
+    ↓
+Filter Events (existing)
+    ↓
+[NEW] Fetch Weather ← AEMET API
+    ↓
+[NEW] Match Weather to Events ← Join on date
+    ↓
+Render with Weather (modified)
+    ↓
+Static HTML/CSS
+```
+
+### Configuration Changes
+
+**config.toml additions:**
+```toml
+[weather]
+enabled = true
+api_key_env = "AEMET_API_KEY"  # Read from env var for security
+municipality_code = "28079"    # Madrid
+cache_ttl_hours = 6           # Cache forecast for 6 hours
+```
+
+**Command-line flag additions:**
+```bash
+-weather-api-key string     # AEMET API key (or use AEMET_API_KEY env var)
+-weather-enabled            # Enable weather integration (default: false initially)
+```
+
+### Event Struct Extension
+
+**internal/event/event.go modifications:**
+```go
+type Event struct {
+    // ... existing fields ...
+
+    // Weather info (populated during pipeline)
+    Weather *Weather `json:"weather,omitempty"`
+}
+
+type Weather struct {
+    Date              string  `json:"date"`               // Forecast date (YYYY-MM-DD)
+    TempMax           int     `json:"temp_max"`           // Max temp (°C)
+    TempMin           int     `json:"temp_min"`           // Min temp (°C)
+    PrecipProb        int     `json:"precip_prob"`        // Precipitation probability (%)
+    PrecipAmount      float64 `json:"precip_amount"`      // Total precipitation (mm)
+    SkyCode           string  `json:"sky_code"`           // AEMET sky state code
+    SkyDescription    string  `json:"sky_description"`    // Human-readable sky state
+    SkyIcon           string  `json:"sky_icon"`           // CSS class for icon
+}
+```
+
+### Weather Client Implementation
+
+**internal/weather/client.go:**
+```go
+type Client struct {
+    apiKey       string
+    httpCache    *fetch.HTTPCache
+    municipalityCode string
+}
+
+func (c *Client) FetchForecast() (*Forecast, error) {
+    // Step 1: Request forecast endpoint
+    metaURL := fmt.Sprintf("https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/%s", c.municipalityCode)
+    metaResp := c.fetchWithAPIKey(metaURL)
+
+    // Step 2: Extract datos URL
+    datosURL := parseMetaResponse(metaResp)
+
+    // Step 3: Fetch actual forecast data
+    forecastData := c.httpCache.Fetch(datosURL)
+
+    return parseForecast(forecastData)
+}
+```
+
+### Weather Matching Logic
+
+**internal/weather/matcher.go:**
+```go
+func MatchEventsToWeather(events []event.Event, forecast *Forecast) []event.Event {
+    // Build date -> forecast map
+    forecastMap := buildDateMap(forecast)
+
+    // For each event:
+    for i := range events {
+        eventDate := extractDate(events[i].Fecha)
+        if dayForecast, ok := forecastMap[eventDate]; ok {
+            events[i].Weather = buildWeatherFromForecast(dayForecast, events[i])
+        }
+    }
+
+    return events
+}
+
+func buildWeatherFromForecast(day *DayForecast, evt event.Event) *event.Weather {
+    // Determine event time period (morning/afternoon/evening)
+    period := determineEventPeriod(evt)
+
+    // Extract sky state for that period
+    skyState := extractSkyForPeriod(day.EstadoCielo, period)
+
+    // Extract precipitation probability for that period
+    precipProb := extractPrecipProbForPeriod(day.ProbPrecipitacion, period)
+
+    return &event.Weather{
+        Date:           day.Fecha,
+        TempMax:        day.Temperatura.Maxima,
+        TempMin:        day.Temperatura.Minima,
+        PrecipProb:     precipProb,
+        SkyCode:        skyState.Value,
+        SkyDescription: skyState.Descripcion,
+        SkyIcon:        mapSkyCodeToIcon(skyState.Value),
+    }
+}
+```
+
+### Icon Mapping
+
+**internal/weather/icons.go:**
+```go
+func mapSkyCodeToIcon(code string) string {
+    // Strip 'n' suffix for night
+    baseCode := strings.TrimSuffix(code, "n")
+
+    switch {
+    case baseCode >= "11" && baseCode <= "13":
+        return "sun"      // Clear/Despejado
+    case baseCode == "14" || baseCode == "15":
+        return "partial-cloud"  // Few clouds/Partly cloudy
+    case baseCode == "16" || baseCode == "17":
+        return "cloud"    // Very cloudy/Overcast
+    case baseCode >= "23" && baseCode <= "27":
+        return "rain"     // Rain
+    case baseCode >= "43" && baseCode <= "46":
+        return "snow"     // Snow
+    case baseCode >= "51" && baseCode <= "53":
+        return "storm"    // Storm
+    default:
+        return "unknown"
+    }
+}
+```
+
+---
+
+## Template Changes
+
+### Event Card Weather Display
+
+**generator/templates/index.tmpl.html modifications:**
+
+```html
+<article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}"
+         data-distance-m="{{.DistanceMeters}}"
+         {{if .AtPlaza}}data-at-plaza="true"{{end}}>
+  {{if eq .EventType "city"}}
+  <span class="event-badge city-badge">Evento Ciudad</span>
+  {{else}}
+  <span class="event-badge cultural-badge">Cultural</span>
+  {{end}}
+
+  <!-- NEW: Weather indicator -->
+  {{if .Weather}}
+  <div class="weather-info" title="Pronóstico: {{.Weather.SkyDescription}}">
+    <span class="weather-icon weather-{{.Weather.SkyIcon}}" aria-hidden="true"></span>
+    <span class="weather-temp">{{.Weather.TempMax}}°</span>
+    {{if gt .Weather.PrecipProb 30}}
+    <span class="weather-precip">{{.Weather.PrecipProb}}%</span>
+    {{end}}
+  </div>
+  {{end}}
+
+  <h3>{{.Titulo}}</h3>
+  <p class="when">{{.StartHuman}}</p>
+  {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
+  {{if .DistanceHuman}}<p class="distance"><!-- SVG icon -->{{.DistanceHuman}} de Plaza de España</p>{{end}}
+  {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+  {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+</article>
+```
+
+### CSS Styling
+
+**generator/assets/site.css additions:**
+
+```css
+/* Weather info container */
+.weather-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* Weather icons (CSS-only, using unicode symbols or emoji) */
+.weather-icon {
+  font-size: 1.2rem;
+}
+
+.weather-sun::before {
+  content: "☀️";  /* or use inline SVG */
+}
+
+.weather-partial-cloud::before {
+  content: "⛅";
+}
+
+.weather-cloud::before {
+  content: "☁️";
+}
+
+.weather-rain::before {
+  content: "🌧️";
+}
+
+.weather-snow::before {
+  content: "❄️";
+}
+
+.weather-storm::before {
+  content: "⛈️";
+}
+
+/* Temperature display */
+.weather-temp {
+  font-weight: 600;
+  color: #ea580c;  /* Match site accent color */
+}
+
+/* Precipitation probability (only shown if >30%) */
+.weather-precip {
+  color: #3b82f6;  /* Blue for rain */
+  font-size: 0.85rem;
+}
+
+/* Alternative: Use inline SVG icons instead of emoji */
+.weather-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+```
+
+---
+
+## Build Report Integration
+
+Add weather fetch stats to build report:
+
+**internal/report/types.go additions:**
+```go
+type BuildReport struct {
+    // ... existing fields ...
+
+    WeatherReport *WeatherReport `json:"weather_report,omitempty"`
+}
+
+type WeatherReport struct {
+    Enabled         bool      `json:"enabled"`
+    FetchTimestamp  time.Time `json:"fetch_timestamp"`
+    Municipality    string    `json:"municipality"`
+    DaysCovered     int       `json:"days_covered"`
+    EventsMatched   int       `json:"events_matched"`
+    EventsUnmatched int       `json:"events_unmatched"`
+    CacheHit        bool      `json:"cache_hit"`
+    Errors          []string  `json:"errors,omitempty"`
+}
+```
+
+**Build report display:**
+```html
+<section class="report-section weather-section">
+  <h2>Weather Integration</h2>
+  {{if .WeatherReport.Enabled}}
+    <div class="metric">
+      <span class="label">Municipality:</span>
+      <span class="value">{{.WeatherReport.Municipality}}</span>
+    </div>
+    <div class="metric">
+      <span class="label">Forecast days:</span>
+      <span class="value">{{.WeatherReport.DaysCovered}}</span>
+    </div>
+    <div class="metric">
+      <span class="label">Events matched:</span>
+      <span class="value">{{.WeatherReport.EventsMatched}} / {{add .WeatherReport.EventsMatched .WeatherReport.EventsUnmatched}}</span>
+    </div>
+    <div class="metric">
+      <span class="label">Cache hit:</span>
+      <span class="value">{{if .WeatherReport.CacheHit}}✓{{else}}✗{{end}}</span>
+    </div>
+  {{else}}
+    <p>Weather integration disabled</p>
+  {{end}}
+</section>
+```
+
+---
+
+## Respectful Fetching Strategy
+
+### Caching Approach
+
+Reuse existing `internal/fetch` infrastructure:
+
+1. **HTTP Cache:** Store AEMET responses in `data/http-cache/`
+2. **TTL:** 6 hours (weather doesn't change frequently)
+3. **Request Audit:** Track AEMET API calls in `data/request-audit.json`
+4. **Development Mode:** Aggressive caching (avoid hitting API during testing)
+5. **Production Mode:** Normal caching (fresh data every 6 hours)
+
+### Request Throttling
+
+- **No burst requests:** Single AEMET fetch per build (2-step process counted as 1 logical request)
+- **Delay after event fetch:** Add 2-second delay before weather fetch
+- **Cache-first:** Check cache before making any API call
+- **Graceful degradation:** If AEMET fails, events still render (without weather)
+
+### API Key Management
+
+**Security considerations:**
+- Never commit API key to repo
+- Read from environment variable: `AEMET_API_KEY`
+- Document registration process in README
+- Include fallback: if no key provided, disable weather silently
+
+**Deployment:**
+- Add env var to NFSN scheduled task
+- Document in `docs/deployment.md`
+- CI/CD: Use GitHub Secrets for preview deployments
+
+---
+
+## Error Handling
+
+### Failure Modes
+
+1. **No API key provided:** Disable weather silently, log warning
+2. **API key expired:** Log error, disable weather, send notification (via build report)
+3. **AEMET API down:** Use cached forecast if available, otherwise disable weather
+4. **Invalid response:** Log error, disable weather, continue rendering events
+5. **Network timeout:** Use cached forecast, log warning
+6. **Rate limited (429):** Use cached forecast, log warning, respect Retry-After header
+
+### Graceful Degradation
+
+**Principle:** Weather is enhancement, not requirement. Site must work without it.
+
+```go
+func (p *Pipeline) enrichWithWeather(events []event.Event) []event.Event {
+    if !p.weatherEnabled {
+        return events
+    }
+
+    forecast, err := p.weatherClient.FetchForecast()
+    if err != nil {
+        p.logger.Warnf("Weather fetch failed: %v (continuing without weather)", err)
+        return events  // Return events unchanged
+    }
+
+    return weather.MatchEventsToWeather(events, forecast)
+}
+```
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+1. **weather/client_test.go:**
+   - Mock AEMET two-step response
+   - Test API key header injection
+   - Test error handling (404, 500, timeout)
+   - Test cache hit behavior
+
+2. **weather/matcher_test.go:**
+   - Test date matching (exact match, no match, multi-day events)
+   - Test period extraction (morning/afternoon/evening)
+   - Test sky code mapping
+   - Test precipitation probability extraction
+
+3. **weather/icons_test.go:**
+   - Test sky code to icon mapping
+   - Test night code handling ('n' suffix)
+   - Test unknown code fallback
+
+### Integration Tests
+
+1. **pipeline_test.go modifications:**
+   - Test pipeline with weather enabled
+   - Test pipeline with weather disabled
+   - Test pipeline with weather fetch failure
+
+### Manual Testing
+
+1. **Development mode:**
+   - Register for AEMET API key
+   - Run `just dev` with weather enabled
+   - Verify weather appears on event cards
+   - Verify caching works (second run instant)
+
+2. **Production simulation:**
+   - Run with production fetch mode
+   - Verify respectful delays
+   - Check request audit trail
+
+---
+
+## Implementation Tasks
+
+### Phase 1: Infrastructure (2-3 hours)
+
+- [ ] **Task 1.1:** Create `internal/weather` package structure
+- [ ] **Task 1.2:** Implement AEMET client with two-step fetch
+- [ ] **Task 1.3:** Define weather types (Forecast, DayForecast, Weather)
+- [ ] **Task 1.4:** Integrate with existing HTTPCache system
+- [ ] **Task 1.5:** Add configuration (config.toml + flags)
+- [ ] **Task 1.6:** Add API key environment variable support
+
+### Phase 2: Data Processing (2 hours)
+
+- [ ] **Task 2.1:** Implement date matcher (events → forecast days)
+- [ ] **Task 2.2:** Implement period extractor (event time → sky state period)
+- [ ] **Task 2.3:** Implement sky code to icon mapper
+- [ ] **Task 2.4:** Implement precipitation probability extractor
+- [ ] **Task 2.5:** Extend Event struct with Weather field
+
+### Phase 3: Pipeline Integration (1 hour)
+
+- [ ] **Task 3.1:** Add weather fetch step to pipeline
+- [ ] **Task 3.2:** Add weather matching step
+- [ ] **Task 3.3:** Add error handling with graceful degradation
+- [ ] **Task 3.4:** Add 2-second delay before weather fetch
+
+### Phase 4: Presentation (1.5 hours)
+
+- [ ] **Task 4.1:** Update HTML template with weather display
+- [ ] **Task 4.2:** Add CSS styles for weather icons
+- [ ] **Task 4.3:** Implement inline SVG icons (alternative to emoji)
+- [ ] **Task 4.4:** Test responsive layout with weather info
+
+### Phase 5: Reporting (1 hour)
+
+- [ ] **Task 5.1:** Add WeatherReport to BuildReport
+- [ ] **Task 5.2:** Populate weather stats in pipeline
+- [ ] **Task 5.3:** Add weather section to build report HTML
+- [ ] **Task 5.4:** Include AEMET attribution in footer
+
+### Phase 6: Testing (2 hours)
+
+- [ ] **Task 6.1:** Write unit tests for weather client
+- [ ] **Task 6.2:** Write unit tests for matcher
+- [ ] **Task 6.3:** Write unit tests for icon mapper
+- [ ] **Task 6.4:** Update integration tests
+- [ ] **Task 6.5:** Manual testing with real API
+
+### Phase 7: Documentation (1 hour)
+
+- [ ] **Task 7.1:** Update CLAUDE.md with weather integration details
+- [ ] **Task 7.2:** Update README with weather feature
+- [ ] **Task 7.3:** Update docs/deployment.md with API key setup
+- [ ] **Task 7.4:** Add AEMET attribution to ATTRIBUTION.md
+
+### Phase 8: Deployment (30 min)
+
+- [ ] **Task 8.1:** Add AEMET_API_KEY to NFSN environment
+- [ ] **Task 8.2:** Update cron command with `-weather-enabled` flag
+- [ ] **Task 8.3:** Test on production
+- [ ] **Task 8.4:** Monitor for errors in first 24 hours
+
+**Total estimated time:** 11-12 hours
+
+---
+
+## Success Criteria
+
+✅ Weather info displays on event cards (icon + temp + precip %)
+✅ Weather data fetched from AEMET API with two-step process
+✅ API key managed via environment variable (not in repo)
+✅ Caching works (6-hour TTL, cache hits logged)
+✅ Respectful fetching (2s delay, request audit trail)
+✅ Graceful degradation (site works if AEMET fails)
+✅ Build report shows weather fetch stats
+✅ All tests pass (22 existing + 8 new weather tests)
+✅ No JavaScript added (CSS-only presentation)
+✅ Mobile responsive (weather info fits on small screens)
+✅ AEMET attribution included
+✅ Documentation complete (README, deployment docs)
+
+---
+
+## Alternative Approaches Considered
+
+### Alternative 1: Use Open-Meteo (Third-party)
+
+**Pros:**
+- No API key required
+- Better JSON API design
+- More developer-friendly
+
+**Cons:**
+- Not the official Spanish source
+- Adds external dependency outside Spain
+- Less accurate for Madrid specifically
+
+**Decision:** Use AEMET (official Spanish source, more appropriate)
+
+### Alternative 2: Fetch Hourly Forecast
+
+**Pros:**
+- More precise matching to event times
+- Better accuracy for morning vs evening events
+
+**Cons:**
+- More complex data structure
+- More data to cache
+- Overkill for most events (all-day or evening)
+
+**Decision:** Use daily forecast (simpler, sufficient for most events)
+
+### Alternative 3: Embed Weather Icons as SVG
+
+**Pros:**
+- Better styling control
+- No emoji font dependency
+- Accessible
+
+**Cons:**
+- Larger HTML payload
+- More CSS to maintain
+
+**Decision:** Start with emoji, add SVG option as enhancement if needed
+
+---
+
+## Security & Privacy Considerations
+
+### API Key Security
+
+- ✅ Never commit API key to repo
+- ✅ Use environment variable
+- ✅ Document rotation process (3-month expiry)
+- ✅ Log API errors (but not API key)
+
+### Data Privacy
+
+- ✅ Weather data is public (no user data involved)
+- ✅ No tracking added
+- ✅ No cookies required
+- ✅ AEMET attribution included
+
+### Rate Limiting
+
+- ✅ Respect AEMET rate limits
+- ✅ Cache aggressively (6-hour TTL)
+- ✅ Handle 429 gracefully
+- ✅ Monitor request audit trail
+
+---
+
+## Monitoring & Maintenance
+
+### What to Monitor
+
+1. **API key expiry:** Set calendar reminder for 2.5 months
+2. **AEMET API errors:** Check build report daily for first week
+3. **Cache hit rate:** Should be >90% after first fetch
+4. **Weather match rate:** Should be >80% (events within 7-day forecast window)
+
+### Maintenance Tasks
+
+- **Every 3 months:** Renew AEMET API key
+- **Weekly:** Check build report for weather errors
+- **Monthly:** Verify AEMET API still uses same endpoints
+- **Yearly:** Review sky code mappings for accuracy
+
+---
+
+## Future Enhancements
+
+### Phase 2 Features (Not in Initial Implementation)
+
+1. **Weather-based filtering:**
+   - CSS-only filter to hide rainy events (checkbox + CSS)
+   - Show only sunny outdoor events
+
+2. **Multi-day event weather:**
+   - Show weather for entire event range
+   - Aggregate forecast (e.g., "Mostly sunny, 18-24°")
+
+3. **Weather alerts:**
+   - Highlight severe weather warnings
+   - Pull from AEMET alerts API
+
+4. **Historical weather:**
+   - For past events, show actual weather (if cached)
+   - Compare forecast vs actual
+
+5. **Hourly forecast precision:**
+   - Match specific event times to hourly forecast
+   - Show "Rain expected at 7pm" for evening events
+
+---
+
+## Questions & Decisions
+
+### Q1: What if event is >7 days in future?
+
+**Decision:** No weather shown (AEMET only provides 7-day forecast)
+
+### Q2: What if AEMET changes API?
+
+**Decision:**
+- Monitor API version in response
+- Log warning if version changes
+- Graceful degradation (disable weather)
+- Add integration test with real API call (manual)
+
+### Q3: Multi-day events?
+
+**Decision:**
+- Initial: Show weather for start date only
+- Future: Aggregate weather across all days
+
+### Q4: Indoor vs outdoor events?
+
+**Decision:**
+- No differentiation initially (data doesn't indicate indoor/outdoor)
+- Future: Add manual tagging or ML classification
+
+### Q5: Night events (after sunset)?
+
+**Decision:**
+- Use night sky codes ('n' suffix)
+- Show evening period forecast (18-24)
+- Display moon icon for clear nights
+
+---
+
+## Dependencies
+
+### External Services
+
+- **AEMET OpenData API:** https://opendata.aemet.es/
+- **API key registration:** Free, renewable every 3 months
+
+### Go Packages (Standard Library Only)
+
+- `encoding/json`: Parse AEMET responses
+- `net/http`: HTTP requests
+- `time`: Date matching
+- Reuse existing `internal/fetch` infrastructure
+
+### Configuration
+
+- Environment variable: `AEMET_API_KEY`
+- Config file: `config.toml` (weather section)
+- Command flags: `-weather-enabled`, `-weather-api-key`
+
+---
+
+## Rollout Plan
+
+### Development Phase (Week 1)
+
+1. Implement infrastructure (Phase 1-2)
+2. Register for AEMET API key
+3. Local testing with real API
+4. Iterate on icon design
+
+### Testing Phase (Week 2)
+
+1. Implement presentation + reporting (Phase 3-5)
+2. Write tests (Phase 6)
+3. Manual testing with edge cases
+4. Documentation (Phase 7)
+
+### Deployment Phase (Week 3)
+
+1. Deploy to preview environment
+2. Monitor for 48 hours
+3. Deploy to production
+4. Monitor for 1 week
+
+### Stabilization (Week 4)
+
+1. Fix any issues discovered
+2. Optimize caching strategy
+3. Refine icon mappings based on user feedback
+4. Document lessons learned
+
+---
+
+## Rollback Plan
+
+If weather integration causes issues:
+
+1. **Quick rollback:** Set `-weather-enabled=false` in cron
+2. **Code rollback:** Revert commits, redeploy
+3. **Partial rollback:** Keep code, disable in config
+4. **Data cleanup:** Clear weather cache if corrupted
+
+**No data loss risk:** Weather is additive feature, doesn't modify existing event data.
+
+---
+
+## API Key Renewal Reminder
+
+⚠️ **IMPORTANT:** AEMET API keys expire after 3 months.
+
+**Renewal process:**
+1. Visit https://opendata.aemet.es/centrodedescargas/inicio
+2. Log in with registered email
+3. Request new API key
+4. Update `AEMET_API_KEY` environment variable on server
+5. Test with `just dev` locally first
+6. Deploy to production
+
+**Set calendar reminder:** 2.5 months from first deployment
