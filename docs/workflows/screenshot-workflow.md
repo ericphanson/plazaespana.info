@@ -36,17 +36,17 @@ Establish a systematic workflow for iterating on UI design using shot-scraper to
 - **Tablet**: `--width 768 --height 1024`
 - **Mobile**: `--width 375 --height 812` (iPhone size)
 
-**Screenshot script** (`/workspace/screenshots/capture.sh`):
+**Screenshot script** (`scripts/capture.sh`):
 
 ```bash
 #!/bin/bash
 # Madrid Events UI Screenshot Capture Script
-# Usage: ./capture.sh [timestamp]
+# Usage: ./scripts/capture.sh [timestamp]
 
 set -e
 
 TIMESTAMP=${1:-$(date +%Y%m%d-%H%M%S)}
-OUTPUT_DIR="/workspace/screenshots/${TIMESTAMP}"
+OUTPUT_DIR="screenshots/${TIMESTAMP}"
 mkdir -p "${OUTPUT_DIR}"
 
 BASE_URL="http://localhost:8080"
@@ -139,7 +139,7 @@ ls -lh "${OUTPUT_DIR}" | grep "\.png$"
 
 ```bash
 # Capture before making changes
-./capture.sh baseline
+./scripts/capture.sh baseline
 
 # Make CSS changes
 vim /workspace/assets/site.css
@@ -148,7 +148,7 @@ vim /workspace/assets/site.css
 just hash-css && just build
 
 # Capture after changes
-./capture.sh iteration-1
+./scripts/capture.sh iteration-1
 
 # View side-by-side in Claude Code
 # Read screenshots/baseline/events-desktop.png
@@ -179,8 +179,10 @@ just hash-css && just build
 ## Directory Structure
 
 ```
-/workspace/screenshots/
-├── capture.sh                  # Screenshot capture script
+scripts/
+└── capture.sh                  # Screenshot capture script
+
+screenshots/                    # Output directory (gitignored)
 ├── baseline/                   # Initial screenshots before changes
 │   ├── events-desktop-full.png
 │   ├── events-desktop.png
@@ -197,8 +199,8 @@ just hash-css && just build
 
 ```bash
 # Capture current state
-cd /workspace/screenshots
-./capture.sh baseline
+
+./scripts/capture.sh baseline
 
 # Review events page
 # Notice: Event cards feel cramped, need more breathing room
@@ -211,7 +213,7 @@ vim /workspace/assets/site.css
 just hash-css && just build
 
 # Capture after change
-./capture.sh more-spacing
+./scripts/capture.sh more-spacing
 
 # Compare
 # Read screenshots/baseline/events-desktop.png
@@ -224,7 +226,7 @@ just hash-css && just build
 
 ```bash
 # Capture mobile views
-./capture.sh mobile-check
+./scripts/capture.sh mobile-check
 
 # Review mobile screenshots
 # Notice: Event dates wrapping awkwardly on small screens
@@ -239,7 +241,7 @@ vim /workspace/assets/site.css
 just hash-css && just build
 
 # Capture again
-./capture.sh mobile-fixed
+./scripts/capture.sh mobile-fixed
 
 # Compare mobile screenshots
 # Read screenshots/mobile-check/events-mobile.png
@@ -250,7 +252,7 @@ just hash-css && just build
 
 ```bash
 # Current dark mode
-./capture.sh dark-mode-before
+./scripts/capture.sh dark-mode-before
 
 # Redesign: Adjust background colors for better contrast
 # Change: Soften link colors to reduce eye strain
@@ -260,17 +262,17 @@ vim /workspace/assets/site.css
 
 # Capture after each major change
 just hash-css && just build
-./capture.sh dark-mode-contrast
+./scripts/capture.sh dark-mode-contrast
 
 # More adjustments to link colors
 vim /workspace/assets/site.css
 just hash-css && just build
-./capture.sh dark-mode-links
+./scripts/capture.sh dark-mode-links
 
 # Final adjustments
 vim /workspace/assets/site.css
 just hash-css && just build
-./capture.sh dark-mode-final
+./scripts/capture.sh dark-mode-final
 
 # Review all iterations, pick best version, commit
 ```
@@ -307,7 +309,7 @@ This workflow is successful when:
 
 ## Next Steps
 
-1. Create `/workspace/screenshots/` directory and `capture.sh` script
+1. Ensure `scripts/capture.sh` is executable
 2. Start development server with `just dev`
 3. Capture initial baseline of current events UI
 4. Identify first improvement area (event card layout? date formatting? mobile responsiveness?)
