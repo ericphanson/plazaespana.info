@@ -806,7 +806,7 @@ func main() {
 		TotalEvents:         totalCityEvents + totalCulturalEvents,
 		TotalCityEvents:     totalCityEvents,
 		TotalCulturalEvents: totalCulturalEvents,
-		ShowCulturalDefault: false, // Cultural events hidden by default
+		ShowCulturalDefault: true, // Cultural events shown by default
 		Groups:              mergedGroups,
 		OngoingEvents:       ongoingEvents,
 		OngoingCityCount:    ongoingCityCount,
