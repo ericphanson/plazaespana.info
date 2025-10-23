@@ -90,6 +90,9 @@ _deploy-files:
     echo "📤 Uploading .htaccess..."
     scp ops/htaccess "$NFSN_USER@$NFSN_HOST:/home/public/.htaccess"
 
+    echo "📤 Uploading robots.txt..."
+    scp robots.txt "$NFSN_USER@$NFSN_HOST:/home/public/robots.txt"
+
     # Atomically swap new files into place
     echo "🔄 Activating new files..."
     ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/bin/awstats-weekly.sh.new /home/private/bin/awstats-weekly.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index-grouped.tmpl.html.new /home/private/templates/index-grouped.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/cron-generate.sh /home/private/bin/awstats-weekly.sh'

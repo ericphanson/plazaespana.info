@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>{{if eq .Lang "es"}}Eventos en Plaza de España{{else}}Plaza de España events{{end}}</title>
+  <meta name="description" content="{{if eq .Lang "es"}}Calendario actualizado de eventos culturales, festivales y actividades cerca de Plaza de España en Madrid. Información de eventos del Ayuntamiento de Madrid.{{else}}Updated calendar of cultural events, festivals and activities near Plaza de España in Madrid. Event information from Madrid City Council.{{end}}">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="{{.BasePath}}/assets/site.{{.CSSHash}}.css">
 </head>
@@ -79,7 +80,7 @@
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
         {{if .DistanceHuman}}<p class="distance">📍 {{.DistanceHuman}} de Plaza de España</p>{{end}}
         {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end}}
       </article>
       {{end}}
     </section>
@@ -114,7 +115,7 @@
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
         {{if .DistanceHuman}}<p class="distance">📍 {{.DistanceHuman}} de Plaza de España</p>{{end}}
         {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-        {{if .ContentURL}}<p><a href="{{.ContentURL}}">Más información</a></p>{{end}}
+        {{if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end}}
       </article>
       {{end}}
     </section>
