@@ -385,33 +385,3 @@ input[name="distance-filter"] {
 #toggle-cultural:checked ~ #distance-plaza:checked ~ main .count-plaza-all {
   display: inline;
 }
-
-/* Section reordering: empty sections sink to bottom based on filter state */
-/* Default order: sections appear in DOM order */
-.event-section {
-  order: 0;
-}
-
-/* Filter state 1: En Plaza + Cultural shown
-   Sink sections with no events at Plaza de España */
-#toggle-cultural:checked ~ #distance-plaza:checked ~ main .event-section:not(:has(.event-card[data-at-plaza="true"])) {
-  order: 999;
-}
-
-/* Filter state 2: En Plaza + Cultural hidden
-   Sink sections with no city events at Plaza de España */
-#toggle-cultural:not(:checked) ~ #distance-plaza:checked ~ main .event-section:not(:has(.event-card.city[data-at-plaza="true"])) {
-  order: 999;
-}
-
-/* Filter state 3: Cerca (nearby) + Cultural shown
-   Sink sections with no events at all */
-#toggle-cultural:checked ~ #distance-nearby:checked ~ main .event-section:not(:has(.event-card)) {
-  order: 999;
-}
-
-/* Filter state 4: Cerca (nearby) + Cultural hidden
-   Sink sections with no city events */
-#toggle-cultural:not(:checked) ~ #distance-nearby:checked ~ main .event-section:not(:has(.event-card.city)) {
-  order: 999;
-}

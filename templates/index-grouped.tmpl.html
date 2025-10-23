@@ -121,5 +121,51 @@
     <p>Datos: <a href="https://datos.madrid.es">Ayuntamiento de Madrid – datos.madrid.es</a> y <a href="https://www.esmadrid.com">ESMadrid</a></p>
     <p><a href="{{.BasePath}}/build-report.html">Ver informe de compilación</a></p>
   </footer>
+
+  <script>
+    // Reorder sections: empty sections (0 visible events) sink to bottom
+    function reorderSections() {
+      const main = document.querySelector('main');
+      const sections = Array.from(main.querySelectorAll('.event-section'));
+
+      // Count visible events in each section (after all CSS filters applied)
+      const sectionData = sections.map(section => {
+        const visibleCards = Array.from(section.querySelectorAll('.event-card')).filter(card => {
+          const style = window.getComputedStyle(card);
+          return style.display !== 'none';
+        });
+        return { section, visibleCount: visibleCards.length };
+      });
+
+      // Sort: sections with events first, empty sections last
+      // Within each group, maintain original DOM order
+      sectionData.sort((a, b) => {
+        if (a.visibleCount === 0 && b.visibleCount === 0) return 0; // Both empty: keep order
+        if (a.visibleCount === 0) return 1;  // a is empty: sink to bottom
+        if (b.visibleCount === 0) return -1; // b is empty: sink to bottom
+        return 0; // Both have events: keep order
+      });
+
+      // Apply CSS order property to reorder sections
+      sectionData.forEach((data, index) => {
+        data.section.style.order = index;
+      });
+    }
+
+    // Run on page load
+    reorderSections();
+
+    // Re-run when filters change
+    const culturalToggle = document.getElementById('toggle-cultural');
+    const distanceFilters = document.querySelectorAll('input[name="distance-filter"]');
+
+    if (culturalToggle) {
+      culturalToggle.addEventListener('change', reorderSections);
+    }
+
+    distanceFilters.forEach(filter => {
+      filter.addEventListener('change', reorderSections);
+    });
+  </script>
 </body>
 </html>
