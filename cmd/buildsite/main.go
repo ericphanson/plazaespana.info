@@ -741,7 +741,7 @@ func main() {
 	log.Println("\n=== Rendering Output ===")
 
 	// Group events by time (merged: city and cultural together)
-	mergedGroups, ongoingEvents, ongoingCityCount := render.GroupMixedEventsByTime(
+	mergedGroups, ongoingEvents, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby := render.GroupMixedEventsByTime(
 		filteredCityEvents, filteredEvents, now,
 		cfg.Filter.Latitude, cfg.Filter.Longitude)
 
@@ -810,6 +810,10 @@ func main() {
 		Groups:              mergedGroups,
 		OngoingEvents:       ongoingEvents,
 		OngoingCityCount:    ongoingCityCount,
+		OngoingPlaza:        ongoingPlaza,
+		OngoingNearby:       ongoingNearby,
+		OngoingCityPlaza:    ongoingCityPlaza,
+		OngoingCityNearby:   ongoingCityNearby,
 	}
 	htmlPath := cfg.Output.HTMLPath
 	htmlErr := htmlRenderer.RenderAny(htmlData, htmlPath)

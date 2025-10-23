@@ -1,14 +1,6 @@
 package filter
 
-import (
-	"math"
-	"strings"
-	"unicode"
-
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
-)
+import "math"
 
 const earthRadiusKm = 6371.0
 
@@ -32,45 +24,6 @@ func HaversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
 // WithinRadius returns true if the distance between two points is ≤ radius km.
 func WithinRadius(lat1, lon1, lat2, lon2, radiusKm float64) bool {
 	return HaversineDistance(lat1, lon1, lat2, lon2) <= radiusKm
-}
-
-// normalizeText converts text to lowercase and removes accents for loose matching.
-// Examples: "Plaza de España" -> "plaza de espana", "ESPAÑA" -> "espana"
-func normalizeText(s string) string {
-	// Transform to NFD (decomposed) form, then remove combining marks (accents)
-	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
-	result, _, _ := transform.String(t, s)
-	return strings.ToLower(result)
-}
-
-// IsAtPlazaEspana checks if a venue name indicates the event is at Plaza de España.
-// Uses loose matching: case-insensitive, accent-insensitive.
-// Matches patterns like: "Plaza de España", "Pl. España", "Plaza España", etc.
-func IsAtPlazaEspana(venueName string) bool {
-	if venueName == "" {
-		return false
-	}
-
-	normalized := normalizeText(venueName)
-
-	// Patterns that indicate Plaza de España
-	patterns := []string{
-		"plaza de espana",
-		"plaza espana",
-		"pl. de espana",
-		"pl. espana",
-		"pl espana",
-		"plza espana",
-		"plza. espana",
-	}
-
-	for _, pattern := range patterns {
-		if strings.Contains(normalized, pattern) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // GetDistanceBucket returns the distance range bucket for CSS filtering.

@@ -10,11 +10,8 @@
   <input type="checkbox" id="toggle-cultural" {{if .ShowCulturalDefault}}checked{{end}}>
 
   <!-- Distance filter radio buttons -->
-  <input type="radio" name="distance-filter" id="distance-1000" value="1000" checked>
-  <input type="radio" name="distance-filter" id="distance-750" value="750">
-  <input type="radio" name="distance-filter" id="distance-500" value="500">
-  <input type="radio" name="distance-filter" id="distance-250" value="250">
-  <input type="radio" name="distance-filter" id="distance-0" value="0">
+  <input type="radio" name="distance-filter" id="distance-nearby" value="nearby" checked>
+  <input type="radio" name="distance-filter" id="distance-plaza" value="plaza">
 
   <header>
     <h1>{{if eq .Lang "es"}}Eventos en Plaza de España (Madrid){{else}}Events at Plaza de España (Madrid){{end}}</h1>
@@ -23,23 +20,25 @@
     <p class="stamp">Total: {{.TotalCityEvents}} eventos de ciudad{{if gt .TotalCulturalEvents 0}}, {{.TotalCulturalEvents}} eventos culturales{{end}}</p>
     {{end}}
 
-    <!-- Distance filter slider -->
-    <div class="distance-filter">
-      <label class="filter-title">Distancia máxima:</label>
-      <div class="distance-options">
-        <label for="distance-0" class="distance-label">En Plaza</label>
-        <label for="distance-250" class="distance-label">250m</label>
-        <label for="distance-500" class="distance-label">500m</label>
-        <label for="distance-750" class="distance-label">750m</label>
-        <label for="distance-1000" class="distance-label">1km (todos)</label>
+    <!-- Filters container -->
+    <div class="filters-container">
+      <!-- Distance filter -->
+      <div class="distance-filter">
+        <label class="filter-title">Mostrar:</label>
+        <div class="distance-options">
+          <label for="distance-plaza" class="distance-label">En Plaza</label>
+          <label for="distance-nearby" class="distance-label">Cerca (todos)</label>
+        </div>
       </div>
-    </div>
 
-    {{if gt .TotalCulturalEvents 0}}
-    <label for="toggle-cultural" class="toggle-label">
-      Mostrar eventos culturales ({{.TotalCulturalEvents}})
-    </label>
-    {{end}}
+      {{if gt .TotalCulturalEvents 0}}
+      <div class="cultural-filter">
+        <label for="toggle-cultural" class="toggle-label">
+          Mostrar eventos culturales ({{.TotalCulturalEvents}})
+        </label>
+      </div>
+      {{end}}
+    </div>
   </header>
 
   <main>
@@ -50,8 +49,10 @@
         <span class="section-icon">{{.Icon}}</span>
         {{.Name}}
         <span class="event-count">
-          <span class="count-city-only">{{.CityCount}}</span>
-          <span class="count-all">{{len .Events}}</span>
+          <span class="count-nearby-city">{{.CityNearby}}</span>
+          <span class="count-nearby-all">{{.CountNearby}}</span>
+          <span class="count-plaza-city">{{.CityPlaza}}</span>
+          <span class="count-plaza-all">{{.CountPlaza}}</span>
         </span>
       </h2>
 
@@ -80,8 +81,10 @@
         <span class="section-icon">🎪</span>
         Eventos en Curso
         <span class="event-count">
-          <span class="count-city-only">{{.OngoingCityCount}}</span>
-          <span class="count-all">{{len .OngoingEvents}}</span>
+          <span class="count-nearby-city">{{.OngoingCityNearby}}</span>
+          <span class="count-nearby-all">{{.OngoingNearby}}</span>
+          <span class="count-plaza-city">{{.OngoingCityPlaza}}</span>
+          <span class="count-plaza-all">{{.OngoingPlaza}}</span>
         </span>
       </h2>
 
