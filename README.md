@@ -40,10 +40,16 @@ See [config.toml](./config.toml).
 
 ## Deployment
 
-I deploy the site to NearlyFreeSpeech.NET by building a FreeBSD version of the site generator, then using their scheduled tasks feature to periodically regenerate the HTML/CSS,
-which is served by an Apache web server. If you have the credentials setup in `.envrc.local`, you can deploy it by running `just deploy`. Pushes to main also triggers deploys.
+I deploy the site to [NearlyFreeSpeech.NET](NearlyFreeSpeech.NET) by building a FreeBSD version of the site generator, then using their scheduled tasks feature to periodically regenerate the HTML/CSS,
+which is served by an Apache web server.
+If you have the credentials setup in `.envrc.local` and [direnv](https://direnv.net/) installed, you can deploy it by running `just deploy`.
+Pushes to main also trigger deploys.
 
 I also have per-PR previews set up. Making a PR from the repo (not a fork) triggers a deploy to `plazaespana.info/previews/PR$N` where `$N` is the PR number.
+
+## Visitor statistics
+
+I am trying something potentially weird, which is archiving aggregated anonymous visitors statistics [in repo](./awstats-data). No IPs or other personal information is stored. This data is updated irregularly.
 
 ## License and attribution
 
