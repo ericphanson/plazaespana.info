@@ -67,4 +67,58 @@ else
 fi
 
 echo ""
+echo "Fetching AEMET weather icons..."
+
+# Create icons directory
+ICONS_DIR="$FIXTURES_DIR/aemet-icons"
+mkdir -p "$ICONS_DIR"
+
+# AEMET sky state codes (based on meteosapi/AEMET documentation)
+# Note: Not all codes may have icons, but we'll try to fetch what exists
+ICON_CODES=(
+  # Basic conditions
+  11 11n 12 12n 13 13n 14 14n 15 15n 16 16n 17 17n
+  # With rain
+  23 23n 24 24n 25 25n 26 26n
+  # With snow
+  33 33n 34 34n 35 35n 36 36n
+  # With light rain
+  43 43n 44 44n 45 45n 46 46n
+  # With storms
+  51 51n 52 52n 53 53n 54 54n
+  # Additional codes (may not all exist)
+  61 61n 62 62n 63 63n 64 64n
+  71 71n 72 72n 73 73n 74 74n
+)
+
+ICON_COUNT=0
+FAILED_COUNT=0
+
+for code in "${ICON_CODES[@]}"; do
+  # Strip 'n' suffix for filename (11n → 11.png works for both)
+  BASE_CODE="${code%n}"
+  ICON_FILE="$ICONS_DIR/${BASE_CODE}.png"
+
+  # Skip if already downloaded
+  if [ -f "$ICON_FILE" ]; then
+    continue
+  fi
+
+  ICON_URL="https://www.aemet.es/imagenes/png/estado_cielo/${BASE_CODE}.png"
+
+  if curl -f -s -L "$ICON_URL" -o "$ICON_FILE" 2>/dev/null; then
+    ((ICON_COUNT++))
+  else
+    ((FAILED_COUNT++))
+    rm -f "$ICON_FILE"  # Clean up failed download
+  fi
+done
+
+echo "✓ AEMET icons fetched to $ICONS_DIR/"
+echo "  Downloaded: $ICON_COUNT icons"
+if [ $FAILED_COUNT -gt 0 ]; then
+  echo "  Failed/missing: $FAILED_COUNT codes"
+fi
+
+echo ""
 echo "✓ All fixtures fetched successfully"

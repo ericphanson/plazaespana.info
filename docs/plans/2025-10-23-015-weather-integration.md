@@ -341,7 +341,7 @@ func buildWeatherFromForecast(day *DayForecast, evt event.Event) *event.Weather 
         PrecipProb:      precipProb,
         SkyCode:         skyState.Value,
         SkyDescription:  skyState.Descripcion,
-        SkyIconURL:      GetAEMETIconURL(skyState.Value),
+        SkyIconURL:      GetWeatherIconURL(skyState.Value, evt.BasePath),  // Uses our own icon URLs
         WeatherCategory: GetWeatherCategory(skyState.Value),
         IsNight:         IsNightCondition(skyState.Value),
     }
@@ -352,16 +352,17 @@ func buildWeatherFromForecast(day *DayForecast, evt event.Event) *event.Weather 
 
 **internal/weather/icons.go:**
 
-AEMET provides official weather icons as PNGs at `https://www.aemet.es/imagenes/png/estado_cielo/{code}.png`. These icons are publicly accessible and cacheable (Cache-Control: max-age=3600).
+We serve AEMET weather icons from our own site (copied from fixtures during build). Icons are originally from AEMET's public CDN but we redistribute them per open data license with proper attribution.
 
 ```go
-// GetAEMETIconURL returns the official AEMET icon URL for a sky state code
-func GetAEMETIconURL(code string) string {
+// GetWeatherIconURL returns the weather icon URL for a sky state code
+// Icons are served from our own site (/assets/weather-icons/), copied from fixtures during build
+func GetWeatherIconURL(code, basePath string) string {
     // AEMET icons use numeric codes: 11, 12, 13, 14, etc.
     // Some codes have 'n' suffix for night (e.g., "11n")
     // The icon files use just the base code (11.png works for both 11 and 11n)
     baseCode := strings.TrimSuffix(code, "n")
-    return fmt.Sprintf("https://www.aemet.es/imagenes/png/estado_cielo/%s.png", baseCode)
+    return fmt.Sprintf("%s/assets/weather-icons/%s.png", basePath, baseCode)
 }
 
 // IsNightCondition checks if the code represents a night condition
@@ -392,14 +393,16 @@ func GetWeatherCategory(code string) string {
 }
 ```
 
-**Benefits of using AEMET's official icons:**
-- ✅ Authoritative source (official Spanish meteorology agency)
-- ✅ Publicly accessible (no authentication needed)
-- ✅ Cacheable (1-hour cache control headers)
+**Benefits of serving AEMET icons from our own site:**
+- ✅ Authoritative source (icons originally from official Spanish meteorology agency)
+- ✅ No external dependency (site works even if AEMET CDN is down)
+- ✅ Faster loading (served from same domain, no extra DNS lookup)
+- ✅ Better caching (our cache control, not limited to AEMET's 1-hour)
 - ✅ Comprehensive coverage (all sky state codes have corresponding icons)
 - ✅ Consistent with AEMET's own weather displays
-- ✅ No licensing concerns (public government data)
-- ✅ Small file size (~1.3KB per PNG)
+- ✅ Legal to redistribute (Spain's Law 18/2015 open data license with attribution)
+- ✅ Small file size (~1.3KB per PNG, ~40KB total for ~30 icons)
+- ✅ Committed to repo (versioned, no need to fetch from CDN during build)
 
 ---
 
@@ -497,12 +500,14 @@ func GetWeatherCategory(code string) string {
 }
 ```
 
-**Notes on AEMET icon integration:**
-- Icons load from `https://www.aemet.es/imagenes/png/estado_cielo/{code}.png`
-- Browser caches automatically per AEMET's Cache-Control headers (1 hour)
+**Notes on weather icon integration:**
+- Icons served from our own site: `/assets/weather-icons/{code}.png`
+- Copied from fixtures during build (no CDN dependency)
+- Browser caches per our Cache-Control headers (30 days for hashed assets)
 - `loading="lazy"` defers loading until icon is near viewport
 - `width` and `height` prevent layout shift during load
-- Icons are ~1.3KB each, minimal bandwidth impact
+- Icons are ~1.3KB each, ~40KB total for all icons (minimal bandwidth impact)
+- Committed to repo in `generator/testdata/fixtures/aemet-icons/`
 
 ---
 
@@ -716,13 +721,30 @@ All tests use fixtures from `generator/testdata/fixtures/`:
 
 **Critical:** Fetch real AEMET data early to use during development/testing. Never hit real APIs during automated testing.
 
-- [ ] **Task 0.1:** Update `scripts/fetch-fixtures.sh` to fetch AEMET weather data
+- [ ] **Task 0.1:** Update `scripts/fetch-fixtures.sh` to fetch AEMET weather data and icons
+
+  **Weather data (requires API key):**
   - Add AEMET two-step fetch (metadata → datos URL → forecast JSON)
   - Save both metadata and forecast data to `generator/testdata/fixtures/`
   - Handle missing `AEMET_API_KEY` gracefully (skip with warning)
   - Files created:
     - `generator/testdata/fixtures/aemet-madrid-metadata.json` (two-step metadata response)
     - `generator/testdata/fixtures/aemet-madrid-forecast.json` (actual forecast data)
+
+  **Weather icons (no API key needed):**
+  - Download all AEMET weather icon PNGs from `https://www.aemet.es/imagenes/png/estado_cielo/{code}.png`
+  - Save to `generator/testdata/fixtures/aemet-icons/`
+  - Icon codes to fetch: 11-17, 23-26, 33-36, 43-46, 51-54, 61-64, 71-74 (day/night variants)
+  - Strip 'n' suffix for filenames (11n → 11.png)
+  - Skip codes that don't exist (graceful failure)
+  - Report download count and any missing codes
+
+  **Why check in icons:**
+  - Ensures site can render even if AEMET CDN is down
+  - Enables local testing with real icons
+  - Icons are small (~1.3KB each, ~30 icons = ~40KB total)
+  - Can be served from our own site (more reliable)
+  - Fixtures are versioned with repo
 
 - [ ] **Task 0.2:** Fetch fixture with real API key
   ```bash
@@ -731,10 +753,33 @@ All tests use fixtures from `generator/testdata/fixtures/`:
   ```
 
 - [ ] **Task 0.3:** Commit fixtures to repo
+
+  **Weather data:**
   - Weather data is date-specific but structure is stable
   - Refresh fixtures periodically (monthly or when AEMET API changes)
   - Include fixture date in filename or metadata
   - Add comment in fixture JSON noting it's test data
+  - Files: `generator/testdata/fixtures/aemet-madrid-*.json`
+
+  **Weather icons:**
+  - Icons are static and rarely change (commit once, update if AEMET changes)
+  - Total size: ~40KB for ~30 icons
+  - Directory: `generator/testdata/fixtures/aemet-icons/*.png`
+  - These will be copied to `public/assets/weather-icons/` during build
+  - Git LFS not needed (icons are tiny)
+
+  **Commit message example:**
+  ```
+  test: add AEMET weather fixtures and icons
+
+  Add weather forecast data and icon fixtures from AEMET:
+  - aemet-madrid-metadata.json (two-step API metadata)
+  - aemet-madrid-forecast.json (7-day forecast for Madrid)
+  - aemet-icons/*.png (30 weather condition icons, ~40KB total)
+
+  Icons sourced from https://www.aemet.es/imagenes/png/estado_cielo/
+  Per AEMET open data license (Spain Law 18/2015), attribution required.
+  ```
 
 - [ ] **Task 0.4:** Update `.envrc.local.example` to include AEMET_API_KEY
   ```bash
@@ -821,6 +866,23 @@ All tests use fixtures from `generator/testdata/fixtures/`:
 - [ ] **Task 1.4:** Integrate with existing HTTPCache system
 - [ ] **Task 1.5:** Add configuration (config.toml + flags)
 - [ ] **Task 1.6:** Add API key environment variable support
+- [ ] **Task 1.7:** Add icon copying to build process
+
+  **Implementation:**
+  - Copy icons from `generator/testdata/fixtures/aemet-icons/*.png` to `public/assets/weather-icons/`
+  - Add to main build function (before or during site generation)
+  - Use `io.Copy()` or `os.ReadFile()`/`os.WriteFile()` to copy files
+  - Create target directory if it doesn't exist
+  - Log how many icons were copied
+
+  **Alternative approach:**
+  - Add to `scripts/hash-assets.sh` (runs before build)
+  - Or integrate into existing asset handling
+
+  **Result:**
+  - Icons available at `/assets/weather-icons/{code}.png` on generated site
+  - No dependency on AEMET CDN during runtime
+  - Icons served from our own domain (faster, more reliable)
 
 ### Phase 2: Data Processing (2 hours)
 
