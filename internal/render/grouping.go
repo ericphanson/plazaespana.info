@@ -1,6 +1,7 @@
 package render
 
 import (
+	"html/template"
 	"sort"
 	"time"
 
@@ -10,8 +11,8 @@ import (
 
 // TimeGroup represents a group of events within a time range.
 type TimeGroup struct {
-	Name      string // e.g., "Past Weekend", "Happening Now / Today"
-	Icon      string // emoji icon for the group
+	Name      string        // e.g., "Past Weekend", "Happening Now / Today"
+	Icon      template.HTML // SVG icon markup for the group
 	Events    []TemplateEvent
 	CityCount int // Count of city events (visible by default)
 
@@ -129,11 +130,11 @@ func GroupEventsByTime(events []event.CulturalEvent, now time.Time) (groups []Ti
 	futureLimit := now.AddDate(0, 0, 30)
 
 	// Initialize groups
-	pastWeekend := TimeGroup{Name: "Past Weekend", Icon: "📅", Events: []TemplateEvent{}}
-	happeningNow := TimeGroup{Name: "Happening Now / Today", Icon: "⏰", Events: []TemplateEvent{}}
-	thisWeekend := TimeGroup{Name: "This Weekend", Icon: "🎉", Events: []TemplateEvent{}}
-	thisWeek := TimeGroup{Name: "This Week", Icon: "📆", Events: []TemplateEvent{}}
-	laterThisMonth := TimeGroup{Name: "Later This Month", Icon: "📅", Events: []TemplateEvent{}}
+	pastWeekend := TimeGroup{Name: "Past Weekend", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg>`, Events: []TemplateEvent{}}
+	happeningNow := TimeGroup{Name: "Happening Now / Today", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#ea580c" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg>`, Events: []TemplateEvent{}}
+	thisWeekend := TimeGroup{Name: "This Weekend", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#7c3aed" aria-hidden="true"><path d="M111.49,52.63a15.8,15.8,0,0,0-26,5.77L33,202.78A15.83,15.83,0,0,0,47.76,224a16,16,0,0,0,5.46-1l144.37-52.5a15.8,15.8,0,0,0,5.78-26Zm-8.33,135.21-35-35,13.16-36.21,58.05,58.05Zm-55,20L64,168.1l15.11,15.11ZM192,152.6,103.4,64l27-27.62L192,128Z"/><path d="M144,40a8,8,0,0,1,8-8h16a8,8,0,0,1,0,16H152A8,8,0,0,1,144,40Zm64,72a8,8,0,0,1,8,8v16a8,8,0,0,1-16,0V120A8,8,0,0,1,208,112ZM232,64a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V72h-8a8,8,0,0,1,0-16h8V48a8,8,0,0,1,16,0v8h8A8,8,0,0,1,232,64ZM184,168h-8a8,8,0,0,0,0,16h8a8,8,0,0,0,0-16Z"/></svg>`, Events: []TemplateEvent{}}
+	thisWeek := TimeGroup{Name: "This Week", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88a12,12,0,1,1-12-12A12,12,0,0,1,112,120Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,156,120Zm0,44a12,12,0,1,1-12-12A12,12,0,0,1,156,164Zm-44,0a12,12,0,1,1-12-12A12,12,0,0,1,112,164Z"/></svg>`, Events: []TemplateEvent{}}
+	laterThisMonth := TimeGroup{Name: "Later This Month", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg>`, Events: []TemplateEvent{}}
 	ongoingEvents := []TemplateEvent{}
 
 	// Hard filter: Don't show events older than 60 days to prevent stale data
@@ -344,11 +345,11 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 	oldEventCutoff := now.AddDate(0, 0, -60)
 
 	// Initialize groups
-	pastWeekend := TimeGroup{Name: "Past Weekend", Icon: "📅", Events: []TemplateEvent{}}
-	happeningNow := TimeGroup{Name: "Happening Now / Today", Icon: "⏰", Events: []TemplateEvent{}}
-	thisWeekend := TimeGroup{Name: "This Weekend", Icon: "🎉", Events: []TemplateEvent{}}
-	thisWeek := TimeGroup{Name: "This Week", Icon: "📆", Events: []TemplateEvent{}}
-	laterThisMonth := TimeGroup{Name: "Later This Month", Icon: "📅", Events: []TemplateEvent{}}
+	pastWeekend := TimeGroup{Name: "Past Weekend", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg>`, Events: []TemplateEvent{}}
+	happeningNow := TimeGroup{Name: "Happening Now / Today", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#ea580c" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg>`, Events: []TemplateEvent{}}
+	thisWeekend := TimeGroup{Name: "This Weekend", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#7c3aed" aria-hidden="true"><path d="M111.49,52.63a15.8,15.8,0,0,0-26,5.77L33,202.78A15.83,15.83,0,0,0,47.76,224a16,16,0,0,0,5.46-1l144.37-52.5a15.8,15.8,0,0,0,5.78-26Zm-8.33,135.21-35-35,13.16-36.21,58.05,58.05Zm-55,20L64,168.1l15.11,15.11ZM192,152.6,103.4,64l27-27.62L192,128Z"/><path d="M144,40a8,8,0,0,1,8-8h16a8,8,0,0,1,0,16H152A8,8,0,0,1,144,40Zm64,72a8,8,0,0,1,8,8v16a8,8,0,0,1-16,0V120A8,8,0,0,1,208,112ZM232,64a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V72h-8a8,8,0,0,1,0-16h8V48a8,8,0,0,1,16,0v8h8A8,8,0,0,1,232,64ZM184,168h-8a8,8,0,0,0,0,16h8a8,8,0,0,0,0-16Z"/></svg>`, Events: []TemplateEvent{}}
+	thisWeek := TimeGroup{Name: "This Week", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88a12,12,0,1,1-12-12A12,12,0,0,1,112,120Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,156,120Zm0,44a12,12,0,1,1-12-12A12,12,0,0,1,156,164Zm-44,0a12,12,0,1,1-12-12A12,12,0,0,1,112,164Z"/></svg>`, Events: []TemplateEvent{}}
+	laterThisMonth := TimeGroup{Name: "Later This Month", Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg>`, Events: []TemplateEvent{}}
 	ongoingEvents := []TemplateEvent{}
 	ongoingCityCount = 0
 

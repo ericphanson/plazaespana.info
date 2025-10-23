@@ -107,6 +107,23 @@ main {
 .section-icon {
   font-size: 1.8rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-icon svg {
+  width: 1.4em;
+  height: 1.4em;
+  display: block;
+}
+
+.distance svg {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin-right: 0.2em;
 }
 
 .event-count {

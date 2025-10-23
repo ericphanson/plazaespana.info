@@ -58,7 +58,12 @@
       data-count-plaza-city="{{.OngoingCityPlaza}}"
       data-count-nearby-city="{{.OngoingCityNearby}}">
       <h2 class="section-header">
-        <span class="section-icon">🎪</span>
+        <span class="section-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#ea580c">
+            <path d="M111.49,52.63a15.8,15.8,0,0,0-26,5.77L33,202.78A15.83,15.83,0,0,0,47.76,224a16,16,0,0,0,5.46-1l144.37-52.5a15.8,15.8,0,0,0,5.78-26Zm-8.33,135.21-35-35,13.16-36.21,58.05,58.05Zm-55,20L64,168.1l15.11,15.11ZM192,152.6,103.4,64l27-27.62L192,128Z"/>
+            <path d="M144,40a8,8,0,0,1,8-8h16a8,8,0,0,1,0,16H152A8,8,0,0,1,144,40Zm64,72a8,8,0,0,1,8,8v16a8,8,0,0,1-16,0V120A8,8,0,0,1,208,112ZM232,64a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V72h-8a8,8,0,0,1,0-16h8V48a8,8,0,0,1,16,0v8h8A8,8,0,0,1,232,64ZM184,168h-8a8,8,0,0,0,0,16h8a8,8,0,0,0,0-16Z"/>
+          </svg>
+        </span>
         Eventos en Curso
         <span class="event-count">
           <span class="count-nearby-city">{{.OngoingCityNearby}}</span>
@@ -78,7 +83,7 @@
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
-        {{if .DistanceHuman}}<p class="distance">📍 {{.DistanceHuman}} de Plaza de España</p>{{end}}
+        {{if .DistanceHuman}}<p class="distance"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z"/></svg>{{.DistanceHuman}} de Plaza de España</p>{{end}}
         {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
         {{if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end}}
       </article>
@@ -93,7 +98,7 @@
       data-count-plaza-city="{{.CityPlaza}}"
       data-count-nearby-city="{{.CityNearby}}">
       <h2 class="section-header">
-        <span class="section-icon">{{.Icon}}</span>
+        <span class="section-icon" aria-hidden="true">{{.Icon}}</span>
         {{.Name}}
         <span class="event-count">
           <span class="count-nearby-city">{{.CityNearby}}</span>
@@ -113,7 +118,7 @@
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
         {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
-        {{if .DistanceHuman}}<p class="distance">📍 {{.DistanceHuman}} de Plaza de España</p>{{end}}
+        {{if .DistanceHuman}}<p class="distance"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#666" aria-hidden="true"><path d="M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z"/></svg>{{.DistanceHuman}} de Plaza de España</p>{{end}}
         {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
         {{if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end}}
       </article>
