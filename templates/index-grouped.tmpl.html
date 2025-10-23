@@ -57,7 +57,7 @@
       </h2>
 
       {{range .Events}}
-      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}" data-distance-bucket="{{.DistanceBucket}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
+      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
         {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
         {{else}}
@@ -89,7 +89,7 @@
       </h2>
 
       {{range .OngoingEvents}}
-      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}" data-distance-bucket="{{.DistanceBucket}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
+      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
         {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
         {{else}}

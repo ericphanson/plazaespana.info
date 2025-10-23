@@ -25,18 +25,3 @@ func HaversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
 func WithinRadius(lat1, lon1, lat2, lon2, radiusKm float64) bool {
 	return HaversineDistance(lat1, lon1, lat2, lon2) <= radiusKm
 }
-
-// GetDistanceBucket returns the distance range bucket for CSS filtering.
-// Buckets: "0-250", "251-500", "501-750", "751-1000", "1000+"
-func GetDistanceBucket(distanceMeters int) string {
-	if distanceMeters <= 250 {
-		return "0-250"
-	} else if distanceMeters <= 500 {
-		return "251-500"
-	} else if distanceMeters <= 750 {
-		return "501-750"
-	} else if distanceMeters <= 1000 {
-		return "751-1000"
-	}
-	return "1000+"
-}

@@ -23,9 +23,8 @@ type TemplateEvent struct {
 	Description       string // Truncated description
 	EventType         string // "city" or "cultural"
 	DistanceHuman     string // Human-readable distance from Plaza de España (e.g., "250m", "1.2km")
-	DistanceMeters    int    // Distance in meters for CSS filtering (0-1000)
-	DistanceBucket    string // Distance bucket for CSS filtering ("0-250", "251-500", "501-750", "751-1000", "1000+")
-	AtPlaza           bool   // True if venue name indicates Plaza de España (for distance=0 filter)
+	DistanceMeters    int    // Distance in meters (for display/debugging)
+	AtPlaza           bool   // True if event is at Plaza de España (for "En Plaza" filter)
 }
 
 // JSONEvent represents an event in the machine-readable JSON output.

@@ -370,13 +370,11 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 		// Calculate distance from reference point (only for valid coordinates)
 		var distanceStr string
 		var distanceMeters int
-		var distanceBucket string
 		var atPlaza bool
 		if evt.Latitude != 0 || evt.Longitude != 0 {
 			distanceKm := filter.HaversineDistance(refLat, refLon, evt.Latitude, evt.Longitude)
 			distanceStr = FormatDistance(distanceKm)
 			distanceMeters = int(distanceKm * 1000) // Convert to meters
-			distanceBucket = filter.GetDistanceBucket(distanceMeters)
 
 			// Check if event is at Plaza de España (distance ~0m OR text mentions it)
 			if distanceMeters <= 50 || filter.MatchesPlazaEspana(evt.Title, evt.VenueName, evt.Address, evt.Description) {
@@ -387,7 +385,6 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 			atPlaza = filter.MatchesPlazaEspana(evt.Title, evt.VenueName, evt.Address, evt.Description)
 			if atPlaza {
 				distanceMeters = 0 // Treat as 0 meters if venue name matches
-				distanceBucket = "0-250"
 			}
 		}
 
@@ -403,7 +400,6 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 			EventType:         ewt.eventType,
 			DistanceHuman:     distanceStr,
 			DistanceMeters:    distanceMeters,
-			DistanceBucket:    distanceBucket,
 			AtPlaza:           atPlaza,
 		}
 
