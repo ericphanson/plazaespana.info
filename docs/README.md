@@ -29,6 +29,11 @@ These directories contain historical records that are not meant to be maintained
   - Retrospectives and post-mortems
   - Historical design documents
 
+- **artifacts/** - Large data files and scraped content from investigations
+  - Madrid open data catalog snapshots
+  - Scraped API documentation
+  - Point-in-time external data sources
+
 ## Naming Convention
 
 All archived documentation follows a consistent naming pattern:
