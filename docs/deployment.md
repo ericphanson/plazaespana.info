@@ -86,7 +86,7 @@ Add these secrets in repository Settings → Secrets and variables → Actions:
 To securely verify the NFSN host key, run this command **from a trusted machine** (not in CI):
 
 ```bash
-ssh-keyscan -H ssh.phx.nearlyfreespeech.net
+ssh-keyscan -H "$NFSN_HOST"
 ```
 
 This will output something like:
