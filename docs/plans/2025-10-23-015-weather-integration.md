@@ -1,4 +1,12 @@
-# Weather Integration Plan (AEMET)
+# Weather Integration (AEMET) Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task when executing.
+
+**Goal:** Add AEMET weather forecasts (temperature, rain probability, sky conditions) to event cards using official Spanish meteorological data.
+
+**Architecture:** New `internal/weather` package fetches daily forecasts from AEMET OpenData API (two-step process), matches forecast days to event dates, and enriches Event structs with weather data. Template renders weather info (AEMET official icons, temp, precip %) on cards. Graceful degradation if API fails.
+
+**Tech Stack:** AEMET OpenData API, Go stdlib (net/http, encoding/json, time), existing fetch.HTTPCache, AEMET official PNG icons
 
 **Date:** 2025-10-23
 **Priority:** MEDIUM
@@ -24,9 +32,11 @@ Integrate weather forecasts from **AEMET** (Agencia Estatal de Meteorología - S
 **Data source:** AEMET OpenData API
 - **Endpoint:** `https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/28079`
 - **Municipality:** Madrid (ID: 28079)
-- **Authentication:** Free API key (valid 3 months, renewable)
+- **Authentication:** Free API key (indefinite validity since 2017 policy change)
 - **Forecast range:** Up to 7 days daily forecast
 - **Rate limits:** Respectful usage (hourly updates acceptable)
+- **Weather icons:** Publicly accessible PNGs at `https://www.aemet.es/imagenes/png/estado_cielo/{code}.png`
+- **License:** Open data per Law 18/2015 (Spain), requires attribution to AEMET
 
 **Display approach:**
 - Add weather icons/indicators to event cards
@@ -44,8 +54,10 @@ Integrate weather forecasts from **AEMET** (Agencia Estatal de Meteorología - S
 1. Visit https://opendata.aemet.es/centrodedescargas/altaUsuario
 2. Register with email address
 3. Receive API key by email
-4. Key validity: 3 months (renewable)
+4. **Key validity: Indefinite** (since September 2017, AEMET no longer uses time-limited keys)
 5. Store in config or environment variable
+
+**Note:** Prior to September 13, 2017, AEMET used time-limited API keys, but they changed their policy to promote mass reuse of meteorological data. Modern API keys do not expire, though you should still handle potential key revocation or account issues gracefully.
 
 ### API Request Flow (Two-Step Process)
 
@@ -159,6 +171,42 @@ For each event date:
 
 ---
 
+## Licensing and Attribution
+
+### AEMET Open Data License
+
+AEMET data and weather icons are available under Spain's **Law 18/2015** on reuse of public sector information.
+
+**Permitted uses:**
+- ✅ Commercial and non-commercial use
+- ✅ Redistribution and modification
+- ✅ Integration into value-added services
+
+**Attribution requirements:**
+
+1. **Mandatory citation:** Must cite AEMET as author of the data
+   - Use: `© AEMET` or
+   - Use: "Información elaborada por la Agencia Estatal de Meteorología" or
+   - Use: "Fuente: AEMET" (for value-added services)
+
+2. **Logo retention:** If AEMET logo appears in original data, it must be retained (not applicable to weather icons)
+
+3. **No endorsement:** Cannot declare, insinuate, or suggest that AEMET participates in, sponsors, or supports your reuse
+
+**Weather icons specifically:**
+- Icons at `https://www.aemet.es/imagenes/png/estado_cielo/*.png` are covered under the same open data license
+- File size: ~1.3KB per PNG
+- Cacheable: max-age=3600 (1 hour)
+- No authentication required for icon access
+
+**Implementation:**
+- Add AEMET attribution to site footer (already includes data sources)
+- Update ATTRIBUTION.md with AEMET copyright and license details
+- Include AEMET logo/link in build report weather section
+- Ensure weather icons load from AEMET's CDN (no local copies initially)
+
+---
+
 ## Implementation Architecture
 
 ### New Package: `internal/weather`
@@ -224,9 +272,11 @@ type Weather struct {
     TempMin           int     `json:"temp_min"`           // Min temp (°C)
     PrecipProb        int     `json:"precip_prob"`        // Precipitation probability (%)
     PrecipAmount      float64 `json:"precip_amount"`      // Total precipitation (mm)
-    SkyCode           string  `json:"sky_code"`           // AEMET sky state code
-    SkyDescription    string  `json:"sky_description"`    // Human-readable sky state
-    SkyIcon           string  `json:"sky_icon"`           // CSS class for icon
+    SkyCode           string  `json:"sky_code"`           // AEMET sky state code (e.g., "12", "15n")
+    SkyDescription    string  `json:"sky_description"`    // Human-readable sky state (Spanish)
+    SkyIconURL        string  `json:"sky_icon_url"`       // AEMET official icon URL
+    WeatherCategory   string  `json:"weather_category"`   // Simplified category for CSS (clear/cloudy/rain/etc)
+    IsNight           bool    `json:"is_night"`           // True if code ends with 'n'
 }
 ```
 
@@ -285,13 +335,15 @@ func buildWeatherFromForecast(day *DayForecast, evt event.Event) *event.Weather 
     precipProb := extractPrecipProbForPeriod(day.ProbPrecipitacion, period)
 
     return &event.Weather{
-        Date:           day.Fecha,
-        TempMax:        day.Temperatura.Maxima,
-        TempMin:        day.Temperatura.Minima,
-        PrecipProb:     precipProb,
-        SkyCode:        skyState.Value,
-        SkyDescription: skyState.Descripcion,
-        SkyIcon:        mapSkyCodeToIcon(skyState.Value),
+        Date:            day.Fecha,
+        TempMax:         day.Temperatura.Maxima,
+        TempMin:         day.Temperatura.Minima,
+        PrecipProb:      precipProb,
+        SkyCode:         skyState.Value,
+        SkyDescription:  skyState.Descripcion,
+        SkyIconURL:      GetAEMETIconURL(skyState.Value),
+        WeatherCategory: GetWeatherCategory(skyState.Value),
+        IsNight:         IsNightCondition(skyState.Value),
     }
 }
 ```
@@ -299,29 +351,55 @@ func buildWeatherFromForecast(day *DayForecast, evt event.Event) *event.Weather 
 ### Icon Mapping
 
 **internal/weather/icons.go:**
+
+AEMET provides official weather icons as PNGs at `https://www.aemet.es/imagenes/png/estado_cielo/{code}.png`. These icons are publicly accessible and cacheable (Cache-Control: max-age=3600).
+
 ```go
-func mapSkyCodeToIcon(code string) string {
-    // Strip 'n' suffix for night
+// GetAEMETIconURL returns the official AEMET icon URL for a sky state code
+func GetAEMETIconURL(code string) string {
+    // AEMET icons use numeric codes: 11, 12, 13, 14, etc.
+    // Some codes have 'n' suffix for night (e.g., "11n")
+    // The icon files use just the base code (11.png works for both 11 and 11n)
+    baseCode := strings.TrimSuffix(code, "n")
+    return fmt.Sprintf("https://www.aemet.es/imagenes/png/estado_cielo/%s.png", baseCode)
+}
+
+// IsNightCondition checks if the code represents a night condition
+func IsNightCondition(code string) bool {
+    return strings.HasSuffix(code, "n")
+}
+
+// GetWeatherCategory returns a simplified category for CSS styling
+func GetWeatherCategory(code string) string {
     baseCode := strings.TrimSuffix(code, "n")
 
     switch {
     case baseCode >= "11" && baseCode <= "13":
-        return "sun"      // Clear/Despejado
+        return "clear"      // Clear/Despejado
     case baseCode == "14" || baseCode == "15":
-        return "partial-cloud"  // Few clouds/Partly cloudy
+        return "partial"    // Few clouds/Partly cloudy
     case baseCode == "16" || baseCode == "17":
-        return "cloud"    // Very cloudy/Overcast
+        return "cloudy"     // Very cloudy/Overcast
     case baseCode >= "23" && baseCode <= "27":
-        return "rain"     // Rain
+        return "rain"       // Rain
     case baseCode >= "43" && baseCode <= "46":
-        return "snow"     // Snow
+        return "snow"       // Snow
     case baseCode >= "51" && baseCode <= "53":
-        return "storm"    // Storm
+        return "storm"      // Storm
     default:
         return "unknown"
     }
 }
 ```
+
+**Benefits of using AEMET's official icons:**
+- ✅ Authoritative source (official Spanish meteorology agency)
+- ✅ Publicly accessible (no authentication needed)
+- ✅ Cacheable (1-hour cache control headers)
+- ✅ Comprehensive coverage (all sky state codes have corresponding icons)
+- ✅ Consistent with AEMET's own weather displays
+- ✅ No licensing concerns (public government data)
+- ✅ Small file size (~1.3KB per PNG)
 
 ---
 
@@ -343,11 +421,16 @@ func mapSkyCodeToIcon(code string) string {
 
   <!-- NEW: Weather indicator -->
   {{if .Weather}}
-  <div class="weather-info" title="Pronóstico: {{.Weather.SkyDescription}}">
-    <span class="weather-icon weather-{{.Weather.SkyIcon}}" aria-hidden="true"></span>
+  <div class="weather-info weather-{{.Weather.WeatherCategory}}" title="Pronóstico: {{.Weather.SkyDescription}}">
+    <img src="{{.Weather.SkyIconURL}}"
+         alt="{{.Weather.SkyDescription}}"
+         class="weather-icon"
+         width="20"
+         height="20"
+         loading="lazy">
     <span class="weather-temp">{{.Weather.TempMax}}°</span>
     {{if gt .Weather.PrecipProb 30}}
-    <span class="weather-precip">{{.Weather.PrecipProb}}%</span>
+    <span class="weather-precip">💧{{.Weather.PrecipProb}}%</span>
     {{end}}
   </div>
   {{end}}
@@ -376,33 +459,12 @@ func mapSkyCodeToIcon(code string) string {
   color: #666;
 }
 
-/* Weather icons (CSS-only, using unicode symbols or emoji) */
+/* Weather icon from AEMET */
 .weather-icon {
-  font-size: 1.2rem;
-}
-
-.weather-sun::before {
-  content: "☀️";  /* or use inline SVG */
-}
-
-.weather-partial-cloud::before {
-  content: "⛅";
-}
-
-.weather-cloud::before {
-  content: "☁️";
-}
-
-.weather-rain::before {
-  content: "🌧️";
-}
-
-.weather-snow::before {
-  content: "❄️";
-}
-
-.weather-storm::before {
-  content: "⛈️";
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  /* AEMET icons are transparent PNGs, work on light/dark backgrounds */
 }
 
 /* Temperature display */
@@ -417,13 +479,30 @@ func mapSkyCodeToIcon(code string) string {
   font-size: 0.85rem;
 }
 
-/* Alternative: Use inline SVG icons instead of emoji */
-.weather-icon svg {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
+/* Optional: Category-based styling for weather container */
+.weather-info.weather-rain {
+  /* Could add subtle rain-colored border or background */
+}
+
+.weather-info.weather-clear {
+  /* Could add subtle sunny styling */
+}
+
+/* Dark mode support (if site adds dark mode later) */
+@media (prefers-color-scheme: dark) {
+  .weather-icon {
+    /* AEMET icons may need slight opacity adjustment for dark backgrounds */
+    opacity: 0.9;
+  }
 }
 ```
+
+**Notes on AEMET icon integration:**
+- Icons load from `https://www.aemet.es/imagenes/png/estado_cielo/{code}.png`
+- Browser caches automatically per AEMET's Cache-Control headers (1 hour)
+- `loading="lazy"` defers loading until icon is near viewport
+- `width` and `height` prevent layout shift during load
+- Icons are ~1.3KB each, minimal bandwidth impact
 
 ---
 
@@ -618,9 +697,9 @@ func (p *Pipeline) enrichWithWeather(events []event.Event) []event.Event {
 
 ### Phase 4: Presentation (1.5 hours)
 
-- [ ] **Task 4.1:** Update HTML template with weather display
-- [ ] **Task 4.2:** Add CSS styles for weather icons
-- [ ] **Task 4.3:** Implement inline SVG icons (alternative to emoji)
+- [ ] **Task 4.1:** Update HTML template with weather display (img tags for AEMET icons)
+- [ ] **Task 4.2:** Add CSS styles for weather info container
+- [ ] **Task 4.3:** Test AEMET icon loading and browser caching
 - [ ] **Task 4.4:** Test responsive layout with weather info
 
 ### Phase 5: Reporting (1 hour)
@@ -702,18 +781,28 @@ func (p *Pipeline) enrichWithWeather(events []event.Event) []event.Event {
 
 **Decision:** Use daily forecast (simpler, sufficient for most events)
 
-### Alternative 3: Embed Weather Icons as SVG
+### Alternative 3: Use Custom Icons Instead of AEMET PNGs
 
 **Pros:**
-- Better styling control
-- No emoji font dependency
-- Accessible
+- Full control over icon design
+- Could match site branding better
+- Could use SVG for infinite scalability
+- No external dependency on AEMET CDN
 
 **Cons:**
-- Larger HTML payload
-- More CSS to maintain
+- Licensing complexity (need to find/create licensed icons)
+- Not authoritative (AEMET icons are "official" Spanish weather icons)
+- Maintenance burden (need to update if AEMET adds new codes)
+- Larger payload if embedding SVGs in HTML
+- Loss of consistency with AEMET's own weather displays
 
-**Decision:** Start with emoji, add SVG option as enhancement if needed
+**Decision:** Use AEMET's official PNG icons
+- Authoritative and consistent with source
+- Publicly accessible with clear licensing
+- Small file size (~1.3KB each)
+- Browser-cacheable (1-hour max-age)
+- No licensing concerns
+- Could revisit later if AEMET CDN proves unreliable
 
 ---
 
@@ -888,16 +977,25 @@ If weather integration causes issues:
 
 ---
 
-## API Key Renewal Reminder
+## API Key Management
 
-⚠️ **IMPORTANT:** AEMET API keys expire after 3 months.
+✅ **GOOD NEWS:** AEMET API keys have **indefinite validity** (since September 2017 policy change).
 
-**Renewal process:**
-1. Visit https://opendata.aemet.es/centrodedescargas/inicio
-2. Log in with registered email
-3. Request new API key
-4. Update `AEMET_API_KEY` environment variable on server
-5. Test with `just dev` locally first
-6. Deploy to production
+**No automatic expiration**, but you should still handle potential issues:
 
-**Set calendar reminder:** 2.5 months from first deployment
+**Possible key issues:**
+- Account closure (if email bounces or user deactivates)
+- Policy changes (unlikely, but monitor AEMET announcements)
+- Rate limit violations (if we exceed limits, key could be revoked)
+
+**If key stops working:**
+1. Check AEMET OpenData announcements for policy changes
+2. Try registering new API key at https://opendata.aemet.es/centrodedescargas/altaUsuario
+3. Update `AEMET_API_KEY` environment variable on server
+4. Test with `just dev` locally first
+5. Deploy to production
+
+**Monitoring:**
+- Build report will show AEMET API errors
+- Set up alert if weather fetch fails >24 hours
+- No routine renewal needed (unlike old 3-month policy)
