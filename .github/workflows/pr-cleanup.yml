@@ -31,7 +31,7 @@ jobs:
           NFSN_HOST: ${{ secrets.NFSN_HOST }}
           NFSN_USER: ${{ secrets.NFSN_USER }}
         run: |
-          just preview-cleanup PREVIEW=PR${{ github.event.pull_request.number }}
+          just preview-cleanup PR${{ github.event.pull_request.number }}
 
       - name: Find existing comment
         uses: peter-evans/find-comment@v3

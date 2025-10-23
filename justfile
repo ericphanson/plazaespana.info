@@ -227,8 +227,8 @@ fetch-stats-archives:
     @./scripts/fetch-stats-archives.sh
 
 # Build site for preview deployment with custom base path
-# Usage: just preview-build PREVIEW=PR5
-# Usage: just preview-build PREVIEW=abc
+# Usage: just preview-build PR5
+# Usage: just preview-build abc
 preview-build PREVIEW:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -253,13 +253,13 @@ preview-build PREVIEW:
     echo ""
 
 # Deploy preview to NFSN (requires NFSN_HOST and NFSN_USER env vars, requires SSH key)
-# Usage: just preview-deploy PREVIEW=PR5
-# Usage: just preview-deploy PREVIEW=abc
+# Usage: just preview-deploy PR5
+# Usage: just preview-deploy abc
 preview-deploy PREVIEW: (preview-build PREVIEW)
     @./scripts/deploy-preview.sh {{PREVIEW}}
 
 # Clean up preview from NFSN (requires NFSN_HOST and NFSN_USER env vars, requires SSH key)
-# Usage: just preview-cleanup PREVIEW=PR5
-# Usage: just preview-cleanup PREVIEW=abc
+# Usage: just preview-cleanup PR5
+# Usage: just preview-cleanup abc
 preview-cleanup PREVIEW:
     @./scripts/cleanup-preview.sh {{PREVIEW}}
