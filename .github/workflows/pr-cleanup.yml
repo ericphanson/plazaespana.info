@@ -11,6 +11,8 @@ permissions:
 jobs:
   cleanup-preview:
     runs-on: ubuntu-latest
+    # Skip cleanup for Dependabot PRs (they never get previews)
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
 
     steps:
       - name: Checkout code

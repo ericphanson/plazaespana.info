@@ -33,9 +33,16 @@ echo "   User: $NFSN_USER"
 echo "   Path: $REMOTE_DIR"
 echo ""
 
-# Remove preview directory
-echo "🗑️  Removing preview directory..."
-ssh "$NFSN_USER@$NFSN_HOST" "rm -rf $REMOTE_DIR"
+# Check if preview directory exists
+echo "🔍 Checking if preview exists..."
+if ssh "$NFSN_USER@$NFSN_HOST" "test -d $REMOTE_DIR"; then
+  # Remove preview directory
+  echo "🗑️  Removing preview directory..."
+  ssh "$NFSN_USER@$NFSN_HOST" "rm -rf $REMOTE_DIR"
+else
+  echo "ℹ️  Preview directory does not exist (may not have been created)"
+  echo "   This is expected for Dependabot PRs or failed deployments"
+fi
 
 # Clean up empty parent directories (best effort, ignore failures)
 echo "🧹 Cleaning up empty parent directories..."
