@@ -4,23 +4,33 @@ Synchronized copy of AWStats aggregate statistics database.
 
 ## Privacy
 
-**Important:** These files are configured to contain **aggregate statistics only**:
+**Important:** These files contain **aggregate statistics only**. Individual visitor data is automatically stripped before committing to git.
+
+**What's included:**
 - ✅ Total page views, unique visitors (counts)
 - ✅ Referrer statistics (which sites link to us, aggregated)
 - ✅ Browser, OS, country statistics (aggregated percentages)
-- ✅ Monthly trends and historical data
-- ❌ **No individual IP addresses** (configured with `MaxNbOfHostsShown=0`)
-- ❌ **No individual requests**
-- ❌ **No personal information**
+- ✅ Monthly trends and historical data (by day, by hour)
+- ✅ Domain statistics (which domains visit us, aggregated)
 
-This is enforced via AWStats configuration (`ops/awstats.conf`):
-```perl
-MaxNbOfHostsShown=0      # Don't store individual IPs
-MaxNbOfLoginShown=0      # Don't track individual users
-MaxNbOfRobotShown=0      # Don't track individual bots
-DNSLookup=0              # Don't do DNS lookups
-ShowAuthenticatedUsers=0 # Don't track logged-in users
-```
+**What's removed:**
+- ❌ **Individual IP addresses** (BEGIN_VISITOR sections stripped)
+- ❌ **Individual robot IPs** (BEGIN_ROBOT sections stripped)
+- ❌ **Individual requests** (per-IP tracking removed)
+- ❌ **Session details** (per-visitor page views stripped)
+
+**How it works:**
+
+1. AWStats processes logs on the server and creates full database files
+2. The sync script (`scripts/fetch-stats-archives.sh`) downloads the files
+3. Before committing, it strips out these sections containing personal data:
+   - `BEGIN_VISITOR / END_VISITOR` - Individual visitor IPs and sessions
+   - `BEGIN_ROBOT / END_ROBOT` - Individual bot/crawler IPs
+   - `BEGIN_SIDER_*` - Individual search engine bot IPs
+   - `BEGIN_WORMS / BEGIN_EMAILSENDER / BEGIN_EMAILRECEIVER` - Individual spam/attack IPs
+4. Only aggregate statistical sections are committed to git
+
+This ensures **no personal information** is ever stored in the repository while preserving all meaningful traffic statistics.
 
 ## File Format
 

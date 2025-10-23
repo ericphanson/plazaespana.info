@@ -76,6 +76,32 @@ scp -q "$NFSN_USER@$NFSN_HOST:$REMOTE_DIR/*.txt" "$LOCAL_DIR/" 2>/dev/null || {
 FILE_COUNT=$(ls -1 "$LOCAL_DIR"/*.txt 2>/dev/null | wc -l)
 echo "✅ Downloaded $FILE_COUNT database file(s)"
 
+# Strip out sections containing individual IPs/personal data
+# Keep aggregate statistics sections only
+echo "🔒 Removing individual visitor data (keeping aggregate stats only)..."
+for file in "$LOCAL_DIR"/*.txt; do
+    if [ -f "$file" ]; then
+        # Create temp file with only aggregate sections
+        # Remove: BEGIN_VISITOR, BEGIN_SIDER_*, BEGIN_ROBOT, BEGIN_WORMS, BEGIN_EMAILSENDER, BEGIN_EMAILRECEIVER
+        # Keep: BEGIN_GENERAL, BEGIN_TIME, BEGIN_DAY, BEGIN_DOMAIN, BEGIN_BROWSER, BEGIN_OS, BEGIN_REFERER, etc.
+        awk '
+            /^BEGIN_VISITOR|^BEGIN_SIDER_|^BEGIN_ROBOT|^BEGIN_WORMS|^BEGIN_EMAILSENDER|^BEGIN_EMAILRECEIVER/ {
+                skip=1
+                next
+            }
+            /^END_VISITOR|^END_SIDER_|^END_ROBOT|^END_WORMS|^END_EMAILSENDER|^END_EMAILRECEIVER/ {
+                skip=0
+                next
+            }
+            !skip {
+                print
+            }
+        ' "$file" > "$file.tmp"
+        mv "$file.tmp" "$file"
+    fi
+done
+echo "✅ Privacy filtering complete - individual IPs removed"
+
 # Check if we have any changes
 if [[ -z $(git status --porcelain "$LOCAL_DIR") ]]; then
     echo "✅ No changes detected - database is already in sync"
