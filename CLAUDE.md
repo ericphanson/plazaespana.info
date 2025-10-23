@@ -382,6 +382,28 @@ See `docs/README.md` for structure. Key files:
 - `docs/plans/` - Dated implementation plans (archived)
 - `docs/logs/` - Dated implementation logs (archived)
 
+### README.md Policy
+
+**IMPORTANT: The README.md is intentionally minimal and uses the author's voice.**
+
+When updating README.md:
+- ✅ **DO**: Make only the smallest tweaks required for accuracy (e.g., updating numbers, adding new data sources to lists)
+- ❌ **DO NOT**: Reword or expand sections
+- ❌ **DO NOT**: Add new sections (setup guides, detailed instructions, etc.)
+- ❌ **DO NOT**: Change the author's casual tone or phrasing
+- 🎯 **Preserve**: Original wording like "The site just collects this data and tries to render them cleanly"
+
+**Why:** The README reflects the author's personality and minimalist philosophy. Detailed setup instructions belong in `config.toml` comments and `docs/deployment.md`.
+
+**Example changes that ARE allowed:**
+- "This is powered by two data feeds" → "This is powered by three data feeds" (factual accuracy)
+- Adding "AEMET" to an existing list of data providers
+
+**Example changes that are NOT allowed:**
+- Rewriting intro paragraphs to be more "professional"
+- Adding detailed setup instructions
+- Expanding "See config.toml" into a multi-paragraph configuration guide
+
 ## Development Workflow (for Claude Code)
 
 When executing implementation plans:
