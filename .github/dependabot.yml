@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Group all GitHub Actions updates into a single PR
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    # Note: Dependabot maintains the format you use (tag vs commit hash)
+    # To ensure all actions use commit hashes:
+    # 1. Manually convert tag references (e.g., @v4) to commit hashes (e.g., @abc123...)
+    # 2. Add a comment with the version (e.g., @abc123... # v4)
+    # 3. Dependabot will then keep the hashes updated to match new versions
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    open-pull-requests-limit: 10

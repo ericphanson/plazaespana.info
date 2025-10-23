@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>{{if eq .Lang "es"}}Eventos en Plaza de España{{else}}Plaza de España events{{end}}</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="/assets/site.{{.CSSHash}}.css">
+  <link rel="stylesheet" href="{{.BasePath}}/assets/site.{{.CSSHash}}.css">
 </head>
 <body>
   <input type="checkbox" id="toggle-cultural" {{if .ShowCulturalDefault}}checked{{end}}>
@@ -91,7 +91,7 @@
 
   <footer>
     <p>Datos: <a href="https://datos.madrid.es">Ayuntamiento de Madrid – datos.madrid.es</a> y <a href="https://www.esmadrid.com">ESMadrid</a></p>
-    <p><a href="build-report.html">Ver informe de compilación</a></p>
+    <p><a href="{{.BasePath}}/build-report.html">Ver informe de compilación</a></p>
   </footer>
 </body>
 </html>

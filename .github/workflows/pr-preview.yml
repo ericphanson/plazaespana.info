@@ -1,0 +1,68 @@
+name: PR Preview Deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+
+      - name: Setup Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.NFSN_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.NFSN_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Build and deploy preview
+        env:
+          NFSN_HOST: ${{ secrets.NFSN_HOST }}
+          NFSN_USER: ${{ secrets.NFSN_USER }}
+        run: |
+          just preview-deploy PR${{ github.event.pull_request.number }}
+
+      - name: Find existing comment
+        uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- preview-deployment -->'
+
+      - name: Create or update PR comment
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- preview-deployment -->
+            ## 🚀 Preview Deployment
+
+            Your preview has been deployed!
+
+            **Preview URL:** https://plazaespana.info/previews/PR${{ github.event.pull_request.number }}/
+
+            This preview will be automatically updated when you push new commits to this PR.
+            It will be removed when the PR is closed or merged.
+
+            ---
+            *Last updated: ${{ github.event.pull_request.updated_at }}*
