@@ -31,7 +31,7 @@ else
 fi
 
 # Copy robots.txt to public root
-ROBOTS_FILE="robots.txt"
+ROBOTS_FILE="ops/robots.txt"
 if [ -f "$ROBOTS_FILE" ]; then
   cp "$ROBOTS_FILE" "public/robots.txt"
   echo "Copied: public/robots.txt"
