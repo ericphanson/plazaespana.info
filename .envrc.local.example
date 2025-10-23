@@ -7,5 +7,11 @@
 export NFSN_HOST=ssh.phx.nearlyfreespeech.net
 export NFSN_USER=your_username
 
+# AEMET OpenData API key (for weather forecasts)
+# Register at: https://opendata.aemet.es/centrodedescargas/altaUsuario
+# Required for: weather integration, fixture fetching
+# Note: API keys have indefinite validity (no expiration)
+export AEMET_API_KEY=your_aemet_api_key_here
+
 # Optional: Add other local development settings here
 # export MY_DEBUG_FLAG=true

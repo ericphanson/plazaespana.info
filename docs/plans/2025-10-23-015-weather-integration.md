@@ -628,31 +628,53 @@ func (p *Pipeline) enrichWithWeather(events []event.Event) []event.Event {
 
 ## Testing Strategy
 
-### Unit Tests
+**CRITICAL PRINCIPLE:** Never hit real APIs during automated testing. Always use fixtures.
+
+### Test Fixtures
+
+All tests use fixtures from `generator/testdata/fixtures/`:
+- `aemet-madrid-metadata.json` - AEMET two-step metadata response
+- `aemet-madrid-forecast.json` - AEMET forecast data (real structure, frozen in time)
+
+**Fixture philosophy:**
+- Committed to repo (versioned, reproducible)
+- Refreshed manually when needed (not during CI)
+- Represents real API responses (structure validation)
+- Enables offline development
+
+### Unit Tests (Use Fixtures)
 
 1. **weather/client_test.go:**
-   - Mock AEMET two-step response
-   - Test API key header injection
-   - Test error handling (404, 500, timeout)
+   - Use `httptest.NewServer()` serving fixture data
+   - Mock two-step AEMET flow with fixture files
+   - Test API key header injection (verify in mock server)
+   - Test error handling (404, 500, timeout) with mock responses
    - Test cache hit behavior
+   - **NO REAL API CALLS** - mock server only
 
 2. **weather/matcher_test.go:**
+   - Load `aemet-madrid-forecast.json` fixture
    - Test date matching (exact match, no match, multi-day events)
    - Test period extraction (morning/afternoon/evening)
-   - Test sky code mapping
+   - Test sky code mapping (use codes from fixture)
    - Test precipitation probability extraction
+   - **NO API DEPENDENCY** - pure data transformation tests
 
 3. **weather/icons_test.go:**
-   - Test sky code to icon mapping
+   - Test sky code to icon URL mapping
    - Test night code handling ('n' suffix)
    - Test unknown code fallback
+   - Test GetWeatherCategory() function
+   - **NO API CALLS** - pure function tests
 
-### Integration Tests
+### Integration Tests (Use Fixtures)
 
 1. **pipeline_test.go modifications:**
-   - Test pipeline with weather enabled
+   - Mock weather client returning fixture data
+   - Test pipeline with weather enabled (fixture-based)
    - Test pipeline with weather disabled
-   - Test pipeline with weather fetch failure
+   - Test pipeline with weather fetch failure (mock error)
+   - **NO REAL API CALLS** - dependency injection with mocks
 
 ### Manual Testing
 
@@ -670,6 +692,72 @@ func (p *Pipeline) enrichWithWeather(events []event.Event) []event.Event {
 ---
 
 ## Implementation Tasks
+
+### Phase 0: Test Fixtures (30 min) - **DO THIS FIRST**
+
+**Critical:** Fetch real AEMET data early to use during development/testing. Never hit real APIs during automated testing.
+
+- [ ] **Task 0.1:** Update `scripts/fetch-fixtures.sh` to fetch AEMET weather data
+  - Add AEMET two-step fetch (metadata → datos URL → forecast JSON)
+  - Save both metadata and forecast data to `generator/testdata/fixtures/`
+  - Handle missing `AEMET_API_KEY` gracefully (skip with warning)
+  - Files created:
+    - `generator/testdata/fixtures/aemet-madrid-metadata.json` (two-step metadata response)
+    - `generator/testdata/fixtures/aemet-madrid-forecast.json` (actual forecast data)
+
+- [ ] **Task 0.2:** Fetch fixture with real API key
+  ```bash
+  export AEMET_API_KEY="your-key-here"
+  ./scripts/fetch-fixtures.sh
+  ```
+
+- [ ] **Task 0.3:** Commit fixtures to repo
+  - Weather data is date-specific but structure is stable
+  - Refresh fixtures periodically (monthly or when AEMET API changes)
+  - Include fixture date in filename or metadata
+  - Add comment in fixture JSON noting it's test data
+
+- [ ] **Task 0.4:** Update `.envrc.local.example` to include AEMET_API_KEY
+  ```bash
+  # AEMET OpenData API key (for weather forecasts)
+  # Register at: https://opendata.aemet.es/centrodedescargas/altaUsuario
+  # Required for: weather integration, fixture fetching
+  export AEMET_API_KEY=your_aemet_api_key_here
+  ```
+
+- [ ] **Task 0.5:** Add justfile command for fetching fixtures
+  ```just
+  # Fetch test fixtures from upstream APIs
+  fetch-fixtures:
+      @echo "📥 Fetching test fixtures..."
+      @./scripts/fetch-fixtures.sh
+      @echo "✅ Fixtures updated in generator/testdata/fixtures/"
+  ```
+
+- [ ] **Task 0.6:** Update deployment documentation (docs/deployment.md)
+  - Add section for AEMET API key setup on NFSN
+  - Add env var to cron command example: `AEMET_API_KEY=...`
+  - Document how to update key if changed
+
+- [ ] **Task 0.7:** Update CI configuration (.github/workflows/ci.yml)
+  - **Do NOT add API key to CI** (fixtures only)
+  - Add comment explaining why: "Weather tests use fixtures, no API key needed"
+  - Consider adding workflow to refresh fixtures monthly (manual trigger)
+
+- [ ] **Task 0.8:** Document fixture usage in CLAUDE.md
+  - How to refresh fixtures: `just fetch-fixtures`
+  - When to refresh (AEMET API changes, or monthly)
+  - How tests use fixtures (no real API calls)
+  - Note that fixtures are committed to repo
+
+**Why do this first:**
+- Tests need real AEMET response structure
+- Avoids hitting API during development iterations
+- Provides concrete examples of AEMET data format
+- Enables TDD without API dependency
+- Sets up all configuration early (API keys, env vars, docs)
+
+---
 
 ### Phase 1: Infrastructure (2-3 hours)
 
@@ -731,7 +819,7 @@ func (p *Pipeline) enrichWithWeather(events []event.Event) []event.Event {
 - [ ] **Task 8.3:** Test on production
 - [ ] **Task 8.4:** Monitor for errors in first 24 hours
 
-**Total estimated time:** 11-12 hours
+**Total estimated time:** 12-13 hours (including 1 hour for Phase 0 setup)
 
 ---
 
