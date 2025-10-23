@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Rules
+
+- our `justfile` is the primary way we run things. CI scripts should call `just`. We should be able to run various tasks locally or in CI.
+- this is a static site regenerated ~hourly. We only use CSS/HTML, no JS.
+- we input data feeds, process them, and generate CSS/HTML/JSON. Since data processing is a core function, we generate an audit log so we can understand what has been filtered etc.
+- we are careful about our upstream requests, especially during development. We use only fixtures during automated testing, and cache and wait during development runs.
+- we keep anonymized aggregate stats in repo with awsstats
+- we use github as a development platform, not deployment platform. Site regeneration happens on NFSN, not github.
+
 ## Project Overview
 
 Static site generator for Madrid events near Plaza de España, deployed to NearlyFreeSpeech.NET (FreeBSD hosting). Built with Go, runs as a cron job to fetch event data from Madrid's open data portal, filter by location, and regenerate static HTML/JSON output.
