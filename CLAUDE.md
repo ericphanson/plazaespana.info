@@ -107,11 +107,12 @@ assets/
 
 scripts/
   build-freebsd.sh                 # FreeBSD cross-compilation script
-  hash-assets.sh                   # CSS content hashing
+  hash-assets.sh                   # CSS content hashing + robots.txt copy
+  capture.sh                       # Screenshot capture for UI iteration
 
 ops/
   htaccess                         # Apache caching + security headers
-  deploy-notes.md                  # NFSN deployment instructions
+  robots.txt                       # SEO robots file
 
 justfile                           # Task automation (just command runner)
 ```
@@ -367,20 +368,13 @@ License: Attribution required to "Ayuntamiento de Madrid – datos.madrid.es"
 - **Attribution**: Include Madrid open data attribution in rendered output ✅ (in HTML template footer)
 - **Timezone**: All time operations must use Europe/Madrid (not UTC) ✅ (implemented in `filter/time.go`)
 
-## Project Files
+## Documentation
 
-**Documentation:**
-- `README.md` - Quick start guide (just-focused, 94 lines)
-- `docs/design.md` - Comprehensive design documentation (moved from old README)
-- `docs/plans/2025-10-19-madrid-events-site-generator.md` - 20-task implementation plan (2,271 lines)
-- `docs/logs/2025-10-19-madrid-events-implementation.md` - Implementation log with commit history (1,380+ lines)
-- `ops/deploy-notes.md` - NFSN deployment instructions
-
-**Key Stats:**
-- Total commits: 48+ (including implementation + refinements)
-- Lines of Go code: ~1,299 (source only)
-- Total project files: 47 files across 18 directories
-- Zero external dependencies (stdlib only)
+See `docs/README.md` for structure. Key files:
+- `README.md` - Quick start guide
+- `docs/deployment.md` - Deployment instructions
+- `docs/plans/` - Dated implementation plans (archived)
+- `docs/logs/` - Dated implementation logs (archived)
 
 ## Development Workflow (for Claude Code)
 

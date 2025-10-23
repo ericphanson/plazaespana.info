@@ -240,7 +240,7 @@ func TestToCityEventMissingFields(t *testing.T) {
 
 // TestParseFullFixture tests parsing the complete esmadrid-agenda.xml fixture
 func TestParseFullFixture(t *testing.T) {
-	data, err := os.ReadFile("../../test/fixtures/esmadrid-agenda.xml")
+	data, err := os.ReadFile("../../testdata/fixtures/esmadrid-agenda.xml")
 	if err != nil {
 		t.Skipf("Skipping full fixture test: %v", err)
 		return

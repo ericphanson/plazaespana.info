@@ -6,6 +6,7 @@ import "time"
 type TemplateData struct {
 	Lang           string
 	CSSHash        string
+	BasePath       string
 	LastUpdated    string
 	CulturalEvents []TemplateEvent
 	CityEvents     []TemplateEvent
