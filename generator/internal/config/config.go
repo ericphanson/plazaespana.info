@@ -15,6 +15,7 @@ type Config struct {
 	Output         OutputConfig         `toml:"output"`
 	Snapshot       SnapshotConfig       `toml:"snapshot"`
 	Server         ServerConfig         `toml:"server"`
+	Weather        WeatherConfig        `toml:"weather"`
 }
 
 // CulturalEventsConfig holds configuration for datos.madrid.es cultural programming.
@@ -54,6 +55,13 @@ type ServerConfig struct {
 	Port int `toml:"port"`
 }
 
+// WeatherConfig holds weather integration settings.
+type WeatherConfig struct {
+	Enabled          bool   `toml:"enabled"`
+	APIKeyEnv        string `toml:"api_key_env"`
+	MunicipalityCode string `toml:"municipality_code"`
+}
+
 // DefaultConfig returns a Config with sensible default values.
 func DefaultConfig() *Config {
 	return &Config{
@@ -81,6 +89,11 @@ func DefaultConfig() *Config {
 		},
 		Server: ServerConfig{
 			Port: 8080,
+		},
+		Weather: WeatherConfig{
+			Enabled:          false, // Disabled by default (requires API key)
+			APIKeyEnv:        "AEMET_API_KEY",
+			MunicipalityCode: "28079", // Madrid
 		},
 	}
 }
@@ -151,6 +164,16 @@ func (c *Config) Validate() error {
 	// Validate server port
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
 		return fmt.Errorf("server.port must be between 1 and 65535, got %d", c.Server.Port)
+	}
+
+	// Validate weather config (only if enabled)
+	if c.Weather.Enabled {
+		if c.Weather.APIKeyEnv == "" {
+			return fmt.Errorf("weather.api_key_env must not be empty when weather is enabled")
+		}
+		if c.Weather.MunicipalityCode == "" {
+			return fmt.Errorf("weather.municipality_code must not be empty when weather is enabled")
+		}
 	}
 
 	return nil
