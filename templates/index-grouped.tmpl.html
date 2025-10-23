@@ -9,12 +9,31 @@
 <body>
   <input type="checkbox" id="toggle-cultural" {{if .ShowCulturalDefault}}checked{{end}}>
 
+  <!-- Distance filter radio buttons -->
+  <input type="radio" name="distance-filter" id="distance-1000" value="1000" checked>
+  <input type="radio" name="distance-filter" id="distance-750" value="750">
+  <input type="radio" name="distance-filter" id="distance-500" value="500">
+  <input type="radio" name="distance-filter" id="distance-250" value="250">
+  <input type="radio" name="distance-filter" id="distance-0" value="0">
+
   <header>
     <h1>{{if eq .Lang "es"}}Eventos en Plaza de España (Madrid){{else}}Events at Plaza de España (Madrid){{end}}</h1>
     <p class="stamp">Última actualización: {{.LastUpdated}}</p>
     {{if gt .TotalEvents 0}}
     <p class="stamp">Total: {{.TotalCityEvents}} eventos de ciudad{{if gt .TotalCulturalEvents 0}}, {{.TotalCulturalEvents}} eventos culturales{{end}}</p>
     {{end}}
+
+    <!-- Distance filter slider -->
+    <div class="distance-filter">
+      <label class="filter-title">Distancia máxima:</label>
+      <div class="distance-options">
+        <label for="distance-0" class="distance-label">En Plaza</label>
+        <label for="distance-250" class="distance-label">250m</label>
+        <label for="distance-500" class="distance-label">500m</label>
+        <label for="distance-750" class="distance-label">750m</label>
+        <label for="distance-1000" class="distance-label">1km (todos)</label>
+      </div>
+    </div>
 
     {{if gt .TotalCulturalEvents 0}}
     <label for="toggle-cultural" class="toggle-label">
@@ -37,7 +56,7 @@
       </h2>
 
       {{range .Events}}
-      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}">
+      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}" data-distance-bucket="{{.DistanceBucket}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
         {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
         {{else}}
@@ -67,7 +86,7 @@
       </h2>
 
       {{range .OngoingEvents}}
-      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}">
+      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}" data-distance-bucket="{{.DistanceBucket}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
         {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
         {{else}}

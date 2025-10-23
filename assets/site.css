@@ -251,3 +251,84 @@ footer {
 #toggle-cultural {
   display: none;
 }
+
+/* Distance filter */
+input[name="distance-filter"] {
+  display: none;
+}
+
+.distance-filter {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--card);
+  border-radius: var(--radius);
+}
+
+.filter-title {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--fg);
+}
+
+.distance-options {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.distance-label {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border: 2px solid var(--muted);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  user-select: none;
+  transition: all 0.2s;
+}
+
+.distance-label:hover {
+  border-color: var(--accent);
+  background: var(--card);
+}
+
+/* Active state for selected distance filter */
+#distance-0:checked ~ header .distance-filter label[for="distance-0"],
+#distance-250:checked ~ header .distance-filter label[for="distance-250"],
+#distance-500:checked ~ header .distance-filter label[for="distance-500"],
+#distance-750:checked ~ header .distance-filter label[for="distance-750"],
+#distance-1000:checked ~ header .distance-filter label[for="distance-1000"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+/* Distance filtering rules using buckets */
+
+/* When distance=0 (En Plaza) is selected: show only events at Plaza de España */
+#distance-0:checked ~ main .event-card:not([data-at-plaza="true"]) {
+  display: none;
+}
+
+/* When distance=250 is selected: show 0-250m bucket only */
+#distance-250:checked ~ main .event-card:not([data-distance-bucket="0-250"]) {
+  display: none;
+}
+
+/* When distance=500 is selected: show 0-250m and 251-500m buckets */
+#distance-500:checked ~ main .event-card[data-distance-bucket="501-750"],
+#distance-500:checked ~ main .event-card[data-distance-bucket="751-1000"],
+#distance-500:checked ~ main .event-card[data-distance-bucket="1000+"] {
+  display: none;
+}
+
+/* When distance=750 is selected: show 0-750m (hide 751-1000m and 1000+) */
+#distance-750:checked ~ main .event-card[data-distance-bucket="751-1000"],
+#distance-750:checked ~ main .event-card[data-distance-bucket="1000+"] {
+  display: none;
+}
+
+/* When distance=1000 is selected: show all (default, no hiding) */
+/* No rules needed - this is the default state */
