@@ -91,7 +91,7 @@ _deploy-files:
     scp ops/htaccess "$NFSN_USER@$NFSN_HOST:/home/public/.htaccess"
 
     echo "📤 Uploading robots.txt..."
-    scp robots.txt "$NFSN_USER@$NFSN_HOST:/home/public/robots.txt"
+    scp ops/robots.txt "$NFSN_USER@$NFSN_HOST:/home/public/robots.txt"
 
     # Atomically swap new files into place
     echo "🔄 Activating new files..."
