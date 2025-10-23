@@ -3,7 +3,7 @@ package filter
 import (
 	"log"
 
-	"github.com/ericphanson/madrid-events/internal/fetch"
+	"github.com/ericphanson/plazaespana.info/internal/fetch"
 )
 
 // DeduplicateByID removes duplicate events based on ID-EVENTO field.

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/fetch"
+	"github.com/ericphanson/plazaespana.info/internal/fetch"
 )
 
 // getFixturePath returns the absolute file:// URL for a fixture file

@@ -1,6 +1,6 @@
 # Madrid Events Site Generator - Implementation Log
 
-**Plan:** `docs/plans/2025-10-19-madrid-events-site-generator.md`
+**Plan:** `docs/plans/2025-10-19-plazaespana-info-site-generator.md`
 **Started:** 2025-10-19
 **Execution Mode:** Subagent-driven development
 
@@ -26,13 +26,13 @@
 **Commit:** 6f36d97
 
 **Steps Completed:**
-1. ✅ Initialized Go module with `go mod init github.com/ericphanson/madrid-events`
+1. ✅ Initialized Go module with `go mod init github.com/ericphanson/plazaespana.info`
 2. ✅ Updated `.gitignore` to include `buildsite` binary artifact (other entries already present)
 3. ✅ Verified Go version: go1.25.3 (exceeds required 1.21+)
 4. ✅ Committed changes with proper attribution
 
 **Files Created/Modified:**
-- Created: `go.mod` (module: github.com/ericphanson/madrid-events, go 1.25.3)
+- Created: `go.mod` (module: github.com/ericphanson/plazaespana.info, go 1.25.3)
 - Modified: `.gitignore` (added buildsite artifact)
 
 **Test Results:** N/A (no tests for initialization task)
@@ -157,7 +157,7 @@ Total: 4/4 tests passing
   - Handles HTTP errors (non-200 status codes)
   - Reads and decodes JSON response
   - Returns JSONResponse or error with context
-- User-Agent: "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)"
+- User-Agent: "plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)"
 
 **Issues Encountered:** None - implementation followed TDD approach exactly as planned
 
@@ -733,7 +733,7 @@ Status: Expected behavior - CLI handles failures gracefully, attempts full fallb
 - render.NewJSONRenderer() - JSON rendering from Task 12
 
 **Module Path:**
-- Uses: github.com/ericphanson/madrid-events (from go.mod)
+- Uses: github.com/ericphanson/plazaespana.info (from go.mod)
 - Imports all internal packages correctly
 - No compilation errors or missing dependencies
 
@@ -971,7 +971,7 @@ Output:
     main_integration_test.go:51: Full e2e test would require refactoring main.go for testability
 --- PASS: TestIntegration_FullPipeline (0.00s)
 PASS
-ok  	github.com/ericphanson/madrid-events/cmd/buildsite	0.005s
+ok  	github.com/ericphanson/plazaespana.info/cmd/buildsite	0.005s
 ```
 
 **Implementation Details:**
@@ -1022,11 +1022,11 @@ Output: (no output - no changes needed)
 
 Command: go test ./...
 Output:
-?   	github.com/ericphanson/madrid-events/cmd/buildsite	[no test files]
-ok  	github.com/ericphanson/madrid-events/internal/fetch	(cached)
-ok  	github.com/ericphanson/madrid-events/internal/filter	0.003s
-ok  	github.com/ericphanson/madrid-events/internal/render	0.005s
-ok  	github.com/ericphanson/madrid-events/internal/snapshot	0.003s
+?   	github.com/ericphanson/plazaespana.info/cmd/buildsite	[no test files]
+ok  	github.com/ericphanson/plazaespana.info/internal/fetch	(cached)
+ok  	github.com/ericphanson/plazaespana.info/internal/filter	0.003s
+ok  	github.com/ericphanson/plazaespana.info/internal/render	0.005s
+ok  	github.com/ericphanson/plazaespana.info/internal/snapshot	0.003s
 
 All tests passing! ✅
 ```
@@ -1034,16 +1034,16 @@ All tests passing! ✅
 **Dependency Status:**
 - go.mod: No changes (already clean)
 - go.sum: No changes (no external dependencies)
-- Module path: github.com/ericphanson/madrid-events
+- Module path: github.com/ericphanson/plazaespana.info
 - Go version: 1.25.3 (exceeds required 1.21+)
 - External dependencies: None (uses standard library only)
 
 **Import Verification:**
 All internal package imports are correct and use the proper module path:
-- `github.com/ericphanson/madrid-events/internal/fetch` ✅
-- `github.com/ericphanson/madrid-events/internal/filter` ✅
-- `github.com/ericphanson/madrid-events/internal/render` ✅
-- `github.com/ericphanson/madrid-events/internal/snapshot` ✅
+- `github.com/ericphanson/plazaespana.info/internal/fetch` ✅
+- `github.com/ericphanson/plazaespana.info/internal/filter` ✅
+- `github.com/ericphanson/plazaespana.info/internal/render` ✅
+- `github.com/ericphanson/plazaespana.info/internal/snapshot` ✅
 
 **Cleanup:**
 - Removed cmd/buildsite/.gitkeep (directory now has real files: main.go, main_integration_test.go)
@@ -1211,11 +1211,11 @@ Output:
 Command: go test ./... -v
 Output: All tests PASS ✅
 
-Package: github.com/ericphanson/madrid-events/cmd/buildsite
+Package: github.com/ericphanson/plazaespana.info/cmd/buildsite
 - [no test files] - main.go contains CLI only
 - Integration test exists with build tag
 
-Package: github.com/ericphanson/madrid-events/internal/fetch (7 tests)
+Package: github.com/ericphanson/plazaespana.info/internal/fetch (7 tests)
 - TestNewClient: PASS
 - TestClient_FetchWithUserAgent: PASS
 - TestClient_FetchXML: PASS
@@ -1224,7 +1224,7 @@ Package: github.com/ericphanson/madrid-events/internal/fetch (7 tests)
 - TestEvent_UnmarshalJSON: PASS
 - TestRawEvent_Fields: PASS
 
-Package: github.com/ericphanson/madrid-events/internal/filter (10 tests)
+Package: github.com/ericphanson/plazaespana.info/internal/filter (10 tests)
 - TestDeduplicateByID: PASS
 - TestDeduplicateByID_Empty: PASS
 - TestHaversineDistance/Same_point: PASS
@@ -1238,11 +1238,11 @@ Package: github.com/ericphanson/madrid-events/internal/filter (10 tests)
 - TestParseEventDateTime/Invalid_date_format: PASS
 - TestIsInFuture: PASS
 
-Package: github.com/ericphanson/madrid-events/internal/render (2 tests)
+Package: github.com/ericphanson/plazaespana.info/internal/render (2 tests)
 - TestHTMLRenderer_Render: PASS
 - TestJSONRenderer_Render: PASS
 
-Package: github.com/ericphanson/madrid-events/internal/snapshot (2 tests)
+Package: github.com/ericphanson/plazaespana.info/internal/snapshot (2 tests)
 - TestManager_SaveAndLoad: PASS
 - TestManager_LoadSnapshot_NotExists: PASS
 

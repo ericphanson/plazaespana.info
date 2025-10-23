@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ericphanson/madrid-events/internal/fetch"
+	"github.com/ericphanson/plazaespana.info/internal/fetch"
 )
 
 func TestManager_SaveAndLoad(t *testing.T) {

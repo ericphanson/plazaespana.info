@@ -5,8 +5,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
-	"github.com/ericphanson/madrid-events/internal/filter"
+	"github.com/ericphanson/plazaespana.info/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/filter"
 )
 
 // TimeGroup represents a group of events within a time range.

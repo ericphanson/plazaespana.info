@@ -81,7 +81,7 @@ All event descriptions, titles, dates, locations, and other metadata belong to t
 - This project only displays data as provided by upstream sources
 
 **For issues with data presentation on this site:**
-- Open an issue on [GitHub](https://github.com/ericphanson/plaza-espana-calendar/issues)
+- Open an issue on [GitHub](https://github.com/ericphanson/plazaespana.info/issues)
 
 ## Additional Acknowledgments
 

@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
-	"github.com/ericphanson/madrid-events/internal/fetch"
+	"github.com/ericphanson/plazaespana.info/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/fetch"
 )
 
 // Pipeline coordinates sequential data source fetching with respectful delays.

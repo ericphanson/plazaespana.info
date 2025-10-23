@@ -1,4 +1,4 @@
-[![CI](https://github.com/ericphanson/plaza-espana-calendar/actions/workflows/ci.yml/badge.svg)](https://github.com/ericphanson/plaza-espana-calendar/actions/workflows/ci.yml)
+[![CI](https://github.com/ericphanson/plazaespana.info/actions/workflows/ci.yml/badge.svg)](https://github.com/ericphanson/plazaespana.info/actions/workflows/ci.yml)
 
 # Madrid Events Near Plaza de España
 
@@ -51,8 +51,8 @@ Contributions are welcome but optional! This is a learning project, so:
 ### Support
 
 - **Documentation:** See [docs/](docs/) directory
-- **Security issues:** Report via [GitHub Security Advisories](https://github.com/ericphanson/plaza-espana-calendar/security/advisories)
-- **Other questions:** Open a [GitHub issue](https://github.com/ericphanson/plaza-espana-calendar/issues)
+- **Security issues:** Report via [GitHub Security Advisories](https://github.com/ericphanson/plazaespana.info/security/advisories)
+- **Other questions:** Open a [GitHub issue](https://github.com/ericphanson/plazaespana.info/issues)
 - **Response time:** Best-effort (this is a personal project)
 
 ### Fallback Mechanism
@@ -75,7 +75,7 @@ If upstream APIs fail, the site serves the last successfully fetched data with a
 ### 2. Clone and Setup
 
 ```bash
-git clone https://github.com/ericphanson/madrid-events.git
+git clone https://github.com/ericphanson/plazaespana.info.git
 cd madrid-events
 ```
 

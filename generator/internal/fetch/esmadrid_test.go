@@ -386,7 +386,7 @@ func TestFetchEsmadridEvents_Success(t *testing.T) {
 	}
 
 	// Verify User-Agent was set
-	expectedUA := "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)"
+	expectedUA := "plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)"
 	if capturedUserAgent != expectedUA {
 		t.Errorf("Expected User-Agent %q, got %q", expectedUA, capturedUserAgent)
 	}

@@ -44,7 +44,7 @@
 === RUN   TestProcessCityEvents
 --- PASS: TestProcessCityEvents (0.00s)
 PASS
-ok      github.com/ericphanson/madrid-events/internal/audit     0.008s
+ok      github.com/ericphanson/plazaespana.info/internal/audit     0.008s
 ```
 
 **Notes:**
