@@ -29,11 +29,22 @@ jobs:
         run: |
           just preview-cleanup PREVIEW=PR${{ github.event.pull_request.number }}
 
-      - name: Update PR comment
-        uses: marocchino/sticky-pull-request-comment@v2
+      - name: Find existing comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
         with:
-          header: preview-deployment
-          message: |
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- preview-deployment -->'
+
+      - name: Update PR comment
+        uses: peter-evans/create-or-update-comment@v4
+        if: steps.find-comment.outputs.comment-id != ''
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            <!-- preview-deployment -->
             ## 🧹 Preview Cleaned Up
 
             The preview deployment for this PR has been removed.
