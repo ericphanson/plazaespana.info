@@ -1,6 +1,9 @@
 package weather
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // Weather represents weather information for a specific event date
 type Weather struct {
@@ -19,7 +22,7 @@ type Weather struct {
 // Forecast represents the full AEMET forecast response
 type Forecast struct {
 	Origin     Origin     `json:"origen"`
-	Elaborated time.Time  `json:"elaborado"`
+	Elaborated string     `json:"elaborado"` // Timestamp when forecast was created (not parsed as time.Time due to AEMET format)
 	Name       string     `json:"nombre"`
 	Province   string     `json:"provincia"`
 	Prediction Prediction `json:"prediccion"`
@@ -79,8 +82,41 @@ type PeriodValue struct {
 
 // PeriodIntValue represents an integer value for a time period
 type PeriodIntValue struct {
-	Value  int    `json:"value"`
+	Value  *int   `json:"-"` // Pointer to handle empty/missing values from AEMET
 	Period string `json:"periodo"`
+}
+
+// UnmarshalJSON custom unmarshaler for PeriodIntValue to handle AEMET's empty strings
+func (p *PeriodIntValue) UnmarshalJSON(data []byte) error {
+	// Use a temporary struct with raw JSON for value
+	var temp struct {
+		Value  json.RawMessage `json:"value"`
+		Period string          `json:"periodo"`
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	p.Period = temp.Period
+
+	// Try to unmarshal value as int, ignore if it's empty string or invalid
+	var val int
+	if err := json.Unmarshal(temp.Value, &val); err == nil {
+		p.Value = &val
+	} else {
+		// Try as string (might be "")
+		var str string
+		if err := json.Unmarshal(temp.Value, &str); err == nil && str != "" {
+			// Try to parse string as int
+			var num int
+			if _, err := fmt.Sscanf(str, "%d", &num); err == nil {
+				p.Value = &num
+			}
+		}
+	}
+
+	return nil
 }
 
 // PeriodFloatValue represents a float value for a time period

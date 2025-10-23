@@ -121,32 +121,32 @@ func extractSkyForPeriod(skyStates []PeriodValue, period string) PeriodValue {
 func extractPrecipProbForPeriod(probs []PeriodIntValue, period string) int {
 	// Try exact match first
 	for _, prob := range probs {
-		if prob.Period == period {
-			return prob.Value
+		if prob.Period == period && prob.Value != nil {
+			return *prob.Value
 		}
 	}
 
 	// Fall back to broader periods
 	if period == "06-12" {
 		for _, prob := range probs {
-			if prob.Period == "00-12" {
-				return prob.Value
+			if prob.Period == "00-12" && prob.Value != nil {
+				return *prob.Value
 			}
 		}
 	}
 
 	if period == "12-18" || period == "18-24" {
 		for _, prob := range probs {
-			if prob.Period == "12-24" {
-				return prob.Value
+			if prob.Period == "12-24" && prob.Value != nil {
+				return *prob.Value
 			}
 		}
 	}
 
 	// Fall back to all-day
 	for _, prob := range probs {
-		if prob.Period == "00-24" {
-			return prob.Value
+		if prob.Period == "00-24" && prob.Value != nil {
+			return *prob.Value
 		}
 	}
 
