@@ -38,3 +38,15 @@ if [ -f "$ROBOTS_FILE" ]; then
 else
   echo "Warning: $ROBOTS_FILE not found"
 fi
+
+# Copy weather icons to public/assets/weather-icons
+WEATHER_ICONS_SRC="generator/testdata/fixtures/aemet-icons"
+WEATHER_ICONS_DEST="$PUBLIC_ASSETS_DIR/weather-icons"
+if [ -d "$WEATHER_ICONS_SRC" ]; then
+  mkdir -p "$WEATHER_ICONS_DEST"
+  cp "$WEATHER_ICONS_SRC"/*.png "$WEATHER_ICONS_DEST/" 2>/dev/null || true
+  ICON_COUNT=$(ls -1 "$WEATHER_ICONS_DEST"/*.png 2>/dev/null | wc -l || echo 0)
+  echo "Copied: $ICON_COUNT weather icons to public/assets/weather-icons/"
+else
+  echo "Warning: $WEATHER_ICONS_SRC not found (weather icons skipped)"
+fi
