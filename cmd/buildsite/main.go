@@ -49,6 +49,7 @@ func main() {
 	// Initialize build report
 	buildReport := report.NewBuildReport()
 	var outputDir string
+	var reportBasePath string
 	defer func() {
 		buildReport.Duration = time.Since(buildReport.BuildTime)
 
@@ -56,7 +57,7 @@ func main() {
 		htmlReportPath := filepath.Join(outputDir, "build-report.html")
 		if f, err := os.Create(htmlReportPath); err == nil {
 			reportCSSHash := readBuildReportCSSHash(outputDir)
-			buildReport.WriteHTML(f, reportCSSHash)
+			buildReport.WriteHTML(f, reportCSSHash, reportBasePath)
 			f.Close()
 			log.Println("Build report written to:", htmlReportPath)
 		}
@@ -90,6 +91,7 @@ func main() {
 	timezone := flag.String("timezone", "Europe/Madrid", "Timezone for event times")
 	fetchMode := flag.String("fetch-mode", "development", "Fetch mode: production or development (affects caching/throttling)")
 	templatePath := flag.String("template-path", "templates/index-grouped.tmpl.html", "Path to HTML template file")
+	basePath := flag.String("base-path", "", "Base path for URLs (e.g., /previews/PR5 for preview deployments)")
 
 	flag.Parse()
 
@@ -145,8 +147,9 @@ func main() {
 		cfg.Snapshot.DataDir = *dataDir
 	}
 
-	// Capture output directory for deferred report writing
+	// Capture output directory and base path for deferred report writing
 	outputDir = filepath.Dir(cfg.Output.HTMLPath)
+	reportBasePath = *basePath
 
 	// Load timezone
 	loc, err := time.LoadLocation(*timezone)
@@ -801,6 +804,7 @@ func main() {
 	htmlRenderer := render.NewHTMLRenderer(*templatePath)
 	htmlData := render.GroupedTemplateData{
 		Lang:                "es",
+		BasePath:            *basePath,
 		CSSHash:             readCSSHash(outDirPath),
 		LastUpdated:         now.Format("2006-01-02 15:04 MST"),
 		TotalEvents:         totalCityEvents + totalCulturalEvents,

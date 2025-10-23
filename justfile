@@ -225,3 +225,41 @@ test-integration:
 fetch-stats-archives:
     @echo "📊 Fetching AWStats database archives..."
     @./scripts/fetch-stats-archives.sh
+
+# Build site for preview deployment with custom base path
+# Usage: just preview-build PREVIEW=PR5
+# Usage: just preview-build PREVIEW=abc
+preview-build PREVIEW:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔨 Building preview: {{PREVIEW}}"
+    echo "   Base path: /previews/{{PREVIEW}}"
+    echo ""
+
+    # Build binary
+    go build -o build/buildsite ./cmd/buildsite
+
+    # Hash CSS
+    ./scripts/hash-assets.sh
+
+    # Generate site with preview base path
+    ./build/buildsite \
+      -config config.toml \
+      -base-path /previews/{{PREVIEW}}
+
+    echo ""
+    echo "✅ Preview built successfully!"
+    echo "   Files in ./public/ are ready for deployment"
+    echo ""
+
+# Deploy preview to NFSN (requires NFSN_HOST and NFSN_USER env vars, requires SSH key)
+# Usage: just preview-deploy PREVIEW=PR5
+# Usage: just preview-deploy PREVIEW=abc
+preview-deploy PREVIEW: (preview-build PREVIEW)
+    @./scripts/deploy-preview.sh {{PREVIEW}}
+
+# Clean up preview from NFSN (requires NFSN_HOST and NFSN_USER env vars, requires SSH key)
+# Usage: just preview-cleanup PREVIEW=PR5
+# Usage: just preview-cleanup PREVIEW=abc
+preview-cleanup PREVIEW:
+    @./scripts/cleanup-preview.sh {{PREVIEW}}

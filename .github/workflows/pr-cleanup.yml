@@ -1,0 +1,42 @@
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup-preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.NFSN_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.NFSN_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Clean up preview
+        env:
+          NFSN_HOST: ${{ secrets.NFSN_HOST }}
+          NFSN_USER: ${{ secrets.NFSN_USER }}
+        run: |
+          just preview-cleanup PREVIEW=PR${{ github.event.pull_request.number }}
+
+      - name: Update PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview-deployment
+          message: |
+            ## 🧹 Preview Cleaned Up
+
+            The preview deployment for this PR has been removed.
+
+            ---
+            *Cleaned up: ${{ github.event.pull_request.closed_at }}*

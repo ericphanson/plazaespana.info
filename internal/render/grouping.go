@@ -19,6 +19,7 @@ type TimeGroup struct {
 // GroupedTemplateData extends TemplateData with time-grouped events.
 type GroupedTemplateData struct {
 	Lang                string
+	BasePath            string // Base path for URLs (e.g., /previews/PR5, or empty for root)
 	CSSHash             string
 	LastUpdated         string
 	TotalEvents         int
