@@ -1,5 +1,17 @@
 # Deployment Guide
 
+> **⚠️ SECURITY NOTICE**
+>
+> This deployment guide is specific to the original author's hosting environment (NearlyFreeSpeech.NET) and serves as an **example implementation**. Do not blindly copy these configurations to production environments.
+>
+> **Before deploying:**
+> - Adapt paths, hostnames, and security settings to your infrastructure
+> - Review all credentials and secrets management practices
+> - Consider this a learning resource, not production-ready configuration
+> - Implement additional security hardening appropriate for your threat model
+>
+> **Privacy Note:** This project is designed for public event listings only. No user authentication, personal data collection, or sensitive information handling is implemented. If you adapt this for other purposes, ensure appropriate privacy and security controls.
+
 This guide covers deploying the Madrid Events site to NearlyFreeSpeech.NET (NFSN).
 
 ## Prerequisites

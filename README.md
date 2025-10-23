@@ -10,6 +10,57 @@ Fetches from two sources:
 
 **Live site:** [plazaespana.info](https://plazaespana.info) (also at [plazaespana.nfshost.com](https://plazaespana.nfshost.com))
 
+## Project Status
+
+**This is a personal project** provided as-is under the MIT License.
+
+### What This Is
+- ✅ **Open source example** of a static site generator for event aggregation
+- ✅ **Educational resource** demonstrating Go, static sites, and API integration
+- ✅ **Working implementation** deployed to a live site
+- ✅ **Zero dependencies** (Go standard library only)
+
+### What This Is NOT
+- ❌ **Production-ready framework** - You'll need to adapt it for your use case
+- ❌ **Supported product** - No warranty, SLA, or guaranteed maintenance
+- ❌ **Universal solution** - Designed specifically for Madrid events near one location
+
+### Dependencies
+
+**Upstream Data APIs:**
+- datos.madrid.es (Madrid open data portal)
+- esmadrid.com (Madrid tourism board)
+
+**These APIs may change without notice.** The project includes fallback mechanisms but cannot guarantee data availability.
+
+### Limitations
+
+- **Geographic specificity:** Designed for events near Plaza de España in Madrid
+- **No SLA:** Personal project maintained on best-effort basis
+- **Infrastructure specific:** Deployment examples use NearlyFreeSpeech.NET (adapt for your hosting)
+- **No guarantee:** Upstream APIs, data accuracy, or site availability not guaranteed
+
+### Contributions
+
+Contributions are welcome but optional! This is a learning project, so:
+- Issues and PRs appreciated but may not be addressed immediately
+- Major changes should be discussed first (open an issue)
+- See [SECURITY.md](SECURITY.md) for security vulnerability reporting
+- By contributing, you agree your contributions are licensed under MIT
+
+### Support
+
+- **Documentation:** See [docs/](docs/) directory
+- **Security issues:** Report via [GitHub Security Advisories](https://github.com/ericphanson/plaza-espana-calendar/security/advisories)
+- **Other questions:** Open a [GitHub issue](https://github.com/ericphanson/plaza-espana-calendar/issues)
+- **Response time:** Best-effort (this is a personal project)
+
+### Fallback Mechanism
+
+If upstream APIs fail, the site serves the last successfully fetched data with a "stale data" indicator. This ensures the site remains functional even during API outages.
+
+---
+
 ## Quick Start (3 Steps)
 
 ### 1. Install Prerequisites
@@ -341,5 +392,10 @@ Found a bug? Have a feature idea?
 
 ## License
 
-Data source: [Ayuntamiento de Madrid – datos.madrid.es](https://datos.madrid.es)
-Attribution required per Madrid's open data license.
+**Software License:** MIT License - See [LICENSE](LICENSE) file for details.
+
+**Data Attribution:** Event data is provided by:
+- [Ayuntamiento de Madrid – datos.madrid.es](https://datos.madrid.es) (Cultural events)
+- [EsMadrid.com](https://www.esmadrid.com/) (City events)
+
+Attribution is required per Madrid's open data terms. See [ATTRIBUTION.md](ATTRIBUTION.md) for complete details.

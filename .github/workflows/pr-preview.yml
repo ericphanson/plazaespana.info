@@ -11,8 +11,11 @@ permissions:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    # Skip preview deployments for Dependabot PRs
-    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    # Only deploy previews from the original repository, not from forks
+    # Also skip Dependabot PRs
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
 
     steps:
       - name: Find existing comment
