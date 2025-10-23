@@ -14,7 +14,16 @@
       "Bash(just serve)",
       "Bash(curl:*)",
       "Bash(shot-scraper:*)",
-      "Bash(gofmt:*)"
+      "Bash(gofmt:*)",
+      "Read(//Users/eph/.config/superpowers/skills/skills/**)",
+      "Bash(just test:*)",
+      "Bash(./scripts/fetch-fixtures.sh:*)",
+      "WebSearch",
+      "Bash(timeout 5 curl:*)",
+      "Bash(METADATA='{\"\"\"\"descripcion\"\"\"\":\"\"\"\"exito\"\"\"\",\"\"\"\"estado\"\"\"\":200,\"\"\"\"datos\"\"\"\":\"\"\"\"https://opendata.aemet.es/opendata/sh/67227eba\"\"\"\",\"\"\"\"metadatos\"\"\"\":\"\"\"\"https://opendata.aemet.es/opendata/sh/dfd88b22\"\"\"\"}')",
+      "Bash(echo:*)",
+      "Bash(METADATA='{\n  \"\"\"\"descripcion\"\"\"\" : \"\"\"\"exito\"\"\"\",\n  \"\"\"\"estado\"\"\"\" : 200,\n  \"\"\"\"datos\"\"\"\" : \"\"\"\"https://opendata.aemet.es/opendata/sh/67227eba\"\"\"\",\n  \"\"\"\"metadatos\"\"\"\" : \"\"\"\"https://opendata.aemet.es/opendata/sh/dfd88b22\"\"\"\"\n}')",
+      "Bash(just fetch-fixtures:*)"
     ],
     "deny": [],
     "ask": []

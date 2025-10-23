@@ -44,18 +44,47 @@ if [ -z "${AEMET_API_KEY:-}" ]; then
   echo "   3. Run this script again"
 else
   echo "  - Requesting forecast metadata for Madrid (28079)..."
-  METADATA=$(curl -f -s -H "api_key: $AEMET_API_KEY" \
-    "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/28079")
+  METADATA_FILE=$(mktemp)
+  RETRY_COUNT=0
+  MAX_RETRIES=3
 
-  # Extract datos URL from metadata response
-  DATOS_URL=$(echo "$METADATA" | grep -o '"datos":"[^"]*"' | cut -d'"' -f4)
+  while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    timeout 10 curl --max-time 10 -s -H "api_key: $AEMET_API_KEY" \
+      "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/28079" \
+      -o "$METADATA_FILE" 2>/dev/null
+    CURL_EXIT=$?
+    if [ $CURL_EXIT -eq 0 ] && [ -s "$METADATA_FILE" ]; then
+      # Success - file downloaded and is not empty
+      break
+    else
+      RETRY_COUNT=$((RETRY_COUNT + 1))
+      if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+        echo "  - Retry $RETRY_COUNT/$MAX_RETRIES (API timeout/error), waiting 5s..."
+        sleep 5
+      fi
+    fi
+  done
+
+  if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+    echo "⚠️  AEMET API failed after $MAX_RETRIES attempts"
+    echo "   The API may be down or rate-limiting requests"
+    rm -f "$METADATA_FILE"
+    # Don't exit - continue with icon fetching
+    METADATA=""
+  else
+    METADATA=$(cat "$METADATA_FILE")
+    rm "$METADATA_FILE"
+  fi
+
+  # Extract datos URL from metadata response using jq
+  DATOS_URL=$(echo "$METADATA" | jq -r '.datos // empty')
 
   if [ -z "$DATOS_URL" ]; then
     echo "⚠️  Failed to get datos URL from AEMET API"
     echo "   Response: $METADATA"
   else
     echo "  - Downloading forecast data from: $DATOS_URL"
-    curl -f -s -L "$DATOS_URL" -o "$FIXTURES_DIR/aemet-madrid-forecast.json"
+    curl --max-time 30 -s -L "$DATOS_URL" -o "$FIXTURES_DIR/aemet-madrid-forecast.json"
 
     # Also save the metadata for reference
     echo "$METADATA" > "$FIXTURES_DIR/aemet-madrid-metadata.json"
