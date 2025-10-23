@@ -94,9 +94,50 @@ config.toml         # Runtime configuration
    - Geographic: Haversine distance ≤ 0.35 km from Plaza de España (40.42338, -3.71217)
    - Temporal: Drop events in the past
    - Deduplication: By `ID-EVENTO` field
-4. **Render**: Generate `index.html` and `events.json` in temp files
-5. **Atomic write**: Rename temp files to final location (prevents partial updates)
-6. **Snapshot**: Save successful fetch for future fallback
+4. **Weather** (optional): Fetch AEMET forecast, match to event dates
+5. **Render**: Generate `index.html` and `events.json` in temp files
+6. **Atomic write**: Rename temp files to final location (prevents partial updates)
+7. **Snapshot**: Save successful fetch for future fallback
+
+### Weather Integration (AEMET)
+
+**Status:** ✅ Implemented (opt-in, disabled by default)
+
+Enriches event cards with weather forecasts from AEMET (Spanish State Meteorological Agency):
+
+**Architecture:**
+- `internal/weather/` package: Client, types, matcher, icon utilities
+- Two-step AEMET API fetch: metadata URL → forecast data URL
+- Weather map: date string → Weather struct (temp, precip prob, sky icon)
+- Template integration: conditional weather display on event cards
+
+**Configuration:**
+- `config.toml`: `[weather]` section (enabled, api_key_env, municipality_code)
+- Environment variable: `AEMET_API_KEY` (register at https://opendata.aemet.es/)
+- Default: disabled (requires API key setup)
+
+**Data displayed:**
+- Max temperature for event date
+- Precipitation probability (if >30%)
+- AEMET official sky state icon
+- Weather category for CSS styling (clear/cloudy/rain/etc)
+
+**Icons:**
+- Source: AEMET official PNG icons (~31 icons, ~1.3KB each)
+- Storage: Committed to `generator/testdata/fixtures/aemet-icons/`
+- Deployment: Copied to `public/assets/weather-icons/` during build
+- License: Spain Law 18/2015 (open data, attribution required)
+
+**Graceful degradation:**
+- If API key missing: weather disabled silently
+- If AEMET fetch fails: events render without weather
+- If no forecast for event date: no weather shown
+
+**API details:**
+- Municipality: Madrid (code 28079)
+- Forecast range: 7 days
+- API key validity: Indefinite (since Sept 2017 policy change)
+- Attribution: © AEMET (displayed in site footer)
 
 ### Robustness Strategy
 
