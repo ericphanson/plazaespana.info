@@ -91,7 +91,7 @@ All event descriptions, titles, dates, locations, and other metadata belong to t
 
 **Bootstrap Icons:**
 - SVG icons from Bootstrap Icons (https://icons.getbootstrap.com/)
-- Used for event category and section indicators
+- Used for event category and section indicators on main event page
 - Licensed under MIT License (https://github.com/twbs/icons/blob/main/LICENSE)
 - Copyright (c) 2019-2024 The Bootstrap Authors
 
