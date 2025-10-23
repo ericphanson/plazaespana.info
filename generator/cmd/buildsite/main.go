@@ -19,6 +19,7 @@ import (
 	"github.com/ericphanson/plazaespana.info/internal/render"
 	"github.com/ericphanson/plazaespana.info/internal/report"
 	"github.com/ericphanson/plazaespana.info/internal/snapshot"
+	"github.com/ericphanson/plazaespana.info/internal/version"
 )
 
 // readCSSHash reads the CSS hash from the assets directory.
@@ -43,7 +44,7 @@ func readBuildReportCSSHash(outDir string) string {
 	return strings.TrimSpace(string(content))
 }
 
-const version = "2.0.0-dual-pipeline"
+const buildVersion = "2.0.0-dual-pipeline"
 
 func main() {
 	// Initialize build report
@@ -65,7 +66,7 @@ func main() {
 
 	// Custom usage message
 	flag.Usage = func() {
-		log.Printf("Madrid Events Site Generator %s\n", version)
+		log.Printf("Madrid Events Site Generator %s\n", buildVersion)
 		log.Println("\nDual pipeline: Fetches cultural events (datos.madrid.es) and city events (esmadrid.com)")
 		log.Println("\nUsage:")
 		log.Printf("  %s [options]\n\n", os.Args[0])
@@ -97,7 +98,7 @@ func main() {
 
 	// Handle version flag
 	if *showVersion {
-		log.Printf("Madrid Events Site Generator %s\n", version)
+		log.Printf("Madrid Events Site Generator %s\n", buildVersion)
 		log.Println("Dual pipeline support: Cultural events (datos.madrid.es) + City events (esmadrid.com)")
 		os.Exit(0)
 	}
@@ -815,6 +816,7 @@ func main() {
 		BasePath:            *basePath,
 		CSSHash:             readCSSHash(outDirPath),
 		LastUpdated:         now.Format("2006-01-02 15:04 MST"),
+		GitCommit:           version.GitCommit,
 		TotalEvents:         totalCityEvents + totalCulturalEvents,
 		TotalCityEvents:     totalCityEvents,
 		TotalCulturalEvents: totalCulturalEvents,

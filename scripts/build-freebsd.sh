@@ -7,11 +7,15 @@ echo "Building for FreeBSD/amd64..."
 # Ensure build directory exists
 mkdir -p build
 
+# Get git commit hash
+GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+echo "Git commit: $GIT_COMMIT"
+
 # Build the static binary for FreeBSD
 cd generator
 GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build \
   -trimpath \
-  -ldflags="-s -w" \
+  -ldflags="-s -w -X github.com/ericphanson/plazaespana.info/internal/version.GitCommit=$GIT_COMMIT" \
   -o ../build/buildsite \
   ./cmd/buildsite
 cd ..

@@ -46,6 +46,7 @@ type GroupedTemplateData struct {
 	BasePath            string // Base path for URLs (e.g., /previews/PR5, or empty for root)
 	CSSHash             string
 	LastUpdated         string
+	GitCommit           string // Git commit hash (set at build time)
 	TotalEvents         int
 	TotalCityEvents     int
 	TotalCulturalEvents int
