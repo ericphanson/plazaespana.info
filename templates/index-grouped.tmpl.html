@@ -26,8 +26,16 @@
       <div class="distance-filter">
         <label class="filter-title">Mostrar:</label>
         <div class="distance-options">
-          <label for="distance-plaza" class="distance-label">En Plaza</label>
-          <label for="distance-nearby" class="distance-label">Cerca (todos)</label>
+          <label for="distance-plaza" class="distance-label">
+            En Plaza
+            <span class="filter-count-city">({{.TotalCityPlaza}})</span>
+            <span class="filter-count-all">({{.TotalPlaza}})</span>
+          </label>
+          <label for="distance-nearby" class="distance-label">
+            Cerca (todos)
+            <span class="filter-count-city">({{.TotalCityNearby}})</span>
+            <span class="filter-count-all">({{.TotalNearby}})</span>
+          </label>
         </div>
       </div>
 

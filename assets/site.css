@@ -316,6 +316,22 @@ input[name="distance-filter"] {
   background: var(--card);
 }
 
+/* Filter button counts - show/hide based on cultural toggle */
+.distance-label .filter-count-city {
+  display: inline; /* Show city counts by default (cultural hidden) */
+}
+.distance-label .filter-count-all {
+  display: none; /* Hide all counts by default */
+}
+
+/* When cultural events are shown, switch to showing all counts */
+#toggle-cultural:checked ~ header .filters-container .distance-label .filter-count-city {
+  display: none;
+}
+#toggle-cultural:checked ~ header .filters-container .distance-label .filter-count-all {
+  display: inline;
+}
+
 /* Active state for selected distance filter */
 #distance-plaza:checked ~ header .filters-container .distance-filter label[for="distance-plaza"],
 #distance-nearby:checked ~ header .filters-container .distance-filter label[for="distance-nearby"] {

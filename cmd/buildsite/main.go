@@ -796,6 +796,14 @@ func main() {
 		log.Fatalf("Failed to create output directory: %v", err)
 	}
 
+	// Calculate total distance-filtered counts across all groups
+	totalPlaza := ongoingPlaza
+	totalCityPlaza := ongoingCityPlaza
+	for _, group := range mergedGroups {
+		totalPlaza += group.CountPlaza
+		totalCityPlaza += group.CityPlaza
+	}
+
 	// Render HTML with grouped events
 	htmlStart := time.Now()
 	htmlRenderer := render.NewHTMLRenderer(*templatePath)
@@ -814,6 +822,10 @@ func main() {
 		OngoingNearby:       ongoingNearby,
 		OngoingCityPlaza:    ongoingCityPlaza,
 		OngoingCityNearby:   ongoingCityNearby,
+		TotalPlaza:          totalPlaza,
+		TotalNearby:         totalCityEvents + totalCulturalEvents,
+		TotalCityPlaza:      totalCityPlaza,
+		TotalCityNearby:     totalCityEvents,
 	}
 	htmlPath := cfg.Output.HTMLPath
 	htmlErr := htmlRenderer.RenderAny(htmlData, htmlPath)

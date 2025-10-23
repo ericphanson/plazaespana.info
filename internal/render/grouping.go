@@ -57,6 +57,12 @@ type GroupedTemplateData struct {
 	OngoingNearby     int
 	OngoingCityPlaza  int
 	OngoingCityNearby int
+
+	// Total distance-filtered counts (for filter button labels)
+	TotalPlaza      int // All events at Plaza de España
+	TotalNearby     int // All events (same as TotalEvents)
+	TotalCityPlaza  int // City events at Plaza
+	TotalCityNearby int // All city events (same as TotalCityEvents)
 }
 
 // GroupEventsByTime groups events into time-based buckets relative to now.
