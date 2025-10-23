@@ -50,21 +50,21 @@
   </header>
 
   <main>
-    {{/* Merged time groups with both city and cultural events */}}
-    {{range .Groups}}
+    {{/* Ongoing events (merged) - shown first */}}
+    {{if gt (len .OngoingEvents) 0}}
     <section class="event-section time-group">
       <h2 class="section-header">
-        <span class="section-icon">{{.Icon}}</span>
-        {{.Name}}
+        <span class="section-icon">🎪</span>
+        Eventos en Curso
         <span class="event-count">
-          <span class="count-nearby-city">{{.CityNearby}}</span>
-          <span class="count-nearby-all">{{.CountNearby}}</span>
-          <span class="count-plaza-city">{{.CityPlaza}}</span>
-          <span class="count-plaza-all">{{.CountPlaza}}</span>
+          <span class="count-nearby-city">{{.OngoingCityNearby}}</span>
+          <span class="count-nearby-all">{{.OngoingNearby}}</span>
+          <span class="count-plaza-city">{{.OngoingCityPlaza}}</span>
+          <span class="count-plaza-all">{{.OngoingPlaza}}</span>
         </span>
       </h2>
 
-      {{range .Events}}
+      {{range .OngoingEvents}}
       <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
         {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
@@ -82,21 +82,21 @@
     </section>
     {{end}}
 
-    {{/* Ongoing events (merged) */}}
-    {{if gt (len .OngoingEvents) 0}}
+    {{/* Merged time groups with both city and cultural events */}}
+    {{range .Groups}}
     <section class="event-section time-group">
       <h2 class="section-header">
-        <span class="section-icon">🎪</span>
-        Eventos en Curso
+        <span class="section-icon">{{.Icon}}</span>
+        {{.Name}}
         <span class="event-count">
-          <span class="count-nearby-city">{{.OngoingCityNearby}}</span>
-          <span class="count-nearby-all">{{.OngoingNearby}}</span>
-          <span class="count-plaza-city">{{.OngoingCityPlaza}}</span>
-          <span class="count-plaza-all">{{.OngoingPlaza}}</span>
+          <span class="count-nearby-city">{{.CityNearby}}</span>
+          <span class="count-nearby-all">{{.CountNearby}}</span>
+          <span class="count-plaza-city">{{.CityPlaza}}</span>
+          <span class="count-plaza-all">{{.CountPlaza}}</span>
         </span>
       </h2>
 
-      {{range .OngoingEvents}}
+      {{range .Events}}
       <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
         {{if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
