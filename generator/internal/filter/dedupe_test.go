@@ -3,7 +3,7 @@ package filter
 import (
 	"testing"
 
-	"github.com/ericphanson/madrid-events/internal/fetch"
+	"github.com/ericphanson/plazaespana.info/internal/fetch"
 )
 
 func TestDeduplicateByID(t *testing.T) {

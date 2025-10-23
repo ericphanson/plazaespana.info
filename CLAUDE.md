@@ -20,7 +20,7 @@ Static site generator for Madrid events near Plaza de España, deployed to Nearl
 - 22 tests passing (100% success rate)
 - FreeBSD binary built and verified (7.7 MB, static)
 - CSS hash fix applied
-- Module path customized to github.com/ericphanson/madrid-events
+- Module path customized to github.com/ericphanson/plazaespana.info
 
 **Key constraints:**
 - Target platform: FreeBSD/amd64 (NearlyFreeSpeech.NET)
@@ -82,7 +82,7 @@ justfile            # Task automation
 config.toml         # Runtime configuration
 ```
 
-**Module:** `github.com/ericphanson/madrid-events`
+**Module:** `github.com/ericphanson/plazaespana.info`
 **Binary size:** 7.7 MB (FreeBSD/amd64, statically linked)
 **Test coverage:** 22 tests across 4 packages (79.7% fetch, 96.2% filter, 66.7% render, 76.2% snapshot)
 
@@ -329,7 +329,7 @@ License: Attribution required to "Ayuntamiento de Madrid – datos.madrid.es"
 
 - **Never use CGO**: Cross-compilation to FreeBSD requires pure Go ✅ (verified: `CGO_ENABLED=0`)
 - **Atomic writes**: Always write to temp file, then rename ✅ (implemented in render + snapshot packages)
-- **User-Agent header**: Set helpful User-Agent with contact info when fetching ✅ (`madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)`)
+- **User-Agent header**: Set helpful User-Agent with contact info when fetching ✅ (`plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)`)
 - **Attribution**: Include Madrid open data attribution in rendered output ✅ (in HTML template footer)
 - **Timezone**: All time operations must use Europe/Madrid (not UTC) ✅ (implemented in `filter/time.go`)
 

@@ -430,7 +430,7 @@ func NewClient(timeout time.Duration, mode ClientMode, cacheDir string) (*Client
 
     return &Client{
         httpClient: &http.Client{Timeout: timeout},
-        userAgent:  "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)",
+        userAgent:  "plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)",
         cache:      cache,
         throttle:   NewRequestThrottle(config),
         auditor:    NewRequestAuditor(),

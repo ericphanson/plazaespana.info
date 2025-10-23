@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/audit"
-	"github.com/ericphanson/madrid-events/internal/config"
-	"github.com/ericphanson/madrid-events/internal/event"
-	"github.com/ericphanson/madrid-events/internal/fetch"
-	"github.com/ericphanson/madrid-events/internal/filter"
-	"github.com/ericphanson/madrid-events/internal/pipeline"
-	"github.com/ericphanson/madrid-events/internal/render"
-	"github.com/ericphanson/madrid-events/internal/report"
-	"github.com/ericphanson/madrid-events/internal/snapshot"
+	"github.com/ericphanson/plazaespana.info/internal/audit"
+	"github.com/ericphanson/plazaespana.info/internal/config"
+	"github.com/ericphanson/plazaespana.info/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/fetch"
+	"github.com/ericphanson/plazaespana.info/internal/filter"
+	"github.com/ericphanson/plazaespana.info/internal/pipeline"
+	"github.com/ericphanson/plazaespana.info/internal/render"
+	"github.com/ericphanson/plazaespana.info/internal/report"
+	"github.com/ericphanson/plazaespana.info/internal/snapshot"
 )
 
 // readCSSHash reads the CSS hash from the assets directory.

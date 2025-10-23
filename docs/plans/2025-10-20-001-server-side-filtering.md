@@ -510,7 +510,7 @@ type FetchReport struct {
 // internal/poi/fetcher.go (new package)
 package poi
 
-import "github.com/ericphanson/madrid-events/internal/fetch"
+import "github.com/ericphanson/plazaespana.info/internal/fetch"
 
 type POIFetcher struct {
     distrito string

@@ -293,7 +293,7 @@ import (
     "os"
     "time"
 
-    "github.com/ericphanson/madrid-events/internal/event"
+    "github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 type AuditFile struct {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 func TestFilterCityEvents_GPSRadius(t *testing.T) {

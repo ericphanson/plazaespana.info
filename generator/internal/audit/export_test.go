@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 func TestSaveAuditJSON(t *testing.T) {

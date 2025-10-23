@@ -1,4 +1,4 @@
-module github.com/ericphanson/madrid-events
+module github.com/ericphanson/plazaespana.info
 
 go 1.24.0
 

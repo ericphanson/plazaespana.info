@@ -75,7 +75,7 @@ If upstream APIs fail, the site serves the last successfully fetched data with a
 ### 2. Clone and Setup
 
 ```bash
-git clone https://github.com/ericphanson/madrid-events.git
+git clone https://github.com/ericphanson/plazaespana.info.git
 cd madrid-events
 ```
 

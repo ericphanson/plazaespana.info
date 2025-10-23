@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 // ValidateEvent checks if cultural event has required fields.

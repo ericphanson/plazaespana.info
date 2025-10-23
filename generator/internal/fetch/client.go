@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 )
@@ -38,7 +38,7 @@ func NewClient(timeout time.Duration, config ModeConfig, cacheDir string) (*Clie
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
-		userAgent: "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)",
+		userAgent: "plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)",
 		cache:     cache,
 		throttle:  NewRequestThrottle(config.MinDelay),
 		auditor:   NewRequestAuditor(),

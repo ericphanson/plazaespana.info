@@ -3,7 +3,7 @@ package filter
 import (
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 // FilterCityEvents filters city events by GPS radius, category, and time.

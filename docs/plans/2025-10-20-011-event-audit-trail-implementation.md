@@ -140,7 +140,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 func TestSaveAuditJSON(t *testing.T) {
@@ -255,7 +255,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 // AuditFile represents the complete audit trail for a build.
@@ -701,7 +701,7 @@ At top of `cmd/buildsite/main.go`, add to imports:
 ```go
 import (
     // ... existing imports ...
-    "github.com/ericphanson/madrid-events/internal/audit"
+    "github.com/ericphanson/plazaespana.info/internal/audit"
 )
 ```
 

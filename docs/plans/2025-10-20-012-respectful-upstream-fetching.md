@@ -32,7 +32,7 @@ We're making 4 sequential HTTP requests every hour:
 
 1. **User-Agent Header** (line 294 in `internal/fetch/client.go`):
    ```go
-   userAgent: "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)"
+   userAgent: "plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)"
    ```
    - Identifies our project
    - Provides contact info

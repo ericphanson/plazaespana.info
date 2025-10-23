@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
-	"github.com/ericphanson/madrid-events/internal/filter"
+	"github.com/ericphanson/plazaespana.info/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/filter"
 )
 
 // TestMultiVenueFiltering validates the multi-venue Plaza de España filtering logic

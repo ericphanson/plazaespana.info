@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/event"
 )
 
 // EsmadridServiceList represents the root element of the ESMadrid XML feed.
@@ -267,7 +267,7 @@ func FetchEsmadridEvents(url string) ([]EsmadridService, error) {
 	}
 
 	// Set User-Agent header (matching pattern from client.go)
-	req.Header.Set("User-Agent", "madrid-events-site-generator/1.0 (https://github.com/ericphanson/madrid-events)")
+	req.Header.Set("User-Agent", "plazaespana-info-site-generator/1.0 (https://github.com/ericphanson/plazaespana.info)")
 
 	// Execute request
 	resp, err := client.Do(req)

@@ -429,8 +429,8 @@ func (c *Client) FetchCSV(url string) ([]event.SourcedEvent, error) {
 package pipeline
 
 import (
-    "github.com/ericphanson/madrid-events/internal/event"
-    "github.com/ericphanson/madrid-events/internal/fetch"
+    "github.com/ericphanson/plazaespana.info/internal/event"
+    "github.com/ericphanson/plazaespana.info/internal/fetch"
 )
 
 // Pipeline coordinates parallel data source fetching.
@@ -676,7 +676,7 @@ Add defensive validation for canonical events:
 ```go
 package validate
 
-import "github.com/ericphanson/madrid-events/internal/event"
+import "github.com/ericphanson/plazaespana.info/internal/event"
 
 // ValidateEvent checks if canonical event has required fields.
 // Returns error if critical data is missing or invalid.

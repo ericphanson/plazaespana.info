@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ericphanson/madrid-events/internal/event"
-	"github.com/ericphanson/madrid-events/internal/validate"
+	"github.com/ericphanson/plazaespana.info/internal/event"
+	"github.com/ericphanson/plazaespana.info/internal/validate"
 )
 
 // RawEvent represents a single event from Madrid's open data API.
