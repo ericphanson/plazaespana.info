@@ -47,10 +47,10 @@ just clean     # Clean build artifacts
 ### Manual equivalents
 ```bash
 # Build for FreeBSD
-GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o build/buildsite ./cmd/buildsite
+cd generator && GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o ../build/buildsite ./cmd/buildsite
 
 # Run tests
-go test ./...
+cd generator && go test ./...
 
 # Run locally
 ./build/buildsite \
@@ -63,58 +63,23 @@ go test ./...
 
 ## Architecture
 
-### Code Structure (Actual Implementation)
+### Code Structure
 
 ```
-cmd/buildsite/
-  main.go                          # CLI orchestration (205 lines)
-  main_integration_test.go         # Integration test skeleton
+generator/          # All Go code and generator resources
+  cmd/              # Main entry point
+  internal/         # fetch, filter, render, pipeline, snapshot, etc.
+  templates/        # HTML templates
+  assets/           # CSS source files
+  testdata/         # Test fixtures
+  go.mod, go.sum    # Go module files
 
-internal/
-  fetch/                           # HTTP client + multi-format parsing
-    client.go                      # JSON/XML/CSV fetching with User-Agent
-    client_test.go                 # 7 tests (httptest-based mocks)
-    types.go                       # RawEvent, JSONResponse, XMLResponse structs
-
-  filter/                          # Filtering and data processing
-    geo.go                         # Haversine distance calculation
-    geo_test.go                    # 6 tests (known distances)
-    time.go                        # Date/time parsing (Europe/Madrid)
-    time_test.go                   # 4 tests (timezone-aware)
-    dedupe.go                      # Deduplication by ID-EVENTO
-    dedupe_test.go                 # 2 tests
-
-  render/                          # Static site generation
-    types.go                       # TemplateData, TemplateEvent, JSONEvent
-    html.go                        # HTML rendering with atomic writes
-    html_test.go                   # Template rendering test
-    json.go                        # JSON API rendering
-    json_test.go                   # JSON encoding test
-
-  report/                          # Build metrics and reporting
-    types.go                       # BuildReport, PipelineReport, filter stats
-    html.go                        # HTML build report generation
-
-  snapshot/                        # Fallback resilience
-    manager.go                     # Save/load snapshots (atomic writes)
-    manager_test.go                # 2 tests (save/load cycle)
-
-templates/
-  index.tmpl.html                  # HTML template (Spanish, semantic HTML5)
-
-assets/
-  site.css                         # Hand-rolled CSS (1.2 KB, dark mode support)
-
-scripts/
-  build-freebsd.sh                 # FreeBSD cross-compilation script
-  hash-assets.sh                   # CSS content hashing + robots.txt copy
-  capture.sh                       # Screenshot capture for UI iteration
-
-ops/
-  htaccess                         # Apache caching + security headers
-  robots.txt                       # SEO robots file
-
-justfile                           # Task automation (just command runner)
+scripts/            # Build and deployment scripts
+ops/                # Server configuration (htaccess, cron, awstats)
+docs/               # Documentation
+awstats-data/       # Anonymized aggregate stats
+justfile            # Task automation
+config.toml         # Runtime configuration
 ```
 
 **Module:** `github.com/ericphanson/madrid-events`

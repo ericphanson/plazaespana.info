@@ -353,7 +353,7 @@ Tests take ~60 seconds because they verify the 5-second delays work correctly. *
 
 Fast test run (skips delay tests):
 ```bash
-go test ./internal/fetch -short
+cd generator && go test ./internal/fetch -short
 ```
 
 ### Can't Connect to Madrid APIs
