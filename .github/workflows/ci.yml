@@ -41,6 +41,7 @@ jobs:
         run: just fmt-check
 
       - name: Run tests
+        # Tests use fixtures from testdata/ - no AEMET_API_KEY needed
         run: just test
 
       - name: Build FreeBSD binary
@@ -66,6 +67,7 @@ jobs:
     env:
       NFSN_HOST: ${{ secrets.NFSN_HOST }}
       NFSN_USER: ${{ secrets.NFSN_USER }}
+      AEMET_API_KEY: ${{ secrets.AEMET_API_KEY }}  # Optional: for weather forecasts
 
     steps:
       - name: Check out code

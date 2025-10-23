@@ -227,6 +227,12 @@ test-integration:
     @echo "🧪 Running integration tests..."
     @cd generator && go test -tags=integration ./cmd/buildsite
 
+# Fetch test fixtures from upstream APIs (requires AEMET_API_KEY for weather data)
+fetch-fixtures:
+    @echo "📥 Fetching test fixtures..."
+    @./scripts/fetch-fixtures.sh
+    @echo "✅ Fixtures updated in generator/testdata/fixtures/"
+
 # Fetch new AWStats statistics archives and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
 fetch-stats-archives:
     @echo "📊 Fetching AWStats database archives..."

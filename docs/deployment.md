@@ -72,14 +72,17 @@ just deploy
 
 Add these secrets in repository Settings → Secrets and variables → Actions:
 
-| Secret Name        | Description                  | Value                               |
-|--------------------|------------------------------|-------------------------------------|
-| `NFSN_SSH_KEY`     | Private SSH key              | Contents of `~/.ssh/id_ed25519`     |
-| `NFSN_HOST`        | NFSN SSH hostname            | SSH hostname from site information      |
-| `NFSN_USER`        | NFSN username                | `your_username`                     |
-| `NFSN_KNOWN_HOST`  | SSH host key (for security)  | Output from `ssh-keyscan` command   |
+| Secret Name        | Description                  | Value                               | Required |
+|--------------------|------------------------------|-------------------------------------|----------|
+| `NFSN_SSH_KEY`     | Private SSH key              | Contents of `~/.ssh/id_ed25519`     | Yes      |
+| `NFSN_HOST`        | NFSN SSH hostname            | SSH hostname from site information  | Yes      |
+| `NFSN_USER`        | NFSN username                | `your_username`                     | Yes      |
+| `NFSN_KNOWN_HOST`  | SSH host key (for security)  | Output from `ssh-keyscan` command   | Yes      |
+| `AEMET_API_KEY`    | AEMET weather API key        | Your AEMET OpenData API key         | Optional |
 
 ⚠️ Use the **private key** that matches the public key uploaded to NFSN.
+
+**Note:** `AEMET_API_KEY` is optional. If not provided, the site builds without weather data (graceful degradation).
 
 ### How to populate NFSN_KNOWN_HOST
 
@@ -118,6 +121,56 @@ The wrapper script:
 ssh your_username@ssh.phx.nearlyfreespeech.net
 tail -f /home/logs/generate.log
 ```
+
+## AEMET Weather API Setup
+
+The site integrates weather forecasts from AEMET (Spanish Meteorological Agency). This is optional - the site works fine without it, but weather data enhances event cards.
+
+### Get an API Key
+
+1. Register at: https://opendata.aemet.es/centrodedescargas/altaUsuario
+2. Wait for email with API key (usually instant)
+3. API keys have indefinite validity (no expiration)
+
+### Configure for Production (NFSN)
+
+Add the API key as an environment variable in your scheduled task:
+
+1. NFSN web interface → Sites → your_site → Scheduled Tasks
+2. Edit your hourly site generation task
+3. Update the command to include the API key:
+
+```bash
+export AEMET_API_KEY=your_aemet_api_key_here && /home/private/bin/cron-generate.sh
+```
+
+The cron wrapper script will pass this environment variable to the buildsite binary.
+
+**To update the key:**
+- Just edit the scheduled task and replace the value
+- No need to redeploy or SSH to the server
+
+### Configure for GitHub Actions
+
+For automated deployments and PR previews, add the API key to GitHub repository secrets:
+
+1. Repository Settings → Secrets and variables → Actions → New repository secret
+2. Name: `AEMET_API_KEY`
+3. Value: (paste your AEMET API key)
+
+The GitHub Actions workflows are already configured to use this secret.
+
+### Graceful Degradation
+
+**If API key is missing or invalid:**
+- Site generates successfully without weather data
+- Build report shows weather fetch errors
+- Events render normally (weather is an optional enhancement)
+- No impact on existing cultural/city events
+
+**Check weather status:**
+- View `/home/public/build-report.html` for weather fetch details
+- Check `/home/private/data/request-audit.json` for AEMET API requests
 
 ## What Gets Deployed
 
@@ -451,12 +504,15 @@ gh auth status
 - [ ] Binary builds (`just freebsd`)
 - [ ] SSH key added to NFSN
 - [ ] Credentials configured (direnv or secrets)
+- [ ] (Optional) AEMET API key obtained and configured
 
 **After first deployment:**
 - [ ] Visit NFSN site URL to verify site works
 - [ ] Check events are showing
 - [ ] Configure site generation cron job (hourly)
+- [ ] (Optional) Add AEMET_API_KEY to cron command if using weather
 - [ ] Check `/home/private/data/request-audit.json` for errors (via SSH)
+- [ ] (Optional) View `build-report.html` to verify weather data fetching
 
 **AWStats setup (after first deployment):**
 - [ ] Create protected directory: `mkdir -p /home/protected`
