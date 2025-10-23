@@ -63,7 +63,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.NFSN_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.NFSN_HOST }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.NFSN_KNOWN_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Build and deploy preview
         env:
