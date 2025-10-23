@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-// SVG icon constants for build report (Bootstrap Icons)
+// SVG icon constants for build report
+// Icons from Bootstrap Icons (https://icons.getbootstrap.com/)
+// Licensed under MIT License - Copyright (c) 2019-2024 The Bootstrap Authors
+// Source: https://github.com/twbs/icons/blob/main/LICENSE
 const (
 	iconTheater   = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="#7c3aed" style="vertical-align: middle; margin-right: 0.25em;"><path d="M0 4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V4zm3.5 5.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1zm9 0a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1zM5 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM8 6c-.646 0-1.278.285-1.67.765a.5.5 0 0 0 .74.673A1.238 1.238 0 0 1 8 7c.345 0 .678.143.93.438a.5.5 0 0 0 .74-.673A2.238 2.238 0 0 0 8 6z"/></svg>`
 	iconCelebrate = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="#ea580c" style="vertical-align: middle; margin-right: 0.25em;"><path fill-rule="evenodd" d="M8.48 10.901C11.211 10.227 13 7.837 13 5A5 5 0 0 0 3 5c0 2.837 1.789 5.227 4.52 5.901l-.244.487a.25.25 0 1 0 .448.224l.04-.08c.009.17.024.315.051.45.068.344.208.622.448 1.102l.013.028c.212.422.182.85.05 1.246-.135.402-.366.751-.534 1.003a.25.25 0 0 0 .416.278l.004-.007c.166-.248.431-.646.588-1.115.16-.479.212-1.051-.076-1.629-.258-.515-.365-.732-.419-1.004a2.376 2.376 0 0 1-.037-.289l.008.017a.25.25 0 1 0 .448-.224l-.244-.487ZM4.352 3.356a4.004 4.004 0 0 1 3.15-2.325C7.774.997 8 1.224 8 1.5c0 .276-.226.496-.498.542-.95.162-1.749.78-2.173 1.617a.595.595 0 0 1-.52.341.8.8 0 0 1-.557-.644Z"/></svg>`

@@ -89,6 +89,12 @@ All event descriptions, titles, dates, locations, and other metadata belong to t
 - This project is built using Go (https://go.dev/)
 - Uses only Go standard library (BSD-3-Clause license)
 
+**Bootstrap Icons:**
+- SVG icons from Bootstrap Icons (https://icons.getbootstrap.com/)
+- Used for event category and section indicators
+- Licensed under MIT License (https://github.com/twbs/icons/blob/main/LICENSE)
+- Copyright (c) 2019-2024 The Bootstrap Authors
+
 **NearlyFreeSpeech.NET:**
 - Original deployment hosted on NFSN (https://www.nearlyfreespeech.net/)
 - Not affiliated with or endorsed by NFSN
