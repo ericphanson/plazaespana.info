@@ -75,7 +75,7 @@ Add these secrets in repository Settings → Secrets and variables → Actions:
 | Secret Name        | Description                  | Value                               |
 |--------------------|------------------------------|-------------------------------------|
 | `NFSN_SSH_KEY`     | Private SSH key              | Contents of `~/.ssh/id_ed25519`     |
-| `NFSN_HOST`        | NFSN SSH hostname            | `ssh.phx.nearlyfreespeech.net`      |
+| `NFSN_HOST`        | NFSN SSH hostname            | SSH hostname from site information      |
 | `NFSN_USER`        | NFSN username                | `your_username`                     |
 | `NFSN_KNOWN_HOST`  | SSH host key (for security)  | Output from `ssh-keyscan` command   |
 
