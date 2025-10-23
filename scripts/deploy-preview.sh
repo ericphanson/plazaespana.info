@@ -48,6 +48,11 @@ echo "📤 Uploading CSS assets..."
 scp public/assets/site.*.css "$NFSN_USER@$NFSN_HOST:$REMOTE_DIR/assets/"
 scp public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:$REMOTE_DIR/assets/"
 
+# Upload weather icons
+echo "📤 Uploading weather icons..."
+ssh "$NFSN_USER@$NFSN_HOST" "mkdir -p $REMOTE_DIR/assets/weather-icons"
+scp public/assets/weather-icons/*.png "$NFSN_USER@$NFSN_HOST:$REMOTE_DIR/assets/weather-icons/" 2>/dev/null || echo "⚠️  No weather icons found (optional)"
+
 echo ""
 echo "✅ Preview deployed successfully!"
 echo ""
