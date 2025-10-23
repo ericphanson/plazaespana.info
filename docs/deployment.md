@@ -189,6 +189,7 @@ templates/index-grouped.tmpl.html    → /home/private/templates/index-grouped.t
 public/assets/site.*.css             → /home/public/assets/
 public/assets/build-report.*.css     → /home/public/assets/
 public/assets/*.hash                 → /home/public/assets/
+public/assets/weather-icons/*.png    → /home/public/assets/weather-icons/
 ops/htaccess                         → /home/public/.htaccess
 
 # AWStats
@@ -227,7 +228,10 @@ AWStats generates (via weekly cron):
   public/               # ✅ Web root (served via HTTP)
     index.html          # Generated event listing
     events.json         # Generated JSON API
-    assets/             # CSS files
+    assets/             # CSS files and weather icons
+      site.*.css        # Hashed main site CSS
+      build-report.*.css # Hashed build report CSS
+      weather-icons/    # AEMET weather icons (PNG)
     stats/              # AWStats HTML (Basic Auth protected)
       .htaccess         # Basic Auth config for stats
       index.html        # AWStats main page

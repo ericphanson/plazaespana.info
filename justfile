@@ -90,6 +90,10 @@ _deploy-files:
     scp public/assets/site.*.css public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
     scp public/assets/css.hash public/assets/build-report-css.hash "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
 
+    echo "📤 Uploading weather icons..."
+    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/public/assets/weather-icons'
+    scp public/assets/weather-icons/*.png "$NFSN_USER@$NFSN_HOST:/home/public/assets/weather-icons/" 2>/dev/null || echo "⚠️  No weather icons found (optional)"
+
     echo "📤 Uploading .htaccess..."
     scp ops/htaccess "$NFSN_USER@$NFSN_HOST:/home/public/.htaccess"
 
