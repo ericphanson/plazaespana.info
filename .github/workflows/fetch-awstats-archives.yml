@@ -19,7 +19,7 @@ jobs:
     name: Fetch and archive AWStats database snapshots
     runs-on: ubuntu-latest
     # Only fetch archives from the original repository, not from forks
-    if: github.repository == 'ericphanson/plaza-espana-calendar'
+    if: github.repository == 'ericphanson/plazaespana.info'
 
     steps:
       - name: Checkout code

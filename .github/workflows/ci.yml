@@ -62,7 +62,7 @@ jobs:
     if: |
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      github.repository == 'ericphanson/plaza-espana-calendar'
+      github.repository == 'ericphanson/plazaespana.info'
     env:
       NFSN_HOST: ${{ secrets.NFSN_HOST }}
       NFSN_USER: ${{ secrets.NFSN_USER }}
