@@ -69,7 +69,7 @@ _deploy-files:
     scp config.toml "$NFSN_USER@$NFSN_HOST:/home/private/config.toml.new"
 
     echo "📤 Uploading templates..."
-    scp generator/templates/index-grouped.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index-grouped.tmpl.html.new"
+    scp generator/templates/index.tmpl.html "$NFSN_USER@$NFSN_HOST:/home/private/templates/index.tmpl.html.new"
 
     echo "📤 Uploading cron wrapper script..."
     scp ops/cron-generate.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/cron-generate.sh.new"
@@ -95,11 +95,11 @@ _deploy-files:
 
     # Atomically swap new files into place
     echo "🔄 Activating new files..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/bin/awstats-weekly.sh.new /home/private/bin/awstats-weekly.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index-grouped.tmpl.html.new /home/private/templates/index-grouped.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/cron-generate.sh /home/private/bin/awstats-weekly.sh'
+    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/bin/awstats-weekly.sh.new /home/private/bin/awstats-weekly.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index.tmpl.html.new /home/private/templates/index.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/cron-generate.sh /home/private/bin/awstats-weekly.sh'
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
-    ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production'
+    ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index.tmpl.html -fetch-mode production'
 
     # Clean up old CSS files (keep only the latest of each type)
     echo "🧹 Cleaning up old CSS files..."

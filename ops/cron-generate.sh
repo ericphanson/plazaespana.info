@@ -17,7 +17,7 @@ if ! /home/private/bin/buildsite \
   -config /home/private/config.toml \
   -out-dir /home/public \
   -data-dir /home/private/data \
-  -template-path /home/private/templates/index-grouped.tmpl.html \
+  -template-path /home/private/templates/index.tmpl.html \
   -fetch-mode production >> "$LOG_FILE" 2>&1; then
 
     # Build failed - output full log to stderr to trigger email
