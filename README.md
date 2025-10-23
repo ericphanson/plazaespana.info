@@ -2,10 +2,10 @@
 
 # [plazaespana.info](https://plazaespana.info)
 
-This is a simple static site which displays events happening at or near [Plaza de España](https://www.esmadrid.com/informacion-turistica/plaza-de-espa%C3%B1a) in Madrid.
+This is a simple static site which displays events happening at or near [Plaza de España](https://www.esmadrid.com/informacion-turistica/plaza-de-espa%C3%B1a) in Madrid, with 7-day weather forecasts for each event.
 
-This is powered by two very nice data feeds, provided by datos.madrid.es and by esmadrid.com.
-The site just collects these events and tries to render them cleanly.
+This is powered by three data sources: event data from datos.madrid.es and esmadrid.com, plus weather forecasts from AEMET (Spanish State Meteorological Agency).
+The site collects this data and renders it cleanly in a fast, static format.
 
 ## Motivation
 
@@ -36,7 +36,20 @@ Run `just` to see all the available commands.
 
 ## Configuration
 
-See [config.toml](./config.toml).
+See [config.toml](./config.toml) for main configuration.
+
+### Weather Integration
+
+Weather forecasts require an AEMET API key. To enable weather:
+
+1. Register for a free API key at [AEMET OpenData](https://opendata.aemet.es/centrodedescargas/inicio)
+2. Set the `AEMET_API_KEY` environment variable:
+   ```sh
+   export AEMET_API_KEY="your-api-key-here"
+   ```
+3. Run the generator - weather will be fetched automatically
+
+If the API key is not set, the site will build successfully but without weather forecasts (graceful degradation).
 
 ## Deployment
 
@@ -55,8 +68,9 @@ I am trying something potentially weird, which is archiving aggregated anonymous
 
 **Software License:** MIT License - See [LICENSE](LICENSE) file for details.
 
-**Data Attribution:** Event data is provided by:
+**Data Attribution:** Event and weather data is provided by:
 - [Ayuntamiento de Madrid – datos.madrid.es](https://datos.madrid.es) (Cultural events)
 - [EsMadrid.com](https://www.esmadrid.com/) (City events)
+- [AEMET OpenData](https://www.aemet.es/en/datos_abiertos/AEMET_OpenData) (Weather forecasts)
 
-Attribution is required per Madrid's open data terms. See [ATTRIBUTION.md](ATTRIBUTION.md) for complete details.
+Attribution is required per Spain Law 18/2015 and Madrid's open data terms. See [ATTRIBUTION.md](ATTRIBUTION.md) for complete details.
