@@ -271,7 +271,8 @@ func GroupCityEventsByTime(events []event.CityEvent, now time.Time) (groups []Ti
 // Cultural events are marked with EventType="cultural" for CSS filtering.
 // Returns groups, ongoing events, and counts for ongoing section.
 // Calculates and formats distance from reference point (typically Plaza de España).
-func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time, refLat, refLon float64) (groups []TimeGroup, ongoing []TemplateEvent, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby int) {
+// If weatherMap is provided, enriches events with weather forecasts.
+func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event.CulturalEvent, now time.Time, refLat, refLon float64, weatherMap map[string]*Weather) (groups []TimeGroup, ongoing []TemplateEvent, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby int) {
 	// Convert both types to a common internal type with metadata
 	type eventWithType struct {
 		evt       event.CulturalEvent
@@ -416,6 +417,15 @@ func GroupMixedEventsByTime(cityEvents []event.CityEvent, culturalEvents []event
 			DistanceHuman:     distanceStr,
 			DistanceMeters:    distanceMeters,
 			AtPlaza:           atPlaza,
+			Weather:           nil, // Will be set below if weatherMap provided
+		}
+
+		// Add weather forecast if available
+		if weatherMap != nil {
+			dateStr := evt.StartTime.Format("2006-01-02")
+			if w, ok := weatherMap[dateStr]; ok {
+				templateEvt.Weather = w
+			}
 		}
 
 		// Ongoing events (5+ days)

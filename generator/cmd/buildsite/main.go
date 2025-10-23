@@ -20,6 +20,7 @@ import (
 	"github.com/ericphanson/plazaespana.info/internal/report"
 	"github.com/ericphanson/plazaespana.info/internal/snapshot"
 	"github.com/ericphanson/plazaespana.info/internal/version"
+	"github.com/ericphanson/plazaespana.info/internal/weather"
 )
 
 // readCSSHash reads the CSS hash from the assets directory.
@@ -740,6 +741,39 @@ func main() {
 	}
 
 	// =====================================================================
+	// WEATHER: Fetch weather forecast (optional)
+	// =====================================================================
+	var weatherMap map[string]*render.Weather
+	if cfg.Weather.Enabled {
+		log.Println("\n=== Fetching Weather ===")
+
+		// Get API key from environment
+		apiKey := os.Getenv(cfg.Weather.APIKeyEnv)
+		if apiKey == "" {
+			log.Printf("Warning: %s not set - weather integration disabled", cfg.Weather.APIKeyEnv)
+		} else {
+			// Create weather client
+			weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
+
+			// Fetch forecast
+			log.Printf("Fetching 7-day forecast for municipality %s...", cfg.Weather.MunicipalityCode)
+			forecast, err := weatherClient.FetchForecast()
+			if err != nil {
+				log.Printf("Warning: Weather fetch failed: %v (continuing without weather)", err)
+				buildReport.AddWarning("Weather fetch failed: %v", err)
+			} else {
+				log.Printf("Weather forecast received: %d days", len(forecast.Prediction.Days))
+
+				// Build weather map for fast lookup by date
+				weatherMap = weather.BuildWeatherMap(forecast, *basePath)
+				log.Printf("Weather map built: %d dates", len(weatherMap))
+			}
+		}
+	} else {
+		log.Println("Weather integration disabled")
+	}
+
+	// =====================================================================
 	// RENDERING: Render both cultural and city events
 	// =====================================================================
 	log.Println("\n=== Rendering Output ===")
@@ -747,7 +781,7 @@ func main() {
 	// Group events by time (merged: city and cultural together)
 	mergedGroups, ongoingEvents, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby := render.GroupMixedEventsByTime(
 		filteredCityEvents, filteredEvents, now,
-		cfg.Filter.Latitude, cfg.Filter.Longitude)
+		cfg.Filter.Latitude, cfg.Filter.Longitude, weatherMap)
 
 	// Convert to JSON format (keep original flat structure for API)
 	var culturalJSONEvents []render.JSONEvent
