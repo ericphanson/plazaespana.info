@@ -24,6 +24,7 @@ bin/
 
 # Build artifacts
 /buildsite
+generator/buildsite
 
 # IDE
 .vscode/*

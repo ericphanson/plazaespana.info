@@ -20,6 +20,7 @@ import (
 	"github.com/ericphanson/plazaespana.info/internal/report"
 	"github.com/ericphanson/plazaespana.info/internal/snapshot"
 	"github.com/ericphanson/plazaespana.info/internal/version"
+	"github.com/ericphanson/plazaespana.info/internal/weather"
 )
 
 // readCSSHash reads the CSS hash from the assets directory.
@@ -740,6 +741,80 @@ func main() {
 	}
 
 	// =====================================================================
+	// WEATHER: Fetch weather forecast
+	// =====================================================================
+	var weatherMap map[string]*render.Weather
+	log.Println("\n=== Fetching Weather ===")
+	weatherStart := time.Now()
+
+	// Initialize weather report
+	buildReport.Weather = &report.WeatherReport{
+		FetchTimestamp: time.Now(),
+		Municipality:   cfg.Weather.MunicipalityCode,
+	}
+
+	// Get API key - try file first, then environment variable
+	var apiKey string
+
+	// Try reading from file first (preferred for production)
+	if cfg.Weather.APIKeyFile != "" {
+		keyBytes, err := os.ReadFile(cfg.Weather.APIKeyFile)
+		if err != nil {
+			log.Printf("Warning: Could not read API key file %s: %v", cfg.Weather.APIKeyFile, err)
+		} else {
+			apiKey = strings.TrimSpace(string(keyBytes))
+			log.Printf("Loaded AEMET API key from file: %s", cfg.Weather.APIKeyFile)
+		}
+	}
+
+	// Fall back to environment variable if file not available
+	if apiKey == "" && cfg.Weather.APIKeyEnv != "" {
+		apiKey = os.Getenv(cfg.Weather.APIKeyEnv)
+		if apiKey != "" {
+			log.Printf("Loaded AEMET API key from environment: %s", cfg.Weather.APIKeyEnv)
+		}
+	}
+
+	buildReport.Weather.APIKeyPresent = (apiKey != "")
+
+	if apiKey == "" {
+		var keySourceMsg string
+		if cfg.Weather.APIKeyFile != "" {
+			keySourceMsg = fmt.Sprintf("file %s or env %s", cfg.Weather.APIKeyFile, cfg.Weather.APIKeyEnv)
+		} else {
+			keySourceMsg = fmt.Sprintf("env %s", cfg.Weather.APIKeyEnv)
+		}
+		fmt.Fprintf(os.Stderr, "Warning: AEMET API key not found (%s) - continuing without weather forecasts\n", keySourceMsg)
+		log.Printf("Warning: AEMET API key not found (%s) - continuing without weather forecasts", keySourceMsg)
+		buildReport.Weather.Error = fmt.Sprintf("API key not found (%s)", keySourceMsg)
+	} else {
+		// Create weather client
+		weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
+
+		// Wait 2 seconds before weather fetch (respectful delay)
+		log.Println("Waiting 2 seconds before weather fetch (respectful delay)...")
+		time.Sleep(2 * time.Second)
+
+		// Fetch forecast
+		log.Printf("Fetching 7-day forecast for municipality %s...", cfg.Weather.MunicipalityCode)
+		forecast, err := weatherClient.FetchForecast()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Weather fetch failed: %v (continuing without weather)\n", err)
+			log.Printf("Warning: Weather fetch failed: %v (continuing without weather)", err)
+			buildReport.AddWarning("Weather fetch failed: %v", err)
+			buildReport.Weather.Error = err.Error()
+		} else {
+			log.Printf("Weather forecast received: %d days", len(forecast.Prediction.Days))
+			buildReport.Weather.DaysCovered = len(forecast.Prediction.Days)
+
+			// Build weather map for fast lookup by date
+			weatherMap = weather.BuildWeatherMap(forecast, *basePath)
+			log.Printf("Weather map built: %d dates", len(weatherMap))
+		}
+	}
+	buildReport.Weather.Duration = time.Since(weatherStart)
+
+	// =====================================================================
 	// RENDERING: Render both cultural and city events
 	// =====================================================================
 	log.Println("\n=== Rendering Output ===")
@@ -747,7 +822,32 @@ func main() {
 	// Group events by time (merged: city and cultural together)
 	mergedGroups, ongoingEvents, ongoingCityCount, ongoingPlaza, ongoingNearby, ongoingCityPlaza, ongoingCityNearby := render.GroupMixedEventsByTime(
 		filteredCityEvents, filteredEvents, now,
-		cfg.Filter.Latitude, cfg.Filter.Longitude)
+		cfg.Filter.Latitude, cfg.Filter.Longitude, weatherMap)
+
+	// Count events with/without weather
+	if buildReport.Weather != nil {
+		eventsMatched := 0
+		eventsUnmatched := 0
+		for _, group := range mergedGroups {
+			for _, evt := range group.Events {
+				if evt.Weather != nil {
+					eventsMatched++
+				} else {
+					eventsUnmatched++
+				}
+			}
+		}
+		for _, evt := range ongoingEvents {
+			if evt.Weather != nil {
+				eventsMatched++
+			} else {
+				eventsUnmatched++
+			}
+		}
+		buildReport.Weather.EventsMatched = eventsMatched
+		buildReport.Weather.EventsUnmatched = eventsUnmatched
+		log.Printf("Weather matching: %d events with weather, %d without", eventsMatched, eventsUnmatched)
+	}
 
 	// Convert to JSON format (keep original flat structure for API)
 	var culturalJSONEvents []render.JSONEvent

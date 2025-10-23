@@ -48,6 +48,31 @@ Ayuntamiento de Madrid – datos.madrid.es
 - Attribution recommended
 - Check EsMadrid.com for specific terms of use
 
+### AEMET (Agencia Estatal de Meteorología)
+
+**Source:** AEMET OpenData
+**URL:** https://www.aemet.es/en/datos_abiertos/AEMET_OpenData
+**License:** Spain Law 18/2015 on re-use of public sector information
+**Data Used:** 7-day weather forecasts for Madrid (temperature, precipitation, sky conditions)
+
+**Required Attribution:**
+```
+© AEMET. Autorizado el uso de la información y su reproducción citando a AEMET como autora de la misma.
+```
+
+**Dataset Details:**
+- **Title:** Predicción específica municipio diaria (Daily municipal forecast)
+- **Format:** JSON
+- **Update Frequency:** Multiple times daily
+- **Coverage:** 7-day forecast for Madrid municipality (code 28079)
+
+**Terms:**
+- Data is provided under Spain Law 18/2015 (re-use of public sector information)
+- Attribution to AEMET required for all uses
+- Data may be used for commercial and non-commercial purposes
+- AEMET retains copyright; users granted license for authorized use
+- Full legal notice: https://www.aemet.es/es/nota_legal
+
 ## How Attribution is Implemented
 
 **On the Website:**
@@ -62,7 +87,7 @@ Ayuntamiento de Madrid – datos.madrid.es
 
 ## Upstream Data Rights
 
-All event descriptions, titles, dates, locations, and other metadata belong to the original publishers (Ayuntamiento de Madrid, EsMadrid.com, and individual event organizers).
+All event descriptions, titles, dates, locations, weather forecasts, and other metadata belong to the original publishers (Ayuntamiento de Madrid, EsMadrid.com, AEMET, and individual event organizers).
 
 **This project provides:**
 - Aggregation and filtering by geographic location
@@ -76,8 +101,8 @@ All event descriptions, titles, dates, locations, and other metadata belong to t
 
 ## Contact for Data Issues
 
-**For issues with event data accuracy:**
-- Contact the original data providers (datos.madrid.es, esmadrid.com)
+**For issues with event or weather data accuracy:**
+- Contact the original data providers (datos.madrid.es, esmadrid.com, AEMET)
 - This project only displays data as provided by upstream sources
 
 **For issues with data presentation on this site:**

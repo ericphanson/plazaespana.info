@@ -56,6 +56,13 @@ func (c *Client) Config() ModeConfig {
 	return c.config
 }
 
+// FetchWithHeaders fetches a URL with custom HTTP headers.
+// Uses the same caching, throttling, and audit trail as other fetch methods.
+// Useful for APIs requiring authentication (e.g., AEMET API key header).
+func (c *Client) FetchWithHeaders(url string, headers map[string]string) ([]byte, error) {
+	return c.fetchWithHeaders(url, headers)
+}
+
 // FetchJSON fetches and decodes JSON from the given URL.
 // Returns ParseResult with successful events and individual parse errors.
 func (c *Client) FetchJSON(url string, loc *time.Location) event.ParseResult {
@@ -304,6 +311,13 @@ func getField(row []string, headerMap map[string]int, fieldName string) string {
 // Supports both HTTP(S) URLs and file:// URLs.
 // Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
 func (c *Client) fetch(url string) ([]byte, error) {
+	return c.fetchWithHeaders(url, nil)
+}
+
+// fetchWithHeaders retrieves data from a URL with custom HTTP headers.
+// Supports both HTTP(S) URLs and file:// URLs.
+// Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
+func (c *Client) fetchWithHeaders(url string, headers map[string]string) ([]byte, error) {
 	// Handle file:// URLs (no caching for local files)
 	if strings.HasPrefix(url, "file://") {
 		path := strings.TrimPrefix(url, "file://")
@@ -346,6 +360,11 @@ func (c *Client) fetch(url string) ([]byte, error) {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("User-Agent", c.userAgent)
+
+	// Add custom headers (e.g., API keys)
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 
 	// Add If-Modified-Since header if we have cached data (even if expired)
 	if cached != nil && cached.LastModified != "" {

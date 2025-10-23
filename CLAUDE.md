@@ -94,9 +94,50 @@ config.toml         # Runtime configuration
    - Geographic: Haversine distance ≤ 0.35 km from Plaza de España (40.42338, -3.71217)
    - Temporal: Drop events in the past
    - Deduplication: By `ID-EVENTO` field
-4. **Render**: Generate `index.html` and `events.json` in temp files
-5. **Atomic write**: Rename temp files to final location (prevents partial updates)
-6. **Snapshot**: Save successful fetch for future fallback
+4. **Weather** (optional): Fetch AEMET forecast, match to event dates
+5. **Render**: Generate `index.html` and `events.json` in temp files
+6. **Atomic write**: Rename temp files to final location (prevents partial updates)
+7. **Snapshot**: Save successful fetch for future fallback
+
+### Weather Integration (AEMET)
+
+**Status:** ✅ Implemented (always enabled)
+
+Enriches event cards with weather forecasts from AEMET (Spanish State Meteorological Agency):
+
+**Architecture:**
+- `internal/weather/` package: Client, types, matcher, icon utilities
+- Two-step AEMET API fetch: metadata URL → forecast data URL
+- Weather map: date string → Weather struct (temp, precip prob, sky icon)
+- Template integration: conditional weather display on event cards
+
+**Configuration:**
+- `config.toml`: `[weather]` section (api_key_env, municipality_code)
+- Environment variable: `AEMET_API_KEY` (register at https://opendata.aemet.es/)
+- Always attempts to fetch weather; if API key missing or fetch fails, logs to stderr and continues
+
+**Data displayed:**
+- Max temperature for event date
+- Precipitation probability (if >30%)
+- AEMET official sky state icon
+- Weather category for CSS styling (clear/cloudy/rain/etc)
+
+**Icons:**
+- Source: AEMET official PNG icons (~31 icons, ~1.3KB each)
+- Storage: Committed to `generator/testdata/fixtures/aemet-icons/`
+- Deployment: Copied to `public/assets/weather-icons/` during build
+- License: Spain Law 18/2015 (open data, attribution required)
+
+**Graceful degradation:**
+- If API key missing: logs warning to stderr, continues without weather
+- If AEMET fetch fails: logs error to stderr, continues without weather
+- If no forecast for event date: no weather shown for that event
+
+**API details:**
+- Municipality: Madrid (code 28079)
+- Forecast range: 7 days
+- API key validity: Indefinite (since Sept 2017 policy change)
+- Attribution: © AEMET (displayed in site footer)
 
 ### Robustness Strategy
 
@@ -340,6 +381,28 @@ See `docs/README.md` for structure. Key files:
 - `docs/deployment.md` - Deployment instructions
 - `docs/plans/` - Dated implementation plans (archived)
 - `docs/logs/` - Dated implementation logs (archived)
+
+### README.md Policy
+
+**IMPORTANT: The README.md is intentionally minimal and uses the author's voice.**
+
+When updating README.md:
+- ✅ **DO**: Make only the smallest tweaks required for accuracy (e.g., updating numbers, adding new data sources to lists)
+- ❌ **DO NOT**: Reword or expand sections
+- ❌ **DO NOT**: Add new sections (setup guides, detailed instructions, etc.)
+- ❌ **DO NOT**: Change the author's casual tone or phrasing
+- 🎯 **Preserve**: Original wording like "The site just collects this data and tries to render them cleanly"
+
+**Why:** The README reflects the author's personality and minimalist philosophy. Detailed setup instructions belong in `config.toml` comments and `docs/deployment.md`.
+
+**Example changes that ARE allowed:**
+- "This is powered by two data feeds" → "This is powered by three data feeds" (factual accuracy)
+- Adding "AEMET" to an existing list of data providers
+
+**Example changes that are NOT allowed:**
+- Rewriting intro paragraphs to be more "professional"
+- Adding detailed setup instructions
+- Expanding "See config.toml" into a multi-paragraph configuration guide
 
 ## Development Workflow (for Claude Code)
 

@@ -33,6 +33,10 @@ data_dir = "data"
 
 [server]
 port = 8080
+
+[weather]
+api_key_env = "AEMET_API_KEY"
+municipality_code = "28079"
 `
 
 	tmpDir := t.TempDir()
@@ -158,6 +162,10 @@ func TestValidate_ValidConfig(t *testing.T) {
 		},
 		Server: ServerConfig{
 			Port: 8080,
+		},
+		Weather: WeatherConfig{
+			APIKeyEnv:        "AEMET_API_KEY",
+			MunicipalityCode: "28079",
 		},
 	}
 

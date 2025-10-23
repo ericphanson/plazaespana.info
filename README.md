@@ -4,8 +4,8 @@
 
 This is a simple static site which displays events happening at or near [Plaza de España](https://www.esmadrid.com/informacion-turistica/plaza-de-espa%C3%B1a) in Madrid.
 
-This is powered by two very nice data feeds, provided by datos.madrid.es and by esmadrid.com.
-The site just collects these events and tries to render them cleanly.
+This is powered by three data feeds, provided by datos.madrid.es, esmadrid.com, and AEMET (Spanish State Meteorological Agency).
+The site just collects this data and tries to render them cleanly.
 
 ## Motivation
 
@@ -55,8 +55,9 @@ I am trying something potentially weird, which is archiving aggregated anonymous
 
 **Software License:** MIT License - See [LICENSE](LICENSE) file for details.
 
-**Data Attribution:** Event data is provided by:
+**Data Attribution:** Event and weather data is provided by:
 - [Ayuntamiento de Madrid – datos.madrid.es](https://datos.madrid.es) (Cultural events)
 - [EsMadrid.com](https://www.esmadrid.com/) (City events)
+- [AEMET OpenData](https://www.aemet.es/en/datos_abiertos/AEMET_OpenData) (Weather forecasts)
 
-Attribution is required per Madrid's open data terms. See [ATTRIBUTION.md](ATTRIBUTION.md) for complete details.
+Attribution is required per Spain Law 18/2015 and Madrid's open data terms. See [ATTRIBUTION.md](ATTRIBUTION.md) for complete details.
