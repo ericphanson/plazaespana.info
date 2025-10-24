@@ -167,24 +167,26 @@ jobs:
             ### Validation Results
 
             ${{ steps.validate.outcome == 'success' && '✅ All checks passed!' || '' }}
-
+            ${{ steps.validate.outputs.links-pass == 'false' && format('
             <details>
-            <summary>${{ steps.validate.outputs.links-pass == 'true' && '✅' || '❌' }} Link Check</summary>
+            <summary>❌ Link Check</summary>
 
             ```
-            ${{ steps.validate.outputs.links-output }}
+            {0}
             ```
 
             </details>
-
+            ', steps.validate.outputs.links-output) || '' }}
+            ${{ steps.validate.outputs.html-pass == 'false' && format('
             <details>
-            <summary>${{ steps.validate.outputs.html-pass == 'true' && '✅' || '❌' }} HTML Validation</summary>
+            <summary>❌ HTML Validation</summary>
 
             ```
-            ${{ steps.validate.outputs.html-output }}
+            {0}
             ```
 
             </details>
+            ', steps.validate.outputs.html-output) || '' }}
 
             ---
 
