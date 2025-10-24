@@ -386,5 +386,5 @@ scan-html URL="http://localhost:8080":
         exit 1
     fi
 
-    npx html-validator-cli "$SCAN_URL" 2>&1 | tee scan-results/html-validation.txt || true
+    npx html-validate "$SCAN_URL" 2>&1 | tee scan-results/html-validation.txt || true
     echo "✅ HTML validation complete"

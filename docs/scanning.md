@@ -88,16 +88,17 @@ Open in browser for visual report.
 
 **Good:**
 ```
-The document validates according to the specified schema(s).
+https://plazaespana.info: 0 errors, 0 warnings
 ```
 
 **Bad:**
 ```
-Error: Element div not allowed as child of span in this context
-Warning: Section lacks heading
+https://plazaespana.info:15:5: error: <div> is not permitted as a descendant of <span> (element-permitted-content) at line 15, col 5
+https://plazaespana.info:32:1: error: <section> is missing required <h1> heading (require-heading) at line 32, col 1
+https://plazaespana.info: 2 errors, 0 warnings
 ```
 
-**Fix:** Correct invalid HTML structure, add missing semantic elements.
+**Fix:** Correct invalid HTML structure, add missing semantic elements. Line numbers help locate issues.
 
 ---
 
