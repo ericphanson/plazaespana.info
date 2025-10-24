@@ -191,6 +191,10 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
 # Install Claude Code
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
+RUN npm install -g lighthouse@12.8.2
+RUN npm install -g broken-link-checker@0.7.8
+RUN npm install -g html-validate
+
 # Copy and set up scripts
 USER root
 COPY .devcontainer/init-firewall.sh /usr/local/bin/
