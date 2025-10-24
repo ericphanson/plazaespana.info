@@ -15,7 +15,8 @@ just scan
 
 **Production site:**
 ```bash
-just scan https://plazaespana.info
+just scan plazaespana.info
+# or with protocol: just scan https://plazaespana.info
 ```
 
 Results saved to `scan-results/` (git-ignored).
@@ -34,9 +35,9 @@ just scan-performance [URL]      # Lighthouse audit (Core Web Vitals)
 just scan-html [URL]             # HTML validation
 
 # Examples:
-just scan                                    # Scan localhost
-just scan https://plazaespana.info          # Scan production
-just scan-performance https://plazaespana.info  # Just performance on prod
+just scan                        # Scan localhost
+just scan plazaespana.info       # Scan production (https:// added automatically)
+just scan-performance plazaespana.info  # Just performance on prod
 ```
 
 ## Interpreting Results
@@ -112,7 +113,7 @@ just scan           # Terminal 2 - scan localhost
 
 **After deployment:**
 ```bash
-just scan https://plazaespana.info  # Verify production
+just scan plazaespana.info  # Verify production
 ```
 
 ---

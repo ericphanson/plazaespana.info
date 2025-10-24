@@ -297,8 +297,8 @@ preview-cleanup PREVIEW:
 # Run all quality scans (links, performance, HTML validation)
 # Usage: just scan [URL]
 # Examples:
-#   just scan                                    # Scan localhost:8080 (default)
-#   just scan https://plazaespana.info          # Scan production
+#   just scan                        # Scan localhost:8080 (default)
+#   just scan plazaespana.info       # Scan production (https:// added automatically)
 scan URL="http://localhost:8080": (scan-links URL) (scan-performance URL) (scan-html URL)
     @echo ""
     @echo "✅ All scans complete!"
@@ -316,14 +316,21 @@ scan-links URL="http://localhost:8080":
     set -euo pipefail
     mkdir -p scan-results
     echo "🔍 [1/3] Checking links and assets..."
-    echo "   Target: {{URL}}"
+
+    # Add https:// if URL doesn't start with http:// or https://
+    SCAN_URL="{{URL}}"
+    if [[ ! "$SCAN_URL" =~ ^https?:// ]]; then
+        SCAN_URL="https://$SCAN_URL"
+    fi
+
+    echo "   Target: $SCAN_URL"
 
     if ! command -v npx &> /dev/null; then
         echo "❌ Error: npx not found. Install Node.js first."
         exit 1
     fi
 
-    npx broken-link-checker {{URL}} \
+    npx broken-link-checker "$SCAN_URL" \
         --recursive \
         --ordered \
         --exclude-external 2>&1 | tee scan-results/links.txt
@@ -335,14 +342,21 @@ scan-performance URL="http://localhost:8080":
     set -euo pipefail
     mkdir -p scan-results
     echo "🔍 [2/3] Running performance audit..."
-    echo "   Target: {{URL}}"
+
+    # Add https:// if URL doesn't start with http:// or https://
+    SCAN_URL="{{URL}}"
+    if [[ ! "$SCAN_URL" =~ ^https?:// ]]; then
+        SCAN_URL="https://$SCAN_URL"
+    fi
+
+    echo "   Target: $SCAN_URL"
 
     if ! command -v npx &> /dev/null; then
         echo "❌ Error: npx not found. Install Node.js first."
         exit 1
     fi
 
-    npx lighthouse {{URL}} \
+    npx lighthouse "$SCAN_URL" \
         --output=html \
         --output=json \
         --output-path=scan-results/lighthouse \
@@ -358,12 +372,19 @@ scan-html URL="http://localhost:8080":
     set -euo pipefail
     mkdir -p scan-results
     echo "🔍 [3/3] Validating HTML..."
-    echo "   Target: {{URL}}"
+
+    # Add https:// if URL doesn't start with http:// or https://
+    SCAN_URL="{{URL}}"
+    if [[ ! "$SCAN_URL" =~ ^https?:// ]]; then
+        SCAN_URL="https://$SCAN_URL"
+    fi
+
+    echo "   Target: $SCAN_URL"
 
     if ! command -v npx &> /dev/null; then
         echo "❌ Error: npx not found. Install Node.js first."
         exit 1
     fi
 
-    npx html-validator-cli {{URL}} 2>&1 | tee scan-results/html-validation.txt || true
+    npx html-validator-cli "$SCAN_URL" 2>&1 | tee scan-results/html-validation.txt || true
     echo "✅ HTML validation complete"
