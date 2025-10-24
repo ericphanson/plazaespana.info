@@ -293,3 +293,168 @@ preview-deploy PREVIEW: (preview-build PREVIEW)
 # Usage: just preview-cleanup abc
 preview-cleanup PREVIEW:
     @./scripts/cleanup-preview.sh {{PREVIEW}}
+
+# Run all quality scans (links, performance, HTML validation)
+scan: scan-links scan-performance scan-html
+    @echo ""
+    @echo "✅ All scans complete!"
+    @echo ""
+    @echo "📊 Results summary:"
+    @echo "   Links:       scan-results/links.txt"
+    @echo "   Performance: scan-results/lighthouse.html"
+    @echo "   HTML:        scan-results/html-validation.txt"
+    @echo ""
+    @echo "See docs/scanning.md for interpretation guide"
+
+# Check for broken links and missing assets
+scan-links:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p scan-results
+    echo "🔍 [1/3] Checking links and assets..."
+
+    # Check if site is running on :8080
+    if ! curl -s http://localhost:8080 > /dev/null 2>&1; then
+        echo "❌ Error: Site not running on http://localhost:8080"
+        echo "   Run 'just serve' in another terminal first"
+        exit 1
+    fi
+
+    # Try muffet first (best tool)
+    if command -v muffet &> /dev/null; then
+        echo "   Using muffet (comprehensive link checker)"
+        muffet --color=always \
+               --max-connections=10 \
+               --timeout=10 \
+               http://localhost:8080 2>&1 | tee scan-results/links.txt
+        echo "✅ Link check complete (muffet)"
+    # Fallback to broken-link-checker
+    elif command -v npx &> /dev/null; then
+        echo "   Using broken-link-checker (npm)"
+        npx broken-link-checker http://localhost:8080 \
+            --recursive \
+            --ordered \
+            --exclude-external 2>&1 | tee scan-results/links.txt
+        echo "✅ Link check complete (broken-link-checker)"
+    else
+        echo "⚠️  No link checker found. Install:"
+        echo "   - muffet: go install github.com/raviqqe/muffet/v2@latest"
+        echo "   - OR ensure npm/npx is available"
+        echo "   Basic connectivity check:"
+        curl -I http://localhost:8080 2>&1 | tee scan-results/links.txt
+    fi
+
+# Run Lighthouse performance audit
+scan-performance:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p scan-results
+    echo "🔍 [2/3] Running performance audit..."
+
+    # Check if site is running
+    if ! curl -s http://localhost:8080 > /dev/null 2>&1; then
+        echo "❌ Error: Site not running on http://localhost:8080"
+        echo "   Run 'just serve' in another terminal first"
+        exit 1
+    fi
+
+    if command -v lighthouse &> /dev/null; then
+        echo "   Using Lighthouse (Google performance auditor)"
+        lighthouse http://localhost:8080 \
+            --output=html \
+            --output=json \
+            --output-path=scan-results/lighthouse \
+            --preset=desktop \
+            --quiet \
+            --chrome-flags="--headless"
+        echo "✅ Performance audit complete"
+        echo "   Report: scan-results/lighthouse.report.html"
+    elif command -v npx &> /dev/null; then
+        echo "   Installing and running Lighthouse via npx..."
+        npx lighthouse http://localhost:8080 \
+            --output=html \
+            --output=json \
+            --output-path=scan-results/lighthouse \
+            --preset=desktop \
+            --quiet \
+            --chrome-flags="--headless"
+        echo "✅ Performance audit complete"
+        echo "   Report: scan-results/lighthouse.report.html"
+    else
+        echo "⚠️  Lighthouse not found. Install with:"
+        echo "   npm install -g lighthouse"
+        echo ""
+        echo "   Basic performance check:"
+        curl -w "\n\nTiming:\n  DNS lookup:    %{time_namelookup}s\n  Connect:       %{time_connect}s\n  Start transfer: %{time_starttransfer}s\n  Total:         %{time_total}s\n  Size:          %{size_download} bytes\n" \
+             -o /dev/null -s http://localhost:8080 2>&1 | tee scan-results/lighthouse.txt
+    fi
+
+# Validate HTML and check for console errors
+scan-html:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p scan-results
+    echo "🔍 [3/3] Validating HTML..."
+
+    # Check if site is running
+    if ! curl -s http://localhost:8080 > /dev/null 2>&1; then
+        echo "❌ Error: Site not running on http://localhost:8080"
+        echo "   Run 'just serve' in another terminal first"
+        exit 1
+    fi
+
+    if command -v html-validator &> /dev/null; then
+        echo "   Using html-validator (W3C validator)"
+        html-validator http://localhost:8080 2>&1 | tee scan-results/html-validation.txt
+        echo "✅ HTML validation complete"
+    elif command -v npx &> /dev/null; then
+        echo "   Using html-validator via npx..."
+        npx html-validator-cli http://localhost:8080 2>&1 | tee scan-results/html-validation.txt || true
+        echo "✅ HTML validation complete"
+    else
+        echo "   Using basic HTML checks..."
+        {
+            echo "=== HTML Structure Check ==="
+            curl -s http://localhost:8080 > scan-results/index.html
+
+            echo "Checking for common issues..."
+            echo ""
+
+            # Check DOCTYPE
+            if grep -q "<!DOCTYPE html>" scan-results/index.html; then
+                echo "✅ DOCTYPE present"
+            else
+                echo "❌ DOCTYPE missing"
+            fi
+
+            # Check charset
+            if grep -q "charset=" scan-results/index.html; then
+                echo "✅ Charset declared"
+            else
+                echo "⚠️  Charset not found"
+            fi
+
+            # Check for closing tags
+            if grep -q "</html>" scan-results/index.html; then
+                echo "✅ HTML properly closed"
+            else
+                echo "❌ Missing </html>"
+            fi
+
+            # Count images and check for alt attributes
+            IMG_COUNT=$(grep -o "<img" scan-results/index.html | wc -l || echo 0)
+            IMG_WITH_ALT=$(grep -o '<img[^>]*alt=' scan-results/index.html | wc -l || echo 0)
+            echo "📸 Images: $IMG_COUNT total, $IMG_WITH_ALT with alt text"
+
+            # Check for meta viewport
+            if grep -q "viewport" scan-results/index.html; then
+                echo "✅ Viewport meta tag present"
+            else
+                echo "⚠️  Viewport meta tag missing"
+            fi
+
+            echo ""
+            echo "💡 For detailed validation, install: npm install -g html-validator-cli"
+        } 2>&1 | tee scan-results/html-validation.txt
+        echo "✅ Basic HTML checks complete"
+    fi

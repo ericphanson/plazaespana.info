@@ -68,3 +68,6 @@ temp/
 
 # Environment variables (use .envrc.local for local config)
 .envrc.local
+
+# Scan results
+scan-results/
