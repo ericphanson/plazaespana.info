@@ -293,3 +293,116 @@ preview-deploy PREVIEW: (preview-build PREVIEW)
 # Usage: just preview-cleanup abc
 preview-cleanup PREVIEW:
     @./scripts/cleanup-preview.sh {{PREVIEW}}
+
+# Run all quality scans (links, HTML validation, performance)
+# Usage: just scan [URL]
+# Examples:
+#   just scan                        # Scan localhost:8080 (default)
+#   just scan plazaespana.info       # Scan production (https:// added automatically)
+scan URL="http://localhost:8080": (scan-links URL) (scan-html URL) (scan-performance URL)
+    @echo ""
+    @echo "✅ All scans complete!"
+    @echo ""
+    @echo "📊 Results summary:"
+    @echo "   Links:       scan-results/links.txt"
+    @echo "   HTML:        scan-results/html-validation.txt"
+    @echo "   Performance: scan-results/lighthouse.report.html"
+    @echo ""
+    @echo "See docs/scanning.md for interpretation guide"
+
+# Check for broken links and missing assets
+scan-links URL="http://localhost:8080":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p scan-results
+    echo "🔍 [1/3] Checking links and assets..."
+
+    # Add https:// if URL doesn't start with http:// or https://
+    SCAN_URL="{{URL}}"
+    if [[ ! "$SCAN_URL" =~ ^https?:// ]]; then
+        SCAN_URL="https://$SCAN_URL"
+    fi
+
+    echo "   Target: $SCAN_URL"
+
+    if ! command -v npx &> /dev/null; then
+        echo "❌ Error: npx not found. Install Node.js first."
+        exit 1
+    fi
+
+    npx broken-link-checker "$SCAN_URL" \
+        --recursive \
+        --ordered \
+        --exclude-external 2>&1 | tee scan-results/links.txt || true
+    echo "✅ Link check complete"
+
+# Run Lighthouse performance audit
+scan-performance URL="http://localhost:8080":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p scan-results
+    echo "🔍 [3/3] Running performance audit..."
+
+    # Add https:// if URL doesn't start with http:// or https://
+    SCAN_URL="{{URL}}"
+    if [[ ! "$SCAN_URL" =~ ^https?:// ]]; then
+        SCAN_URL="https://$SCAN_URL"
+    fi
+
+    echo "   Target: $SCAN_URL"
+
+    if ! command -v npx &> /dev/null; then
+        echo "❌ Error: npx not found. Install Node.js first."
+        exit 1
+    fi
+
+    npx lighthouse "$SCAN_URL" \
+        --output=html \
+        --output=json \
+        --output-path=scan-results/lighthouse \
+        --preset=desktop \
+        --quiet \
+        --chrome-flags="--headless" || true
+    echo "✅ Performance audit complete"
+    echo "   Report: scan-results/lighthouse.report.html"
+
+# Validate HTML
+scan-html URL="http://localhost:8080":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p scan-results
+    echo "🔍 [2/3] Validating HTML..."
+
+    # Add https:// if URL doesn't start with http:// or https://
+    SCAN_URL="{{URL}}"
+    if [[ ! "$SCAN_URL" =~ ^https?:// ]]; then
+        SCAN_URL="https://$SCAN_URL"
+    fi
+
+    # Remove trailing slash for consistent URL building
+    SCAN_URL="${SCAN_URL%/}"
+
+    echo "   Target: $SCAN_URL"
+
+    if ! command -v npx &> /dev/null; then
+        echo "❌ Error: npx not found. Install Node.js first."
+        exit 1
+    fi
+
+    # Fetch main page
+    echo "   Fetching index.html..."
+    if ! curl -sS "$SCAN_URL" > scan-results/index.html; then
+        echo "❌ Failed to fetch $SCAN_URL" | tee scan-results/html-validation.txt
+        echo "✅ HTML validation complete (skipped - fetch failed)"
+        exit 0
+    fi
+
+    # Fetch build report
+    echo "   Fetching build-report.html..."
+    if ! curl -sS "$SCAN_URL/build-report.html" > scan-results/build-report.html; then
+        echo "⚠️  Failed to fetch $SCAN_URL/build-report.html (skipping)"
+    fi
+
+    # Validate all fetched HTML files
+    npx html-validate scan-results/*.html 2>&1 | tee scan-results/html-validation.txt || true
+    echo "✅ HTML validation complete"
