@@ -82,8 +82,54 @@ jobs:
         run: |
           just preview-deploy PR${{ github.event.pull_request.number }}
 
-      - name: Update comment with deployment success
+      - name: Set up Node.js (for validation tools)
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install validation tools
+        run: npm install
+
+      - name: Wait for server to be ready
+        run: sleep 5
+
+      - name: Validate preview deployment
+        id: validate
+        continue-on-error: true
+        run: |
+          PREVIEW_URL="https://plazaespana.info/previews/PR${{ github.event.pull_request.number }}"
+
+          echo "🔍 Validating preview at $PREVIEW_URL"
+          echo ""
+
+          # Run link checking (exit code 0 = pass, 1 = fail)
+          LINKS_PASS=true
+          if ! just scan-links "$PREVIEW_URL"; then
+            LINKS_PASS=false
+          fi
+
+          # Run HTML validation (exit code 0 = pass, 1 = fail)
+          HTML_PASS=true
+          if ! just scan-html "$PREVIEW_URL"; then
+            HTML_PASS=false
+          fi
+
+          # Set outputs for next step
+          echo "links-pass=$LINKS_PASS" >> $GITHUB_OUTPUT
+          echo "html-pass=$HTML_PASS" >> $GITHUB_OUTPUT
+
+          # Exit with error if any validation failed
+          if [ "$LINKS_PASS" = false ] || [ "$HTML_PASS" = false ]; then
+            echo "❌ Validation failed"
+            exit 1
+          fi
+
+          echo "✅ All validations passed"
+
+      - name: Update comment with validation results
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        if: always()
         with:
           comment-id: ${{ steps.create-comment.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -92,12 +138,31 @@ jobs:
             <!-- preview-deployment -->
             ## 🚀 Preview Deployment
 
-            **Status:** ✅ Deployed successfully!
+            **Status:** ${{ steps.validate.outcome == 'success' && '✅ Deployed and validated!' || '⚠️ Deployed with validation issues' }}
 
             **Preview URL:** https://plazaespana.info/previews/PR${{ github.event.pull_request.number }}/
+
+            ### Validation Results
+
+            ${{ steps.validate.outcome == 'success' && '✅ All checks passed!' || '' }}
+
+            <details>
+            <summary>${{ steps.validate.outcome == 'success' && '✅' || '❌' }} Link Check</summary>
+
+            ${{ steps.validate.outputs.links-pass == 'true' && '✅ No broken links found' || '❌ Broken links detected - see job logs' }}
+
+            </details>
+
+            <details>
+            <summary>${{ steps.validate.outputs.html-pass == 'true' && '✅' || '❌' }} HTML Validation</summary>
+
+            ${{ steps.validate.outputs.html-pass == 'true' && '✅ HTML validates successfully' || '❌ HTML validation errors - see job logs' }}
+
+            </details>
+
+            ---
 
             This preview will be automatically updated when you push new commits to this PR.
             It will be removed when the PR is closed or merged.
 
-            ---
             *Last updated: ${{ github.event.pull_request.updated_at }}*
