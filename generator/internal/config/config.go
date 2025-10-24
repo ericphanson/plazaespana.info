@@ -57,9 +57,10 @@ type ServerConfig struct {
 
 // WeatherConfig holds weather integration settings.
 type WeatherConfig struct {
-	APIKeyEnv        string `toml:"api_key_env"`  // Environment variable name containing API key
-	APIKeyFile       string `toml:"api_key_file"` // Path to file containing API key (preferred for production)
-	MunicipalityCode string `toml:"municipality_code"`
+	APIBaseURL       string `toml:"api_base_url"`      // AEMET API base URL
+	APIKeyEnv        string `toml:"api_key_env"`       // Environment variable name containing API key
+	APIKeyFile       string `toml:"api_key_file"`      // Path to file containing API key (preferred for production)
+	MunicipalityCode string `toml:"municipality_code"` // Municipality code for forecast
 }
 
 // DefaultConfig returns a Config with sensible default values.
@@ -91,6 +92,7 @@ func DefaultConfig() *Config {
 			Port: 8080,
 		},
 		Weather: WeatherConfig{
+			APIBaseURL:       "https://opendata.aemet.es/opendata/api",
 			APIKeyEnv:        "AEMET_API_KEY",
 			MunicipalityCode: "28079", // Madrid
 		},

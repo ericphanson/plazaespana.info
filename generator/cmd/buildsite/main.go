@@ -789,14 +789,17 @@ func main() {
 		log.Printf("Warning: AEMET API key not found (%s) - continuing without weather forecasts", keySourceMsg)
 		buildReport.Weather.Error = fmt.Sprintf("API key not found (%s)", keySourceMsg)
 	} else {
-		// Create weather client
-		var weatherClient *weather.Client
+		// Determine AEMET base URL: flag overrides config
+		baseURL := cfg.Weather.APIBaseURL
 		if *aemetBaseURL != "" {
-			weatherClient = weather.NewClientWithBaseURL(apiKey, cfg.Weather.MunicipalityCode, client, *aemetBaseURL)
-			log.Printf("Using custom AEMET base URL: %s", *aemetBaseURL)
+			baseURL = *aemetBaseURL
+			log.Printf("Using AEMET base URL from flag: %s", baseURL)
 		} else {
-			weatherClient = weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
+			log.Printf("Using AEMET base URL from config: %s", baseURL)
 		}
+
+		// Create weather client
+		weatherClient := weather.NewClientWithBaseURL(apiKey, cfg.Weather.MunicipalityCode, client, baseURL)
 
 		// Wait 2 seconds before weather fetch (respectful delay)
 		log.Println("Waiting 2 seconds before weather fetch (respectful delay)...")

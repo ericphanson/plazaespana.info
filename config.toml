@@ -56,6 +56,7 @@ port = 8080
 
 [weather]
 # AEMET weather integration (always enabled)
+api_base_url = "https://opendata.aemet.es/opendata/api"  # AEMET API base URL
 api_key_env = "AEMET_API_KEY"              # Environment variable containing AEMET API key (fallback)
 api_key_file = "/home/private/aemet-api-key.txt"  # Path to file containing API key (preferred for production)
 municipality_code = "28079"                 # Madrid municipality code for AEMET API
