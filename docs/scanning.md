@@ -1,15 +1,21 @@
 # Site Quality Scanning
 
-Local scanning to catch broken links, performance issues, and HTML errors before deployment.
+Scan local or production site to catch broken links, performance issues, and HTML errors.
 
 ## Quick Start
 
+**Local site:**
 ```bash
 # Terminal 1: Start local server
 just serve
 
 # Terminal 2: Run all scans
 just scan
+```
+
+**Production site:**
+```bash
+just scan https://plazaespana.info
 ```
 
 Results saved to `scan-results/` (git-ignored).
@@ -22,10 +28,15 @@ Results saved to `scan-results/` (git-ignored).
 ## Commands
 
 ```bash
-just scan           # Run all scans
-just scan-links     # Check broken links, 404s, missing assets
-just scan-performance  # Lighthouse audit (Core Web Vitals)
-just scan-html      # HTML validation
+just scan [URL]                  # Run all scans (default: localhost:8080)
+just scan-links [URL]            # Check broken links, 404s, missing assets
+just scan-performance [URL]      # Lighthouse audit (Core Web Vitals)
+just scan-html [URL]             # HTML validation
+
+# Examples:
+just scan                                    # Scan localhost
+just scan https://plazaespana.info          # Scan production
+just scan-performance https://plazaespana.info  # Just performance on prod
 ```
 
 ## Interpreting Results
@@ -91,12 +102,17 @@ Warning: Section lacks heading
 
 ## Workflow
 
+**Before committing:**
 ```bash
-# Before committing:
 just generate       # Rebuild site
 just serve          # Terminal 1
-just scan           # Terminal 2
+just scan           # Terminal 2 - scan localhost
 # Review results, fix issues, repeat
+```
+
+**After deployment:**
+```bash
+just scan https://plazaespana.info  # Verify production
 ```
 
 ---

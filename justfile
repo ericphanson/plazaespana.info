@@ -295,7 +295,11 @@ preview-cleanup PREVIEW:
     @./scripts/cleanup-preview.sh {{PREVIEW}}
 
 # Run all quality scans (links, performance, HTML validation)
-scan: scan-links scan-performance scan-html
+# Usage: just scan [URL]
+# Examples:
+#   just scan                                    # Scan localhost:8080 (default)
+#   just scan https://plazaespana.info          # Scan production
+scan URL="http://localhost:8080": (scan-links URL) (scan-performance URL) (scan-html URL)
     @echo ""
     @echo "✅ All scans complete!"
     @echo ""
@@ -307,36 +311,38 @@ scan: scan-links scan-performance scan-html
     @echo "See docs/scanning.md for interpretation guide"
 
 # Check for broken links and missing assets
-scan-links:
+scan-links URL="http://localhost:8080":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p scan-results
     echo "🔍 [1/3] Checking links and assets..."
+    echo "   Target: {{URL}}"
 
     if ! command -v npx &> /dev/null; then
         echo "❌ Error: npx not found. Install Node.js first."
         exit 1
     fi
 
-    npx broken-link-checker http://localhost:8080 \
+    npx broken-link-checker {{URL}} \
         --recursive \
         --ordered \
         --exclude-external 2>&1 | tee scan-results/links.txt
     echo "✅ Link check complete"
 
 # Run Lighthouse performance audit
-scan-performance:
+scan-performance URL="http://localhost:8080":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p scan-results
     echo "🔍 [2/3] Running performance audit..."
+    echo "   Target: {{URL}}"
 
     if ! command -v npx &> /dev/null; then
         echo "❌ Error: npx not found. Install Node.js first."
         exit 1
     fi
 
-    npx lighthouse http://localhost:8080 \
+    npx lighthouse {{URL}} \
         --output=html \
         --output=json \
         --output-path=scan-results/lighthouse \
@@ -347,16 +353,17 @@ scan-performance:
     echo "   Report: scan-results/lighthouse.report.html"
 
 # Validate HTML
-scan-html:
+scan-html URL="http://localhost:8080":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p scan-results
     echo "🔍 [3/3] Validating HTML..."
+    echo "   Target: {{URL}}"
 
     if ! command -v npx &> /dev/null; then
         echo "❌ Error: npx not found. Install Node.js first."
         exit 1
     fi
 
-    npx html-validator-cli http://localhost:8080 2>&1 | tee scan-results/html-validation.txt || true
+    npx html-validator-cli {{URL}} 2>&1 | tee scan-results/html-validation.txt || true
     echo "✅ HTML validation complete"
