@@ -22,16 +22,16 @@ func TestHTTPCache_TTLOverride(t *testing.T) {
 	twoHoursAgo := time.Now().Add(-2 * time.Hour)
 
 	madridEntry := CacheEntry{
-		URL:       "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json",
-		Body:      []byte(`{"events":[]}`),
-		FetchedAt: twoHoursAgo,
+		URL:        "https://datos.madrid.es/egob/catalogo/300107-0-agenda-actividades-eventos.json",
+		Body:       []byte(`{"events":[]}`),
+		FetchedAt:  twoHoursAgo,
 		StatusCode: 200,
 	}
 
 	aemetEntry := CacheEntry{
-		URL:       "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/28079",
-		Body:      []byte(`{"forecast":[]}`),
-		FetchedAt: twoHoursAgo,
+		URL:        "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/28079",
+		Body:       []byte(`{"forecast":[]}`),
+		FetchedAt:  twoHoursAgo,
 		StatusCode: 200,
 	}
 
