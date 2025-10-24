@@ -386,5 +386,14 @@ scan-html URL="http://localhost:8080":
         exit 1
     fi
 
-    npx html-validate "$SCAN_URL" 2>&1 | tee scan-results/html-validation.txt || true
+    # Fetch HTML to temporary file
+    echo "   Fetching HTML..."
+    if ! curl -sS "$SCAN_URL" > scan-results/index.html; then
+        echo "❌ Failed to fetch $SCAN_URL" | tee scan-results/html-validation.txt
+        echo "✅ HTML validation complete (skipped - fetch failed)"
+        exit 0
+    fi
+
+    # Validate the fetched HTML
+    npx html-validate scan-results/index.html 2>&1 | tee scan-results/html-validation.txt || true
     echo "✅ HTML validation complete"

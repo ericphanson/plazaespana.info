@@ -88,17 +88,17 @@ Open in browser for visual report.
 
 **Good:**
 ```
-https://plazaespana.info: 0 errors, 0 warnings
+scan-results/index.html: 0 errors, 0 warnings
 ```
 
 **Bad:**
 ```
-https://plazaespana.info:15:5: error: <div> is not permitted as a descendant of <span> (element-permitted-content) at line 15, col 5
-https://plazaespana.info:32:1: error: <section> is missing required <h1> heading (require-heading) at line 32, col 1
-https://plazaespana.info: 2 errors, 0 warnings
+scan-results/index.html:15:5: error: <div> is not permitted as descendant of <span> (element-permitted-content)
+scan-results/index.html:32:1: error: <section> element must have a heading as content (require-heading)
+scan-results/index.html: 2 errors, 0 warnings
 ```
 
-**Fix:** Correct invalid HTML structure, add missing semantic elements. Line numbers help locate issues.
+**Fix:** Correct invalid HTML structure, add missing semantic elements. Line numbers help locate issues in the template.
 
 ---
 
