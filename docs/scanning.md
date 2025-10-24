@@ -42,6 +42,8 @@ just scan-performance plazaespana.info  # Just performance on prod
 
 ## Interpreting Results
 
+Scans run in this order: Links → HTML → Performance
+
 ### 1. Links (`scan-results/links.txt`)
 
 **Good:**
@@ -61,7 +63,28 @@ just scan-performance plazaespana.info  # Just performance on prod
 
 ---
 
-### 2. Performance (`scan-results/lighthouse.report.html`)
+### 2. HTML (`scan-results/html-validation.txt`)
+
+Validates both `index.html` and `build-report.html`.
+
+**Good:**
+```
+scan-results/index.html: 0 errors, 0 warnings
+scan-results/build-report.html: 0 errors, 0 warnings
+```
+
+**Bad:**
+```
+scan-results/index.html:15:5: error: <div> is not permitted as descendant of <span> (element-permitted-content)
+scan-results/build-report.html:32:1: error: <section> element must have a heading as content (require-heading)
+2 files, 2 errors, 0 warnings
+```
+
+**Fix:** Correct invalid HTML structure, add missing semantic elements. Line numbers help locate issues in the templates.
+
+---
+
+### 3. Performance (`scan-results/lighthouse.report.html`)
 
 Open in browser for visual report.
 
@@ -81,24 +104,6 @@ Open in browser for visual report.
 - Low performance: Optimize images, enable compression
 - Low accessibility: Add alt text, improve contrast
 - Low SEO: Add meta description, fix heading hierarchy
-
----
-
-### 3. HTML (`scan-results/html-validation.txt`)
-
-**Good:**
-```
-scan-results/index.html: 0 errors, 0 warnings
-```
-
-**Bad:**
-```
-scan-results/index.html:15:5: error: <div> is not permitted as descendant of <span> (element-permitted-content)
-scan-results/index.html:32:1: error: <section> element must have a heading as content (require-heading)
-scan-results/index.html: 2 errors, 0 warnings
-```
-
-**Fix:** Correct invalid HTML structure, add missing semantic elements. Line numbers help locate issues in the template.
 
 ---
 
