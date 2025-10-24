@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="{{.Lang}}">
 <head>
   <meta charset="utf-8">
@@ -9,21 +9,18 @@
 </head>
 <body>
   <input type="checkbox" id="toggle-cultural" {{if .ShowCulturalDefault}}checked{{end}}>
-
-  <!-- Distance filter radio buttons -->
+  {{- /* Distance filter radio buttons */ -}}
   <input type="radio" name="distance-filter" id="distance-nearby" value="nearby">
   <input type="radio" name="distance-filter" id="distance-plaza" value="plaza" checked>
-
   <header>
     <h1>{{if eq .Lang "es"}}Eventos en Plaza de España (Madrid){{else}}Events at Plaza de España (Madrid){{end}}</h1>
     <p class="stamp">Última actualización: {{.LastUpdated}}</p>
-    {{if gt .TotalEvents 0}}
+    {{- if gt .TotalEvents 0}}
     <p class="stamp">Total: {{.TotalCityEvents}} eventos de ciudad{{if gt .TotalCulturalEvents 0}}, {{.TotalCulturalEvents}} eventos culturales{{end}}</p>
-    {{end}}
-
-    <!-- Filters container -->
+    {{- end -}}
+    {{- /* Filters container */ -}}
     <div class="filters-container">
-      <!-- Distance filter -->
+      {{- /* Distance filter */ -}}
       <div class="distance-filter">
         <label class="filter-title">Mostrar:</label>
         <div class="distance-options">
@@ -40,30 +37,24 @@
         </div>
       </div>
 
-      {{if gt .TotalCulturalEvents 0}}
+      {{- if gt .TotalCulturalEvents 0}}
       <div class="cultural-filter">
         <label for="toggle-cultural" class="toggle-label">
           Mostrar eventos culturales ({{.TotalCulturalEvents}})
         </label>
       </div>
-      {{end}}
+      {{- end}}
     </div>
   </header>
-
   <main>
-    {{/* Ongoing events (merged) - shown first by default, reordered dynamically if empty */}}
+    {{- /* Ongoing events (merged) - shown first by default, reordered dynamically if empty */ -}}
     <section class="event-section time-group"
       data-count-plaza="{{.OngoingPlaza}}"
       data-count-nearby="{{.OngoingNearby}}"
       data-count-plaza-city="{{.OngoingCityPlaza}}"
       data-count-nearby-city="{{.OngoingCityNearby}}">
       <h2 class="section-header">
-        <span class="section-icon" aria-hidden="true">
-          <!-- Icon from Bootstrap Icons (MIT License) - https://icons.getbootstrap.com/ -->
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#ea580c">
-            <path fill-rule="evenodd" d="M8.48 10.901C11.211 10.227 13 7.837 13 5A5 5 0 0 0 3 5c0 2.837 1.789 5.227 4.52 5.901l-.244.487a.25.25 0 1 0 .448.224l.04-.08c.009.17.024.315.051.45.068.344.208.622.448 1.102l.013.028c.212.422.182.85.05 1.246-.135.402-.366.751-.534 1.003a.25.25 0 0 0 .416.278l.004-.007c.166-.248.431-.646.588-1.115.16-.479.212-1.051-.076-1.629-.258-.515-.365-.732-.419-1.004a2.376 2.376 0 0 1-.037-.289l.008.017a.25.25 0 1 0 .448-.224l-.244-.487ZM4.352 3.356a4.004 4.004 0 0 1 3.15-2.325C7.774.997 8 1.224 8 1.5c0 .276-.226.496-.498.542-.95.162-1.749.78-2.173 1.617a.595.595 0 0 1-.52.341.8.8 0 0 1-.557-.644Z"/>
-          </svg>
-        </span>
+        <span class="section-icon" aria-hidden="true"><!-- Icon from Bootstrap Icons (MIT License) - https://icons.getbootstrap.com/ --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#ea580c"><path fill-rule="evenodd" d="M8.48 10.901C11.211 10.227 13 7.837 13 5A5 5 0 0 0 3 5c0 2.837 1.789 5.227 4.52 5.901l-.244.487a.25.25 0 1 0 .448.224l.04-.08c.009.17.024.315.051.45.068.344.208.622.448 1.102l.013.028c.212.422.182.85.05 1.246-.135.402-.366.751-.534 1.003a.25.25 0 0 0 .416.278l.004-.007c.166-.248.431-.646.588-1.115.16-.479.212-1.051-.076-1.629-.258-.515-.365-.732-.419-1.004a2.376 2.376 0 0 1-.037-.289l.008.017a.25.25 0 1 0 .448-.224l-.244-.487ZM4.352 3.356a4.004 4.004 0 0 1 3.15-2.325C7.774.997 8 1.224 8 1.5c0 .276-.226.496-.498.542-.95.162-1.749.78-2.173 1.617a.595.595 0 0 1-.52.341.8.8 0 0 1-.557-.644Z"/></svg></span>
         Eventos en Curso
         <span class="event-count">
           <span class="count-nearby-city">{{.OngoingCityNearby}}</span>
@@ -73,80 +64,78 @@
         </span>
       </h2>
 
-      {{range .OngoingEvents}}
-      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
-        {{if eq .EventType "city"}}
+      {{- range .OngoingEvents}}
+      <article class="event-card {{.EventType}}" id="ev-ongoing-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
+        {{- if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
-        {{else}}
+        {{- else}}
         <span class="event-badge cultural-badge">Cultural</span>
-        {{end}}
-        {{if .Weather}}
-        <div class="weather-info weather-{{.Weather.WeatherCategory}}" title="Pronóstico: {{.Weather.SkyDescription}}">
-          <img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">
+        {{- end}}
+        {{- if .Weather}}
+        <div class="weather-info weather-{{.Weather.WeatherCategory}}"{{if .Weather.SkyDescription}} title="Pronóstico: {{.Weather.SkyDescription}}"{{end}}>
+          {{- if .Weather.SkyIconURL}}<img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">{{end -}}
           <span class="weather-temp">{{.Weather.TempMax}}°</span>
-          {{if gt .Weather.PrecipProb 30}}
+          {{- if gt .Weather.PrecipProb 30}}
           <span class="weather-precip">💧{{.Weather.PrecipProb}}%</span>
-          {{end}}
+          {{- end}}
         </div>
-        {{end}}
+        {{- end}}
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
-        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
-        {{if .DistanceHuman}}<p class="distance"><!-- Icon from Bootstrap Icons (MIT) --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#666" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>{{.DistanceHuman}} de Plaza de España</p>{{end}}
-        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-        {{if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end}}
+        {{- if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end -}}
+        {{- if .DistanceHuman}}<p class="distance"><!-- Icon from Bootstrap Icons (MIT) --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#666" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>{{.DistanceHuman}} de Plaza de España</p>{{end -}}
+        {{- if .Description}}<p class="description">{{.Description}}</p>{{end -}}
+        {{- if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end -}}
       </article>
-      {{end}}
+      {{- end}}
     </section>
-
-    {{/* Merged time groups with both city and cultural events */}}
-    {{range .Groups}}
+    {{- /* Merged time groups with both city and cultural events */ -}}
+    {{- range $groupIndex, $group := .Groups}}
     <section class="event-section time-group"
-      data-count-plaza="{{.CountPlaza}}"
-      data-count-nearby="{{.CountNearby}}"
-      data-count-plaza-city="{{.CityPlaza}}"
-      data-count-nearby-city="{{.CityNearby}}">
+      data-count-plaza="{{$group.CountPlaza}}"
+      data-count-nearby="{{$group.CountNearby}}"
+      data-count-plaza-city="{{$group.CityPlaza}}"
+      data-count-nearby-city="{{$group.CityNearby}}">
       <h2 class="section-header">
-        <span class="section-icon" aria-hidden="true">{{.Icon}}</span>
-        {{.Name}}
+        <span class="section-icon" aria-hidden="true">{{$group.Icon}}</span>
+        {{$group.Name}}
         <span class="event-count">
-          <span class="count-nearby-city">{{.CityNearby}}</span>
-          <span class="count-nearby-all">{{.CountNearby}}</span>
-          <span class="count-plaza-city">{{.CityPlaza}}</span>
-          <span class="count-plaza-all">{{.CountPlaza}}</span>
+          <span class="count-nearby-city">{{$group.CityNearby}}</span>
+          <span class="count-nearby-all">{{$group.CountNearby}}</span>
+          <span class="count-plaza-city">{{$group.CityPlaza}}</span>
+          <span class="count-plaza-all">{{$group.CountPlaza}}</span>
         </span>
       </h2>
 
-      {{range .Events}}
-      <article class="event-card {{.EventType}}" id="ev-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
-        {{if eq .EventType "city"}}
+      {{- range $group.Events}}
+      <article class="event-card {{.EventType}}" id="ev-g{{$groupIndex}}-{{.IDEvento}}" data-distance-m="{{.DistanceMeters}}"{{if .AtPlaza}} data-at-plaza="true"{{end}}>
+        {{- if eq .EventType "city"}}
         <span class="event-badge city-badge">Evento Ciudad</span>
-        {{else}}
+        {{- else}}
         <span class="event-badge cultural-badge">Cultural</span>
-        {{end}}
-        {{if .Weather}}
-        <div class="weather-info weather-{{.Weather.WeatherCategory}}" title="Pronóstico: {{.Weather.SkyDescription}}">
-          <img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">
+        {{- end}}
+        {{- if .Weather}}
+        <div class="weather-info weather-{{.Weather.WeatherCategory}}"{{if .Weather.SkyDescription}} title="Pronóstico: {{.Weather.SkyDescription}}"{{end}}>
+          {{- if .Weather.SkyIconURL}}<img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">{{end -}}
           <span class="weather-temp">{{.Weather.TempMax}}°</span>
-          {{if gt .Weather.PrecipProb 30}}
+          {{- if gt .Weather.PrecipProb 30}}
           <span class="weather-precip">💧{{.Weather.PrecipProb}}%</span>
-          {{end}}
+          {{- end}}
         </div>
-        {{end}}
+        {{- end}}
         <h3>{{.Titulo}}</h3>
         <p class="when">{{.StartHuman}}</p>
-        {{if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end}}
-        {{if .DistanceHuman}}<p class="distance"><!-- Icon from Bootstrap Icons (MIT) --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#666" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>{{.DistanceHuman}} de Plaza de España</p>{{end}}
-        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-        {{if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end}}
+        {{- if .NombreInstalacion}}<p class="where">{{.NombreInstalacion}}</p>{{end -}}
+        {{- if .DistanceHuman}}<p class="distance"><!-- Icon from Bootstrap Icons (MIT) --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#666" aria-hidden="true"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>{{.DistanceHuman}} de Plaza de España</p>{{end -}}
+        {{- if .Description}}<p class="description">{{.Description}}</p>{{end -}}
+        {{- if .ContentURL}}<p><a href="{{.ContentURL}}">{{if eq $.Lang "es"}}Más información sobre {{.Titulo}}{{else}}More information about {{.Titulo}}{{end}}</a></p>{{end -}}
       </article>
-      {{end}}
+      {{- end}}
     </section>
-    {{end}}
-
-    {{if and (eq (len .Groups) 0) (eq (len .OngoingEvents) 0)}}
+    {{- end}}
+    {{- if and (eq (len .Groups) 0) (eq (len .OngoingEvents) 0)}}
     <p class="no-events">No hay eventos próximos.</p>
-    {{end}}
+    {{- end}}
   </main>
 
   <footer>

@@ -1,0 +1,13 @@
+{
+  "name": "plazaespana-info-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HTML validation tooling for plazaespana.info",
+  "devDependencies": {
+    "html-validate": "10.2.1",
+    "broken-link-checker": "0.7.8"
+  },
+  "engines": {
+    "node": "^20"
+  }
+}

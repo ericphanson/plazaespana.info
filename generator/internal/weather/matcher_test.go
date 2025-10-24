@@ -220,3 +220,106 @@ func TestExtractSkyForPeriod(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildWeatherForDay_MissingSkyCode(t *testing.T) {
+	// Helper to create int pointers
+	intPtr := func(i int) *int { return &i }
+
+	tests := []struct {
+		name           string
+		day            *DayForecast
+		basePath       string
+		expectNil      bool
+		expectEmptyURL bool
+	}{
+		{
+			name: "Missing sky code but has temp/precip - should create weather with empty icon URL",
+			day: &DayForecast{
+				Date: "2025-10-23T00:00:00",
+				Temperature: Temperature{
+					Max: 25,
+					Min: 15,
+				},
+				SkyState: []PeriodValue{}, // Empty - no sky state data
+				PrecipProbability: []PeriodIntValue{
+					{Period: "12-24", Value: intPtr(40)},
+				},
+				Precipitation: []PeriodFloatValue{
+					{Period: "12-24", Value: 1.5},
+				},
+			},
+			basePath:       "/test",
+			expectNil:      false,
+			expectEmptyURL: true,
+		},
+		{
+			name: "Has sky code - should create weather with icon URL",
+			day: &DayForecast{
+				Date: "2025-10-23T00:00:00",
+				Temperature: Temperature{
+					Max: 25,
+					Min: 15,
+				},
+				SkyState: []PeriodValue{
+					{Period: "12-24", Value: "12", Description: "Poco nuboso"},
+				},
+				PrecipProbability: []PeriodIntValue{
+					{Period: "12-24", Value: intPtr(20)},
+				},
+			},
+			basePath:       "/test",
+			expectNil:      false,
+			expectEmptyURL: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			weather := buildWeatherForDay(tt.day, tt.basePath)
+
+			if tt.expectNil {
+				if weather != nil {
+					t.Errorf("Expected nil weather, got %+v", weather)
+				}
+				return
+			}
+
+			if weather == nil {
+				t.Fatal("Expected non-nil weather")
+			}
+
+			// Always check that we have temperature data
+			if weather.TempMax != tt.day.Temperature.Max {
+				t.Errorf("Expected TempMax=%d, got %d", tt.day.Temperature.Max, weather.TempMax)
+			}
+			if weather.TempMin != tt.day.Temperature.Min {
+				t.Errorf("Expected TempMin=%d, got %d", tt.day.Temperature.Min, weather.TempMin)
+			}
+
+			// Check icon URL
+			if tt.expectEmptyURL {
+				if weather.SkyIconURL != "" {
+					t.Errorf("Expected empty SkyIconURL when sky code missing, got %q", weather.SkyIconURL)
+				}
+				if weather.SkyCode != "" {
+					t.Errorf("Expected empty SkyCode, got %q", weather.SkyCode)
+				}
+			} else {
+				if weather.SkyIconURL == "" {
+					t.Error("Expected non-empty SkyIconURL when sky code present")
+				}
+				if weather.SkyCode == "" {
+					t.Error("Expected non-empty SkyCode")
+				}
+			}
+
+			// Verify precipitation data is always preserved
+			if len(tt.day.PrecipProbability) > 0 && tt.day.PrecipProbability[0].Value != nil {
+				expectedProb := *tt.day.PrecipProbability[0].Value
+				if weather.PrecipProb != expectedProb {
+					t.Errorf("Expected PrecipProb=%d, got %d", expectedProb, weather.PrecipProb)
+				}
+			}
+		})
+	}
+}

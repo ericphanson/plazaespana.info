@@ -241,7 +241,9 @@ outdated:
 # Run integration tests
 test-integration:
     @echo "🧪 Running integration tests..."
-    @cd generator && go test -tags=integration ./cmd/buildsite
+    @echo "📦 Installing html-validate (if needed)..."
+    @npm install --no-save 2>&1 | grep -v "^up to date" || true
+    @cd generator && go test -tags=integration ./cmd/buildsite -v
 
 # Fetch test fixtures from upstream APIs (requires AEMET_API_KEY for weather data)
 fetch-fixtures:
@@ -299,7 +301,11 @@ preview-cleanup PREVIEW:
 # Examples:
 #   just scan                        # Scan localhost:8080 (default)
 #   just scan plazaespana.info       # Scan production (https:// added automatically)
-scan URL="http://localhost:8080": (scan-links URL) (scan-html URL) (scan-performance URL)
+# Note: Individual scans may fail, but all will run. Use individual targets to check specific exit codes.
+scan URL="http://localhost:8080":
+    @just scan-links "{{URL}}" || true
+    @just scan-html "{{URL}}" || true
+    @just scan-performance "{{URL}}" || true
     @echo ""
     @echo "✅ All scans complete!"
     @echo ""
@@ -311,6 +317,7 @@ scan URL="http://localhost:8080": (scan-links URL) (scan-html URL) (scan-perform
     @echo "See docs/scanning.md for interpretation guide"
 
 # Check for broken links and missing assets
+# Exits with code 1 if broken links are found, 0 if all links are OK
 scan-links URL="http://localhost:8080":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -323,6 +330,9 @@ scan-links URL="http://localhost:8080":
         SCAN_URL="https://$SCAN_URL"
     fi
 
+    # Normalize URL (remove trailing slash, will add back for directory URLs)
+    SCAN_URL="${SCAN_URL%/}"
+
     echo "   Target: $SCAN_URL"
 
     if ! command -v npx &> /dev/null; then
@@ -330,11 +340,21 @@ scan-links URL="http://localhost:8080":
         exit 1
     fi
 
-    npx broken-link-checker "$SCAN_URL" \
+    # Add trailing slash for directory URLs to avoid 301 redirects
+    # broken-link-checker exits with non-zero if broken links are found
+    npx broken-link-checker "$SCAN_URL/" \
         --recursive \
         --ordered \
-        --exclude-external 2>&1 | tee scan-results/links.txt || true
-    echo "✅ Link check complete"
+        --exclude-external 2>&1 | tee scan-results/links.txt
+    LINK_EXIT=$?
+
+    if [ $LINK_EXIT -eq 0 ]; then
+        echo "✅ Link check complete - no broken links"
+    else
+        echo "❌ Link check complete - broken links found"
+    fi
+
+    exit $LINK_EXIT
 
 # Run Lighthouse performance audit
 scan-performance URL="http://localhost:8080":
@@ -349,6 +369,9 @@ scan-performance URL="http://localhost:8080":
         SCAN_URL="https://$SCAN_URL"
     fi
 
+    # Normalize URL (remove trailing slash, will add back for directory URLs)
+    SCAN_URL="${SCAN_URL%/}"
+
     echo "   Target: $SCAN_URL"
 
     if ! command -v npx &> /dev/null; then
@@ -356,7 +379,8 @@ scan-performance URL="http://localhost:8080":
         exit 1
     fi
 
-    npx lighthouse "$SCAN_URL" \
+    # Add trailing slash for directory URLs to avoid 301 redirects
+    npx lighthouse "$SCAN_URL/" \
         --output=html \
         --output=json \
         --output-path=scan-results/lighthouse \
@@ -367,6 +391,7 @@ scan-performance URL="http://localhost:8080":
     echo "   Report: scan-results/lighthouse.report.html"
 
 # Validate HTML
+# Exits with code 1 if validation errors are found, 0 if HTML is valid
 scan-html URL="http://localhost:8080":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -389,12 +414,12 @@ scan-html URL="http://localhost:8080":
         exit 1
     fi
 
-    # Fetch main page
+    # Fetch main page (add trailing slash to avoid 301 redirects on directory URLs)
     echo "   Fetching index.html..."
-    if ! curl -sS "$SCAN_URL" > scan-results/index.html; then
-        echo "❌ Failed to fetch $SCAN_URL" | tee scan-results/html-validation.txt
-        echo "✅ HTML validation complete (skipped - fetch failed)"
-        exit 0
+    if ! curl -sS -L "$SCAN_URL/" > scan-results/index.html; then
+        echo "❌ Failed to fetch $SCAN_URL/" | tee scan-results/html-validation.txt
+        echo "❌ HTML validation complete - fetch failed"
+        exit 1
     fi
 
     # Fetch build report
@@ -403,6 +428,14 @@ scan-html URL="http://localhost:8080":
         echo "⚠️  Failed to fetch $SCAN_URL/build-report.html (skipping)"
     fi
 
-    # Validate all fetched HTML files
-    npx html-validate scan-results/*.html 2>&1 | tee scan-results/html-validation.txt || true
-    echo "✅ HTML validation complete"
+    # Validate only our HTML files (not lighthouse report which we don't control)
+    npx html-validate scan-results/index.html scan-results/build-report.html 2>&1 | tee scan-results/html-validation.txt
+    HTML_EXIT=$?
+
+    if [ $HTML_EXIT -eq 0 ]; then
+        echo "✅ HTML validation complete - no errors"
+    else
+        echo "❌ HTML validation complete - errors found"
+    fi
+
+    exit $HTML_EXIT

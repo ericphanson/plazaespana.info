@@ -75,8 +75,10 @@ for domain in \
     "update.code.visualstudio.com" \
     "datos.madrid.es" \
     "www.esmadrid.com" \
+    "opendata.aemet.es" \
     "esmadrid.com" \
     "proxy.golang.org" \
+    "plazaespana.info" \
     "sum.golang.org"; do
     echo "Resolving $domain..."
     # Follow CNAMEs by using +short which returns final A records

@@ -64,6 +64,12 @@ func buildWeatherForDay(day *DayForecast, basePath string) *render.Weather {
 	// Extract precipitation amount for that period
 	precipAmount := extractPrecipAmountForPeriod(day.Precipitation, period)
 
+	// Build icon URL only if we have a valid sky code
+	iconURL := ""
+	if skyState.Value != "" {
+		iconURL = GetWeatherIconURL(skyState.Value, basePath)
+	}
+
 	return &render.Weather{
 		Date:            extractDate(day.Date),
 		TempMax:         day.Temperature.Max,
@@ -72,7 +78,7 @@ func buildWeatherForDay(day *DayForecast, basePath string) *render.Weather {
 		PrecipAmount:    precipAmount,
 		SkyCode:         skyState.Value,
 		SkyDescription:  skyState.Description,
-		SkyIconURL:      GetWeatherIconURL(skyState.Value, basePath),
+		SkyIconURL:      iconURL,
 		WeatherCategory: GetWeatherCategory(skyState.Value),
 		IsNight:         IsNightCondition(skyState.Value),
 	}
