@@ -23,12 +23,12 @@ build:
 # Run all tests
 test:
     @echo "🧪 Running tests..."
-    @cd generator && go test ./...
+    @cd generator && PLAZAESPANA_NO_API=1 go test ./...
 
 # Run tests with coverage report
 test-coverage:
     @echo "🧪 Running tests with coverage..."
-    @cd generator && go test -cover ./...
+    @cd generator && PLAZAESPANA_NO_API=1 go test -cover ./...
 
 # Build for FreeBSD/amd64 (for NFSN deployment)
 freebsd:
@@ -243,7 +243,7 @@ test-integration:
     @echo "🧪 Running integration tests..."
     @echo "📦 Installing html-validate (if needed)..."
     @npm install --no-save 2>&1 | grep -v "^up to date" || true
-    @cd generator && go test -tags=integration ./cmd/buildsite -v
+    @cd generator && PLAZAESPANA_NO_API=1 go test -tags=integration ./cmd/buildsite -v
 
 # Fetch test fixtures from upstream APIs (requires AEMET_API_KEY for weather data)
 fetch-fixtures:

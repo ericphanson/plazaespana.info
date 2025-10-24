@@ -85,6 +85,7 @@ func main() {
 	xmlURL := flag.String("xml-url", "", "Cultural events XML URL (datos.madrid.es, overrides config)")
 	csvURL := flag.String("csv-url", "", "Cultural events CSV URL (datos.madrid.es, overrides config)")
 	esmadridURL := flag.String("esmadrid-url", "", "City events XML URL (esmadrid.com, overrides config)")
+	aemetBaseURL := flag.String("aemet-base-url", "", "AEMET API base URL (for testing, overrides default)")
 	outDir := flag.String("out-dir", "", "Output directory for static files (overrides config)")
 	dataDir := flag.String("data-dir", "", "Data directory for snapshots (overrides config)")
 	lat := flag.Float64("lat", 0, "Reference latitude in decimal degrees (overrides config)")
@@ -178,6 +179,11 @@ func main() {
 		log.Fatalf("Failed to create fetch client: %v", err)
 	}
 	log.Printf("Fetch mode: %s (cache TTL: %v, min delay: %v)", mode, modeConfig.CacheTTL, modeConfig.MinDelay)
+
+	// Set longer cache TTL for weather data (6 hours)
+	// Weather forecasts don't change often, and AEMET has rate limits
+	client.SetCacheTTLOverride("opendata.aemet.es", 6*time.Hour)
+	log.Printf("Weather cache TTL: 6h (overriding default %v)", modeConfig.CacheTTL)
 
 	snapMgr := snapshot.NewManager(cfg.Snapshot.DataDir)
 
@@ -788,8 +794,17 @@ func main() {
 		log.Printf("Warning: AEMET API key not found (%s) - continuing without weather forecasts", keySourceMsg)
 		buildReport.Weather.Error = fmt.Sprintf("API key not found (%s)", keySourceMsg)
 	} else {
+		// Determine AEMET base URL: flag overrides config
+		baseURL := cfg.Weather.APIBaseURL
+		if *aemetBaseURL != "" {
+			baseURL = *aemetBaseURL
+			log.Printf("Using AEMET base URL from flag: %s", baseURL)
+		} else {
+			log.Printf("Using AEMET base URL from config: %s", baseURL)
+		}
+
 		// Create weather client
-		weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
+		weatherClient := weather.NewClientWithBaseURL(apiKey, cfg.Weather.MunicipalityCode, client, baseURL)
 
 		// Wait 2 seconds before weather fetch (respectful delay)
 		log.Println("Waiting 2 seconds before weather fetch (respectful delay)...")

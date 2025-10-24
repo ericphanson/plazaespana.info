@@ -56,6 +56,13 @@ func (c *Client) Config() ModeConfig {
 	return c.config
 }
 
+// SetCacheTTLOverride sets a custom cache TTL for URLs containing the given pattern.
+// For example, SetCacheTTLOverride("opendata.aemet.es", 6*time.Hour) makes AEMET
+// weather requests cache for 6 hours instead of the default TTL.
+func (c *Client) SetCacheTTLOverride(urlPattern string, ttl time.Duration) {
+	c.cache.SetTTLOverride(urlPattern, ttl)
+}
+
 // FetchWithHeaders fetches a URL with custom HTTP headers.
 // Uses the same caching, throttling, and audit trail as other fetch methods.
 // Useful for APIs requiring authentication (e.g., AEMET API key header).
@@ -322,6 +329,14 @@ func (c *Client) fetchWithHeaders(url string, headers map[string]string) ([]byte
 	if strings.HasPrefix(url, "file://") {
 		path := strings.TrimPrefix(url, "file://")
 		return os.ReadFile(path)
+	}
+
+	// Strict test mode: block all external HTTP requests if PLAZAESPANA_NO_API is set
+	// Allow localhost/127.0.0.1 for test servers (httptest)
+	if os.Getenv("PLAZAESPANA_NO_API") != "" {
+		if !strings.Contains(url, "://localhost") && !strings.Contains(url, "://127.0.0.1") {
+			return nil, fmt.Errorf("BLOCKED: external API request to %s (PLAZAESPANA_NO_API is set - use mock servers in tests)", url)
+		}
 	}
 
 	// Check cache first

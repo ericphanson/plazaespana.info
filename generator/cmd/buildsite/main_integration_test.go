@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -108,6 +109,29 @@ func TestIntegration_HTMLValidation(t *testing.T) {
 	}))
 	defer esmadridServer.Close()
 
+	// Mock AEMET forecast data endpoint (must be created first so we have its URL)
+	aemetForecastServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := os.ReadFile(filepath.Join(fixturesDir, "aemet-madrid-forecast.json"))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	}))
+	defer aemetForecastServer.Close()
+
+	// Mock AEMET base server (handles both metadata and forecast requests)
+	// The weather client will request: {baseURL}/prediccion/especifica/municipio/diaria/{code}
+	aemetBaseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// All paths return metadata pointing to the forecast server
+		metadata := map[string]interface{}{
+			"descripcion": "exito",
+			"estado":      200,
+			"datos":       aemetForecastServer.URL, // Point to mock server instead of real AEMET
+			"metadatos":   "http://mock/metadatos",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(metadata)
+	}))
+	defer aemetBaseServer.Close()
+
 	// Run the buildsite binary
 	templatePath := filepath.Join(rootDir, "generator", "templates", "index.tmpl.html")
 	buildCmd := exec.Command(
@@ -116,6 +140,7 @@ func TestIntegration_HTMLValidation(t *testing.T) {
 		"-xml-url", xmlServer.URL,
 		"-csv-url", csvServer.URL,
 		"-esmadrid-url", esmadridServer.URL,
+		"-aemet-base-url", aemetBaseServer.URL, // Point to mock AEMET server
 		"-out-dir", outDir,
 		"-data-dir", dataDir,
 		"-template-path", templatePath,
@@ -124,6 +149,10 @@ func TestIntegration_HTMLValidation(t *testing.T) {
 		"-radius-km", "0.35",
 		"-timezone", "Europe/Madrid",
 	)
+
+	// Set AEMET API key for weather integration test
+	// Set PLAZAESPANA_NO_API to enforce no external API calls (only mock servers allowed)
+	buildCmd.Env = append(os.Environ(), "AEMET_API_KEY=test-api-key", "PLAZAESPANA_NO_API=1")
 
 	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("Failed to run buildsite: %v\n%s", err, output)
