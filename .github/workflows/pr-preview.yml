@@ -105,19 +105,41 @@ jobs:
 
           # Run link checking (exit code 0 = pass, 1 = fail)
           LINKS_PASS=true
-          if ! just scan-links "$PREVIEW_URL"; then
+          if ! just scan-links "$PREVIEW_URL" 2>&1 | tee link-check.log; then
             LINKS_PASS=false
           fi
 
           # Run HTML validation (exit code 0 = pass, 1 = fail)
           HTML_PASS=true
-          if ! just scan-html "$PREVIEW_URL"; then
+          if ! just scan-html "$PREVIEW_URL" 2>&1 | tee html-check.log; then
             HTML_PASS=false
           fi
 
           # Set outputs for next step
           echo "links-pass=$LINKS_PASS" >> $GITHUB_OUTPUT
           echo "html-pass=$HTML_PASS" >> $GITHUB_OUTPUT
+
+          # Capture link check results for comment
+          if [ "$LINKS_PASS" = false ]; then
+            {
+              echo 'links-output<<EOF'
+              grep "BROKEN" scan-results/links.txt | head -20 || echo "See job logs for details"
+              echo 'EOF'
+            } >> $GITHUB_OUTPUT
+          else
+            echo "links-output=✅ No broken links found" >> $GITHUB_OUTPUT
+          fi
+
+          # Capture HTML validation results for comment
+          if [ "$HTML_PASS" = false ]; then
+            {
+              echo 'html-output<<EOF'
+              cat scan-results/html-validation.txt || echo "See job logs for details"
+              echo 'EOF'
+            } >> $GITHUB_OUTPUT
+          else
+            echo "html-output=✅ HTML validates successfully" >> $GITHUB_OUTPUT
+          fi
 
           # Exit with error if any validation failed
           if [ "$LINKS_PASS" = false ] || [ "$HTML_PASS" = false ]; then
@@ -147,16 +169,20 @@ jobs:
             ${{ steps.validate.outcome == 'success' && '✅ All checks passed!' || '' }}
 
             <details>
-            <summary>${{ steps.validate.outcome == 'success' && '✅' || '❌' }} Link Check</summary>
+            <summary>${{ steps.validate.outputs.links-pass == 'true' && '✅' || '❌' }} Link Check</summary>
 
-            ${{ steps.validate.outputs.links-pass == 'true' && '✅ No broken links found' || '❌ Broken links detected - see job logs' }}
+            ```
+            ${{ steps.validate.outputs.links-output }}
+            ```
 
             </details>
 
             <details>
             <summary>${{ steps.validate.outputs.html-pass == 'true' && '✅' || '❌' }} HTML Validation</summary>
 
-            ${{ steps.validate.outputs.html-pass == 'true' && '✅ HTML validates successfully' || '❌ HTML validation errors - see job logs' }}
+            ```
+            ${{ steps.validate.outputs.html-output }}
+            ```
 
             </details>
 
