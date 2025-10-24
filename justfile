@@ -241,7 +241,9 @@ outdated:
 # Run integration tests
 test-integration:
     @echo "🧪 Running integration tests..."
-    @cd generator && go test -tags=integration ./cmd/buildsite
+    @echo "📦 Installing html-validate (if needed)..."
+    @npm install --no-save 2>&1 | grep -v "^up to date" || true
+    @cd generator && go test -tags=integration ./cmd/buildsite -v
 
 # Fetch test fixtures from upstream APIs (requires AEMET_API_KEY for weather data)
 fetch-fixtures:

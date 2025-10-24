@@ -71,3 +71,4 @@ temp/
 
 # Scan results
 scan-results/
+node_modules
