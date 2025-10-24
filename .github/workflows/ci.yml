@@ -45,7 +45,8 @@ jobs:
         run: just fmt-check
 
       - name: Run tests
-        # Tests use fixtures from testdata/ - no AEMET_API_KEY needed
+        env:
+          PLAZAESPANA_NO_API: "1"  # Block all external API calls - tests must use fixtures
         run: just test
 
       - name: Build FreeBSD binary
@@ -84,6 +85,8 @@ jobs:
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
 
       - name: Run integration tests (with HTML validation)
+        env:
+          PLAZAESPANA_NO_API: "1"  # Block all external API calls - tests must use mocks
         run: just test-integration
 
   deploy:

@@ -151,7 +151,8 @@ func TestIntegration_HTMLValidation(t *testing.T) {
 	)
 
 	// Set AEMET API key for weather integration test
-	buildCmd.Env = append(os.Environ(), "AEMET_API_KEY=test-api-key")
+	// Set PLAZAESPANA_NO_API to enforce no external API calls (only mock servers allowed)
+	buildCmd.Env = append(os.Environ(), "AEMET_API_KEY=test-api-key", "PLAZAESPANA_NO_API=1")
 
 	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("Failed to run buildsite: %v\n%s", err, output)
