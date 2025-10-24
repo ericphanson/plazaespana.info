@@ -85,6 +85,7 @@ func main() {
 	xmlURL := flag.String("xml-url", "", "Cultural events XML URL (datos.madrid.es, overrides config)")
 	csvURL := flag.String("csv-url", "", "Cultural events CSV URL (datos.madrid.es, overrides config)")
 	esmadridURL := flag.String("esmadrid-url", "", "City events XML URL (esmadrid.com, overrides config)")
+	aemetBaseURL := flag.String("aemet-base-url", "", "AEMET API base URL (for testing, overrides default)")
 	outDir := flag.String("out-dir", "", "Output directory for static files (overrides config)")
 	dataDir := flag.String("data-dir", "", "Data directory for snapshots (overrides config)")
 	lat := flag.Float64("lat", 0, "Reference latitude in decimal degrees (overrides config)")
@@ -789,7 +790,13 @@ func main() {
 		buildReport.Weather.Error = fmt.Sprintf("API key not found (%s)", keySourceMsg)
 	} else {
 		// Create weather client
-		weatherClient := weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
+		var weatherClient *weather.Client
+		if *aemetBaseURL != "" {
+			weatherClient = weather.NewClientWithBaseURL(apiKey, cfg.Weather.MunicipalityCode, client, *aemetBaseURL)
+			log.Printf("Using custom AEMET base URL: %s", *aemetBaseURL)
+		} else {
+			weatherClient = weather.NewClient(apiKey, cfg.Weather.MunicipalityCode, client)
+		}
 
 		// Wait 2 seconds before weather fetch (respectful delay)
 		log.Println("Waiting 2 seconds before weather fetch (respectful delay)...")

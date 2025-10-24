@@ -12,6 +12,7 @@ type Client struct {
 	apiKey           string
 	fetchClient      *fetch.Client
 	municipalityCode string
+	baseURL          string // Base URL for AEMET API (defaults to production, overridable for tests)
 }
 
 // NewClient creates a new weather client
@@ -20,6 +21,17 @@ func NewClient(apiKey, municipalityCode string, fetchClient *fetch.Client) *Clie
 		apiKey:           apiKey,
 		fetchClient:      fetchClient,
 		municipalityCode: municipalityCode,
+		baseURL:          "https://opendata.aemet.es/opendata/api",
+	}
+}
+
+// NewClientWithBaseURL creates a new weather client with custom base URL (for testing)
+func NewClientWithBaseURL(apiKey, municipalityCode string, fetchClient *fetch.Client, baseURL string) *Client {
+	return &Client{
+		apiKey:           apiKey,
+		fetchClient:      fetchClient,
+		municipalityCode: municipalityCode,
+		baseURL:          baseURL,
 	}
 }
 
@@ -32,7 +44,7 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 	}
 
 	// Step 1: Fetch metadata to get the datos URL
-	metadataURL := fmt.Sprintf("https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/%s", c.municipalityCode)
+	metadataURL := fmt.Sprintf("%s/prediccion/especifica/municipio/diaria/%s", c.baseURL, c.municipalityCode)
 
 	metadataBody, err := c.fetchWithAPIKey(metadataURL)
 	if err != nil {
