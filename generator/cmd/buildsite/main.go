@@ -180,6 +180,11 @@ func main() {
 	}
 	log.Printf("Fetch mode: %s (cache TTL: %v, min delay: %v)", mode, modeConfig.CacheTTL, modeConfig.MinDelay)
 
+	// Set longer cache TTL for weather data (6 hours)
+	// Weather forecasts don't change often, and AEMET has rate limits
+	client.SetCacheTTLOverride("opendata.aemet.es", 6*time.Hour)
+	log.Printf("Weather cache TTL: 6h (overriding default %v)", modeConfig.CacheTTL)
+
 	snapMgr := snapshot.NewManager(cfg.Snapshot.DataDir)
 
 	// Initialize cultural pipeline report

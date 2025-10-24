@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -21,8 +22,9 @@ type CacheEntry struct {
 
 // HTTPCache manages persistent HTTP response caching.
 type HTTPCache struct {
-	cacheDir string
-	ttl      time.Duration
+	cacheDir     string
+	ttl          time.Duration
+	ttlOverrides map[string]time.Duration // URL pattern -> TTL overrides
 }
 
 // NewHTTPCache creates a cache with the given directory and TTL.
@@ -31,9 +33,17 @@ func NewHTTPCache(cacheDir string, ttl time.Duration) (*HTTPCache, error) {
 		return nil, fmt.Errorf("creating cache dir: %w", err)
 	}
 	return &HTTPCache{
-		cacheDir: cacheDir,
-		ttl:      ttl,
+		cacheDir:     cacheDir,
+		ttl:          ttl,
+		ttlOverrides: make(map[string]time.Duration),
 	}, nil
+}
+
+// SetTTLOverride sets a custom TTL for URLs containing the given pattern.
+// For example, SetTTLOverride("opendata.aemet.es", 6*time.Hour) makes AEMET requests
+// use a 6-hour cache TTL instead of the default.
+func (c *HTTPCache) SetTTLOverride(urlPattern string, ttl time.Duration) {
+	c.ttlOverrides[urlPattern] = ttl
 }
 
 // Get retrieves cached entry if valid (not expired).
@@ -54,8 +64,17 @@ func (c *HTTPCache) Get(url string) (*CacheEntry, error) {
 		return nil, fmt.Errorf("parsing cache entry: %w", err)
 	}
 
+	// Determine TTL: check for URL pattern overrides first
+	ttl := c.ttl
+	for pattern, overrideTTL := range c.ttlOverrides {
+		if strings.Contains(url, pattern) {
+			ttl = overrideTTL
+			break
+		}
+	}
+
 	// Check if expired
-	if time.Since(entry.FetchedAt) > c.ttl {
+	if time.Since(entry.FetchedAt) > ttl {
 		return nil, nil // Cache expired
 	}
 

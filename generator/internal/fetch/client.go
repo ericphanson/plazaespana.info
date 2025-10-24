@@ -56,6 +56,13 @@ func (c *Client) Config() ModeConfig {
 	return c.config
 }
 
+// SetCacheTTLOverride sets a custom cache TTL for URLs containing the given pattern.
+// For example, SetCacheTTLOverride("opendata.aemet.es", 6*time.Hour) makes AEMET
+// weather requests cache for 6 hours instead of the default TTL.
+func (c *Client) SetCacheTTLOverride(urlPattern string, ttl time.Duration) {
+	c.cache.SetTTLOverride(urlPattern, ttl)
+}
+
 // FetchWithHeaders fetches a URL with custom HTTP headers.
 // Uses the same caching, throttling, and audit trail as other fetch methods.
 // Useful for APIs requiring authentication (e.g., AEMET API key header).
