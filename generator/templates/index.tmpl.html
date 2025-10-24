@@ -72,8 +72,8 @@
         <span class="event-badge cultural-badge">Cultural</span>
         {{- end}}
         {{- if .Weather}}
-        <div class="weather-info weather-{{.Weather.WeatherCategory}}" title="Pronóstico: {{.Weather.SkyDescription}}">
-          <img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">
+        <div class="weather-info weather-{{.Weather.WeatherCategory}}"{{if .Weather.SkyDescription}} title="Pronóstico: {{.Weather.SkyDescription}}"{{end}}>
+          {{- if .Weather.SkyIconURL}}<img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">{{end -}}
           <span class="weather-temp">{{.Weather.TempMax}}°</span>
           {{- if gt .Weather.PrecipProb 30}}
           <span class="weather-precip">💧{{.Weather.PrecipProb}}%</span>
@@ -115,8 +115,8 @@
         <span class="event-badge cultural-badge">Cultural</span>
         {{- end}}
         {{- if .Weather}}
-        <div class="weather-info weather-{{.Weather.WeatherCategory}}" title="Pronóstico: {{.Weather.SkyDescription}}">
-          <img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">
+        <div class="weather-info weather-{{.Weather.WeatherCategory}}"{{if .Weather.SkyDescription}} title="Pronóstico: {{.Weather.SkyDescription}}"{{end}}>
+          {{- if .Weather.SkyIconURL}}<img src="{{.Weather.SkyIconURL}}" alt="{{.Weather.SkyDescription}}" class="weather-icon" width="24" height="24" loading="lazy">{{end -}}
           <span class="weather-temp">{{.Weather.TempMax}}°</span>
           {{- if gt .Weather.PrecipProb 30}}
           <span class="weather-precip">💧{{.Weather.PrecipProb}}%</span>
