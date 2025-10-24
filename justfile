@@ -325,6 +325,9 @@ scan-links URL="http://localhost:8080":
         SCAN_URL="https://$SCAN_URL"
     fi
 
+    # Normalize URL (remove trailing slash, will add back for directory URLs)
+    SCAN_URL="${SCAN_URL%/}"
+
     echo "   Target: $SCAN_URL"
 
     if ! command -v npx &> /dev/null; then
@@ -332,7 +335,8 @@ scan-links URL="http://localhost:8080":
         exit 1
     fi
 
-    npx broken-link-checker "$SCAN_URL" \
+    # Add trailing slash for directory URLs to avoid 301 redirects
+    npx broken-link-checker "$SCAN_URL/" \
         --recursive \
         --ordered \
         --exclude-external 2>&1 | tee scan-results/links.txt || true
@@ -351,6 +355,9 @@ scan-performance URL="http://localhost:8080":
         SCAN_URL="https://$SCAN_URL"
     fi
 
+    # Normalize URL (remove trailing slash, will add back for directory URLs)
+    SCAN_URL="${SCAN_URL%/}"
+
     echo "   Target: $SCAN_URL"
 
     if ! command -v npx &> /dev/null; then
@@ -358,7 +365,8 @@ scan-performance URL="http://localhost:8080":
         exit 1
     fi
 
-    npx lighthouse "$SCAN_URL" \
+    # Add trailing slash for directory URLs to avoid 301 redirects
+    npx lighthouse "$SCAN_URL/" \
         --output=html \
         --output=json \
         --output-path=scan-results/lighthouse \
@@ -391,10 +399,10 @@ scan-html URL="http://localhost:8080":
         exit 1
     fi
 
-    # Fetch main page
+    # Fetch main page (add trailing slash to avoid 301 redirects on directory URLs)
     echo "   Fetching index.html..."
-    if ! curl -sS "$SCAN_URL" > scan-results/index.html; then
-        echo "❌ Failed to fetch $SCAN_URL" | tee scan-results/html-validation.txt
+    if ! curl -sS -L "$SCAN_URL/" > scan-results/index.html; then
+        echo "❌ Failed to fetch $SCAN_URL/" | tee scan-results/html-validation.txt
         echo "✅ HTML validation complete (skipped - fetch failed)"
         exit 0
     fi
