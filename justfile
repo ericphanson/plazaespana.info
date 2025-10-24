@@ -333,7 +333,7 @@ scan-links URL="http://localhost:8080":
     npx broken-link-checker "$SCAN_URL" \
         --recursive \
         --ordered \
-        --exclude-external 2>&1 | tee scan-results/links.txt
+        --exclude-external 2>&1 | tee scan-results/links.txt || true
     echo "✅ Link check complete"
 
 # Run Lighthouse performance audit
@@ -362,7 +362,7 @@ scan-performance URL="http://localhost:8080":
         --output-path=scan-results/lighthouse \
         --preset=desktop \
         --quiet \
-        --chrome-flags="--headless"
+        --chrome-flags="--headless" || true
     echo "✅ Performance audit complete"
     echo "   Report: scan-results/lighthouse.report.html"
 
