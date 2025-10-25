@@ -44,9 +44,10 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 	}
 
 	// Step 1: Fetch metadata to get the datos URL
+	// IMPORTANT: Skip cache for metadata because the datos URL expires
 	metadataURL := fmt.Sprintf("%s/prediccion/especifica/municipio/diaria/%s", c.baseURL, c.municipalityCode)
 
-	metadataBody, err := c.fetchWithAPIKey(metadataURL)
+	metadataBody, err := c.fetchWithAPIKey(metadataURL, true) // skipCache=true
 	if err != nil {
 		return nil, fmt.Errorf("fetching metadata: %w", err)
 	}
@@ -67,7 +68,8 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 
 	// Step 2: Fetch actual forecast data using the datos URL
 	// The datos URL doesn't require authentication
-	forecastBody, err := c.fetchWithAPIKey(metadata.DataURL)
+	// We CAN cache this response since it's the actual forecast data
+	forecastBody, err := c.fetchWithAPIKey(metadata.DataURL, false) // skipCache=false, allow caching
 	if err != nil {
 		return nil, fmt.Errorf("fetching forecast data: %w", err)
 	}
@@ -88,11 +90,12 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 
 // fetchWithAPIKey makes an HTTP request with the AEMET API key header
 // Uses the fetch client's HTTPCache system for caching, throttling, and audit trail
-func (c *Client) fetchWithAPIKey(url string) ([]byte, error) {
+// If skipCache is true, bypasses the cache for this request (but still caches the response for future use)
+func (c *Client) fetchWithAPIKey(url string, skipCache bool) ([]byte, error) {
 	// Use fetch client with custom header for API key
 	// AEMET uses lowercase "api_key" header
 	headers := map[string]string{
 		"api_key": c.apiKey,
 	}
-	return c.fetchClient.FetchWithHeaders(url, headers)
+	return c.fetchClient.FetchWithHeaders(url, headers, skipCache)
 }

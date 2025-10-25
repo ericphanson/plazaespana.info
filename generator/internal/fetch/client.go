@@ -66,8 +66,9 @@ func (c *Client) SetCacheTTLOverride(urlPattern string, ttl time.Duration) {
 // FetchWithHeaders fetches a URL with custom HTTP headers.
 // Uses the same caching, throttling, and audit trail as other fetch methods.
 // Useful for APIs requiring authentication (e.g., AEMET API key header).
-func (c *Client) FetchWithHeaders(url string, headers map[string]string) ([]byte, error) {
-	return c.fetchWithHeaders(url, headers)
+// If skipCache is true, bypasses the cache for this request (but still caches the response for future use).
+func (c *Client) FetchWithHeaders(url string, headers map[string]string, skipCache bool) ([]byte, error) {
+	return c.fetchWithHeaders(url, headers, skipCache)
 }
 
 // FetchJSON fetches and decodes JSON from the given URL.
@@ -318,13 +319,14 @@ func getField(row []string, headerMap map[string]int, fieldName string) string {
 // Supports both HTTP(S) URLs and file:// URLs.
 // Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
 func (c *Client) fetch(url string) ([]byte, error) {
-	return c.fetchWithHeaders(url, nil)
+	return c.fetchWithHeaders(url, nil, false)
 }
 
 // fetchWithHeaders retrieves data from a URL with custom HTTP headers.
 // Supports both HTTP(S) URLs and file:// URLs.
 // Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
-func (c *Client) fetchWithHeaders(url string, headers map[string]string) ([]byte, error) {
+// If skipCache is true, bypasses reading from cache (but still writes to cache for future use).
+func (c *Client) fetchWithHeaders(url string, headers map[string]string, skipCache bool) ([]byte, error) {
 	// Handle file:// URLs (no caching for local files)
 	if strings.HasPrefix(url, "file://") {
 		path := strings.TrimPrefix(url, "file://")
@@ -339,21 +341,25 @@ func (c *Client) fetchWithHeaders(url string, headers map[string]string) ([]byte
 		}
 	}
 
-	// Check cache first
-	cached, err := c.cache.Get(url)
-	if err != nil {
-		// Cache read error - log but continue to fetch
-		fmt.Fprintf(os.Stderr, "Warning: cache read error: %v\n", err)
-	}
+	// Check cache first (unless skipCache is true)
+	var cached *CacheEntry
+	if !skipCache {
+		var err error
+		cached, err = c.cache.Get(url)
+		if err != nil {
+			// Cache read error - log but continue to fetch
+			fmt.Fprintf(os.Stderr, "Warning: cache read error: %v\n", err)
+		}
 
-	if cached != nil {
-		// Cache hit! Use cached data
-		c.auditor.Record(RequestRecord{
-			URL:       url,
-			Timestamp: time.Now(),
-			CacheHit:  true,
-		})
-		return cached.Body, nil
+		if cached != nil {
+			// Cache hit! Use cached data
+			c.auditor.Record(RequestRecord{
+				URL:       url,
+				Timestamp: time.Now(),
+				CacheHit:  true,
+			})
+			return cached.Body, nil
+		}
 	}
 
 	// Cache miss - need to make HTTP request
