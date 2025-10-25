@@ -814,18 +814,18 @@ func main() {
 		log.Printf("Fetching 7-day forecast for municipality %s...", cfg.Weather.MunicipalityCode)
 		forecast, err := weatherClient.FetchForecast()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Weather fetch failed: %v (continuing without weather)\n", err)
-			log.Printf("Warning: Weather fetch failed: %v (continuing without weather)", err)
+			fmt.Fprintf(os.Stderr, "ERROR: Weather fetch failed: %v\n", err)
+			log.Printf("ERROR: Weather fetch failed: %v", err)
 			buildReport.AddWarning("Weather fetch failed: %v", err)
 			buildReport.Weather.Error = err.Error()
-		} else {
-			log.Printf("Weather forecast received: %d days", len(forecast.Prediction.Days))
-			buildReport.Weather.DaysCovered = len(forecast.Prediction.Days)
-
-			// Build weather map for fast lookup by date
-			weatherMap = weather.BuildWeatherMap(forecast, *basePath)
-			log.Printf("Weather map built: %d dates", len(weatherMap))
+			log.Fatal("weather fetch is required but failed")
 		}
+		log.Printf("Weather forecast received: %d days", len(forecast.Prediction.Days))
+		buildReport.Weather.DaysCovered = len(forecast.Prediction.Days)
+
+		// Build weather map for fast lookup by date
+		weatherMap = weather.BuildWeatherMap(forecast, *basePath)
+		log.Printf("Weather map built: %d dates", len(weatherMap))
 	}
 	buildReport.Weather.Duration = time.Since(weatherStart)
 

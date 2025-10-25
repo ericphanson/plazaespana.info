@@ -75,7 +75,8 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 	// Parse forecast response (it's an array with single element)
 	var forecasts []Forecast
 	if err := json.Unmarshal(forecastBody, &forecasts); err != nil {
-		return nil, fmt.Errorf("parsing forecast: %w", err)
+		// Dump the full response for debugging
+		return nil, fmt.Errorf("parsing forecast: %w\nFull API response body:\n%s", err, string(forecastBody))
 	}
 
 	if len(forecasts) == 0 {
