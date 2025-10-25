@@ -78,11 +78,11 @@ Add these secrets in repository Settings → Secrets and variables → Actions:
 | `NFSN_HOST`        | NFSN SSH hostname            | SSH hostname from site information  | Yes      |
 | `NFSN_USER`        | NFSN username                | `your_username`                     | Yes      |
 | `NFSN_KNOWN_HOST`  | SSH host key (for security)  | Output from `ssh-keyscan` command   | Yes      |
-| `AEMET_API_KEY`    | AEMET weather API key        | Your AEMET OpenData API key         | Optional |
+| `AEMET_API_KEY`    | AEMET weather API key        | Your AEMET OpenData API key         | Yes      |
 
 ⚠️ Use the **private key** that matches the public key uploaded to NFSN.
 
-**Note:** `AEMET_API_KEY` is optional. If not provided, the site builds without weather data (graceful degradation).
+**Note:** `AEMET_API_KEY` is required. Without it, site builds will fail.
 
 ### How to populate NFSN_KNOWN_HOST
 
@@ -124,7 +124,7 @@ tail -f /home/logs/generate.log
 
 ## AEMET Weather API Setup
 
-The site integrates weather forecasts from AEMET (Spanish Meteorological Agency). This is optional - the site works fine without it, but weather data enhances event cards.
+The site integrates weather forecasts from AEMET (Spanish Meteorological Agency). Weather data is required for site builds.
 
 ### Get an API Key
 
@@ -178,13 +178,12 @@ For automated deployments and PR previews, add the API key to GitHub repository 
 
 The GitHub Actions workflows are already configured to use this secret.
 
-### Graceful Degradation
+### Error Handling
 
 **If API key is missing or invalid:**
-- Site generates successfully without weather data
-- Build report shows weather fetch errors
-- Events render normally (weather is an optional enhancement)
-- No impact on existing cultural/city events
+- Build fails with non-zero exit code
+- Full API response dumped to stderr for debugging
+- Site continues to serve last successful build
 
 **Check weather status:**
 - View `/home/public/build-report.html` for weather fetch details
@@ -528,15 +527,15 @@ gh auth status
 - [ ] Binary builds (`just freebsd`)
 - [ ] SSH key added to NFSN
 - [ ] Credentials configured (direnv or secrets)
-- [ ] (Optional) AEMET API key obtained and configured
+- [ ] AEMET API key obtained and configured (required)
 
 **After first deployment:**
 - [ ] Visit NFSN site URL to verify site works
 - [ ] Check events are showing
 - [ ] Configure site generation cron job (hourly)
-- [ ] (Optional) Add AEMET_API_KEY to cron command if using weather
+- [ ] Ensure AEMET_API_KEY is configured (required for builds)
 - [ ] Check `/home/private/data/request-audit.json` for errors (via SSH)
-- [ ] (Optional) View `build-report.html` to verify weather data fetching
+- [ ] View `build-report.html` to verify weather data fetching
 
 **AWStats setup (after first deployment):**
 - [ ] Create protected directory: `mkdir -p /home/protected`
