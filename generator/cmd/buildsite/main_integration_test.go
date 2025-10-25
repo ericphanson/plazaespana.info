@@ -174,3 +174,147 @@ func TestIntegration_HTMLValidation(t *testing.T) {
 
 	t.Logf("Successfully generated and validated HTML from fixtures")
 }
+
+func TestIntegration_InvalidWeatherDataExitsWithError(t *testing.T) {
+	// Build the binary in a temp location
+	tmpBinary := filepath.Join(t.TempDir(), "buildsite-test")
+	cmd := exec.Command("go", "build", "-o", tmpBinary, "./cmd/buildsite")
+	cmd.Dir = filepath.Join("..", "..")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Failed to build binary: %v\n%s", err, output)
+	}
+
+	rootDir := filepath.Join("..", "..", "..")
+
+	// Setup test directories
+	tmpDir := t.TempDir()
+	outDir := filepath.Join(tmpDir, "public")
+	dataDir := filepath.Join(tmpDir, "data")
+
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("Failed to create output dir: %v", err)
+	}
+
+	// Serve fixtures over HTTP for the test
+	fixturesDir := filepath.Join(rootDir, "generator", "testdata", "fixtures")
+
+	jsonServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := os.ReadFile(filepath.Join(fixturesDir, "madrid-events.json"))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	}))
+	defer jsonServer.Close()
+
+	xmlServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := os.ReadFile(filepath.Join(fixturesDir, "madrid-events.xml"))
+		w.Header().Set("Content-Type", "application/xml")
+		w.Write(data)
+	}))
+	defer xmlServer.Close()
+
+	csvServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := os.ReadFile(filepath.Join(fixturesDir, "madrid-events.csv"))
+		w.Header().Set("Content-Type", "text/csv")
+		w.Write(data)
+	}))
+	defer csvServer.Close()
+
+	esmadridServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := os.ReadFile(filepath.Join(fixturesDir, "esmadrid-agenda.xml"))
+		w.Header().Set("Content-Type", "application/xml")
+		w.Write(data)
+	}))
+	defer esmadridServer.Close()
+
+	// Mock AEMET forecast server that returns INVALID data (object instead of array)
+	// This simulates the intermittent error: "json: cannot unmarshal object into Go value of type []weather.Forecast"
+	aemetForecastServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Return a JSON object instead of an array (invalid format)
+		invalidJSON := `{"error": "unexpected format"}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(invalidJSON))
+	}))
+	defer aemetForecastServer.Close()
+
+	// Mock AEMET base server (returns metadata pointing to invalid forecast)
+	aemetBaseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metadata := map[string]interface{}{
+			"descripcion": "exito",
+			"estado":      200,
+			"datos":       aemetForecastServer.URL,
+			"metadatos":   "http://mock/metadatos",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(metadata)
+	}))
+	defer aemetBaseServer.Close()
+
+	// Run the buildsite binary with invalid weather data
+	templatePath := filepath.Join(rootDir, "generator", "templates", "index.tmpl.html")
+	buildCmd := exec.Command(
+		tmpBinary,
+		"-json-url", jsonServer.URL,
+		"-xml-url", xmlServer.URL,
+		"-csv-url", csvServer.URL,
+		"-esmadrid-url", esmadridServer.URL,
+		"-aemet-base-url", aemetBaseServer.URL,
+		"-out-dir", outDir,
+		"-data-dir", dataDir,
+		"-template-path", templatePath,
+		"-lat", "40.42338",
+		"-lon", "-3.71217",
+		"-radius-km", "0.35",
+		"-timezone", "Europe/Madrid",
+	)
+
+	buildCmd.Env = append(os.Environ(), "AEMET_API_KEY=test-api-key", "PLAZAESPANA_NO_API=1")
+
+	output, err := buildCmd.CombinedOutput()
+
+	// Verify the command failed with non-zero exit code
+	if err == nil {
+		t.Fatalf("Expected build to fail with invalid weather data, but it succeeded.\nOutput:\n%s", output)
+	}
+
+	// Verify it's an exit error (not some other kind of error)
+	var exitErr *exec.ExitError
+	if !os.IsNotExist(err) && err != nil {
+		// Check if it's an ExitError
+		exitErr, _ = err.(*exec.ExitError)
+	}
+
+	if exitErr == nil {
+		t.Fatalf("Expected ExitError due to invalid weather data, got: %v", err)
+	}
+
+	// Verify the error output contains information about the weather failure
+	outputStr := string(output)
+	if !hasSubstring(outputStr, "ERROR: Weather fetch failed") && !hasSubstring(outputStr, "parsing forecast") {
+		t.Errorf("Expected error output to mention weather failure, got:\n%s", outputStr)
+	}
+
+	// Verify the full API response is dumped (our new debugging feature)
+	if !hasSubstring(outputStr, "Full API response body") || !hasSubstring(outputStr, `{"error": "unexpected format"}`) {
+		t.Errorf("Expected error output to include full API response body for debugging, got:\n%s", outputStr)
+	}
+
+	t.Logf("Successfully verified binary exits with non-zero code on invalid weather data")
+}
+
+// Helper function to check if string contains substring using strings package
+func hasSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && containsHelper(s, substr)
+}
+
+func containsHelper(s, substr string) bool {
+	if len(substr) == 0 {
+		return true
+	}
+	if len(s) < len(substr) {
+		return false
+	}
+	if s[:len(substr)] == substr {
+		return true
+	}
+	return containsHelper(s[1:], substr)
+}

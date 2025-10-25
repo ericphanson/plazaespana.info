@@ -94,7 +94,7 @@ config.toml         # Runtime configuration
    - Geographic: Haversine distance ≤ 0.35 km from Plaza de España (40.42338, -3.71217)
    - Temporal: Drop events in the past
    - Deduplication: By `ID-EVENTO` field
-4. **Weather** (optional): Fetch AEMET forecast, match to event dates
+4. **Weather**: Fetch AEMET forecast, match to event dates
 5. **Render**: Generate `index.html` and `events.json` in temp files
 6. **Atomic write**: Rename temp files to final location (prevents partial updates)
 7. **Snapshot**: Save successful fetch for future fallback
@@ -114,7 +114,7 @@ Enriches event cards with weather forecasts from AEMET (Spanish State Meteorolog
 **Configuration:**
 - `config.toml`: `[weather]` section (api_key_env, municipality_code)
 - Environment variable: `AEMET_API_KEY` (register at https://opendata.aemet.es/)
-- Always attempts to fetch weather; if API key missing or fetch fails, logs to stderr and continues
+- Weather fetch is required; build fails if API key missing or fetch fails
 
 **Data displayed:**
 - Max temperature for event date
@@ -128,10 +128,10 @@ Enriches event cards with weather forecasts from AEMET (Spanish State Meteorolog
 - Deployment: Copied to `public/assets/weather-icons/` during build
 - License: Spain Law 18/2015 (open data, attribution required)
 
-**Graceful degradation:**
-- If API key missing: logs warning to stderr, continues without weather
-- If AEMET fetch fails: logs error to stderr, continues without weather
-- If no forecast for event date: no weather shown for that event
+**Error handling:**
+- If API key missing: logs error to stderr and exits with non-zero status
+- If AEMET fetch fails: dumps full API response to stderr and exits with non-zero status
+- If no forecast for event date: no weather shown for that event (not an error)
 
 **API details:**
 - Municipality: Madrid (code 28079)

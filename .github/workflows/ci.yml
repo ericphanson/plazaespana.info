@@ -101,7 +101,7 @@ jobs:
     env:
       NFSN_HOST: ${{ secrets.NFSN_HOST }}
       NFSN_USER: ${{ secrets.NFSN_USER }}
-      AEMET_API_KEY: ${{ secrets.AEMET_API_KEY }}  # Optional: for weather forecasts
+      AEMET_API_KEY: ${{ secrets.AEMET_API_KEY }}  # Required: for weather forecasts
 
     steps:
       - name: Check out code
