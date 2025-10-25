@@ -76,6 +76,13 @@ func (c *Client) CacheForecast(syntheticURL string, body []byte) {
 	_ = c.cache.Set(entry)
 }
 
+// InvalidateCache removes a cache entry for the given URL.
+// Useful for removing corrupted cache entries when parse errors occur.
+// This is idempotent - calling it on a non-existent entry is safe.
+func (c *Client) InvalidateCache(url string) error {
+	return c.cache.Delete(url)
+}
+
 // FetchWithHeaders fetches a URL with custom HTTP headers.
 // Uses the same caching, throttling, and audit trail as other fetch methods.
 // Useful for APIs requiring authentication (e.g., AEMET API key header).
@@ -358,6 +365,7 @@ func (c *Client) fetchWithHeaders(url string, headers map[string]string, skipCac
 			URL:       url,
 			Timestamp: time.Now(),
 			CacheHit:  true,
+			Synthetic: true,
 		})
 		return cached.Body, nil
 	}

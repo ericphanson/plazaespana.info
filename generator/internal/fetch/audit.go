@@ -16,6 +16,7 @@ type RequestRecord struct {
 	StatusCode  int       `json:"status_code,omitempty"`
 	DelayMs     int64     `json:"delay_ms"`
 	RateLimited bool      `json:"rate_limited"`
+	Synthetic   bool      `json:"synthetic,omitempty"` // True for cache-only synthetic URLs (e.g., aemet-forecast://)
 	Error       string    `json:"error,omitempty"`
 }
 

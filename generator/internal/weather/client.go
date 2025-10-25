@@ -56,7 +56,10 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 		if err := json.Unmarshal(cachedBody, &forecasts); err == nil && len(forecasts) > 0 {
 			return &forecasts[0], nil
 		}
-		// If parse fails, fall through to fetch fresh data
+		// Parse failed - invalidate corrupted cache entry
+		// Ignore invalidation errors (cache delete is best-effort)
+		_ = c.fetchClient.InvalidateCache(syntheticURL)
+		// Fall through to fetch fresh data
 	}
 
 	// Cache miss or parse error - fetch fresh data using 2-stage API
