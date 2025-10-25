@@ -276,16 +276,18 @@ func TestIntegration_InvalidWeatherDataExitsWithError(t *testing.T) {
 		t.Fatalf("Expected build to fail with invalid weather data, but it succeeded.\nOutput:\n%s", output)
 	}
 
-	// Verify it's an exit error (not some other kind of error)
-	var exitErr *exec.ExitError
-	if !os.IsNotExist(err) && err != nil {
-		// Check if it's an ExitError
-		exitErr, _ = err.(*exec.ExitError)
+	// Verify it's an exit error (not some other kind of error) and get the exit code
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		t.Fatalf("Expected ExitError due to invalid weather data, got: %T: %v", err, err)
 	}
 
-	if exitErr == nil {
-		t.Fatalf("Expected ExitError due to invalid weather data, got: %v", err)
+	// Verify the exit code is non-zero (log.Fatal exits with code 1)
+	exitCode := exitErr.ExitCode()
+	if exitCode == 0 {
+		t.Fatalf("Expected non-zero exit code, got: %d", exitCode)
 	}
+	t.Logf("Binary exited with code %d (non-zero, as expected)", exitCode)
 
 	// Verify the error output contains information about the weather failure
 	outputStr := string(output)
