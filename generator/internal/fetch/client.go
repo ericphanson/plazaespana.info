@@ -63,6 +63,19 @@ func (c *Client) SetCacheTTLOverride(urlPattern string, ttl time.Duration) {
 	c.cache.SetTTLOverride(urlPattern, ttl)
 }
 
+// CacheForecast manually writes data to the cache under a synthetic URL.
+// This is used by the weather client to cache forecast data independently of
+// the temporary AEMET URLs that expire.
+func (c *Client) CacheForecast(syntheticURL string, body []byte) {
+	entry := CacheEntry{
+		URL:        syntheticURL,
+		Body:       body,
+		StatusCode: 200,
+	}
+	// Ignore errors - cache write failures shouldn't break the build
+	_ = c.cache.Set(entry)
+}
+
 // FetchWithHeaders fetches a URL with custom HTTP headers.
 // Uses the same caching, throttling, and audit trail as other fetch methods.
 // Useful for APIs requiring authentication (e.g., AEMET API key header).
@@ -323,7 +336,7 @@ func (c *Client) fetch(url string) ([]byte, error) {
 }
 
 // fetchWithHeaders retrieves data from a URL with custom HTTP headers.
-// Supports both HTTP(S) URLs and file:// URLs.
+// Supports both HTTP(S) URLs, file:// URLs, and synthetic URLs (cache-only).
 // Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
 // If skipCache is true, bypasses reading from cache (but still writes to cache for future use).
 func (c *Client) fetchWithHeaders(url string, headers map[string]string, skipCache bool) ([]byte, error) {
@@ -331,6 +344,22 @@ func (c *Client) fetchWithHeaders(url string, headers map[string]string, skipCac
 	if strings.HasPrefix(url, "file://") {
 		path := strings.TrimPrefix(url, "file://")
 		return os.ReadFile(path)
+	}
+
+	// Handle synthetic URLs (cache-only, no network fetch)
+	// Used for caching data under predictable keys (e.g., weather forecasts)
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		// Only check cache, never make network request
+		cached, err := c.cache.Get(url)
+		if err != nil || cached == nil {
+			return nil, fmt.Errorf("cache miss for synthetic URL: %s", url)
+		}
+		c.auditor.Record(RequestRecord{
+			URL:       url,
+			Timestamp: time.Now(),
+			CacheHit:  true,
+		})
+		return cached.Body, nil
 	}
 
 	// Strict test mode: block all external HTTP requests if PLAZAESPANA_NO_API is set

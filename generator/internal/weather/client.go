@@ -38,10 +38,28 @@ func NewClientWithBaseURL(apiKey, municipalityCode string, fetchClient *fetch.Cl
 // FetchForecast fetches the weather forecast from AEMET API using the two-step process
 // Step 1: Request metadata endpoint with API key
 // Step 2: Fetch actual forecast data from the datos URL
+//
+// Optimization: Uses a synthetic cache key to avoid redundant stage 1 requests.
+// If we have cached forecast data, we skip both stages entirely.
 func (c *Client) FetchForecast() (*Forecast, error) {
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("AEMET API key not provided")
 	}
+
+	// Try to get cached forecast data first using a synthetic URL as cache key
+	// This allows us to skip both stage 1 and stage 2 if we have recent data
+	syntheticURL := fmt.Sprintf("aemet-forecast://daily/%s", c.municipalityCode)
+	cachedBody, err := c.fetchClient.FetchWithHeaders(syntheticURL, nil, false)
+	if err == nil && len(cachedBody) > 0 {
+		// Cache hit! Parse and return cached forecast
+		var forecasts []Forecast
+		if err := json.Unmarshal(cachedBody, &forecasts); err == nil && len(forecasts) > 0 {
+			return &forecasts[0], nil
+		}
+		// If parse fails, fall through to fetch fresh data
+	}
+
+	// Cache miss or parse error - fetch fresh data using 2-stage API
 
 	// Step 1: Fetch metadata to get the datos URL
 	// IMPORTANT: Skip cache for metadata because the datos URL expires
@@ -67,9 +85,9 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 	}
 
 	// Step 2: Fetch actual forecast data using the datos URL
-	// The datos URL doesn't require authentication
-	// We CAN cache this response since it's the actual forecast data
-	forecastBody, err := c.fetchWithAPIKey(metadata.DataURL, false) // skipCache=false, allow caching
+	// IMPORTANT: Skip cache because the datos URL changes each time
+	// We'll cache the result under our synthetic URL instead
+	forecastBody, err := c.fetchWithAPIKey(metadata.DataURL, true) // skipCache=true
 	if err != nil {
 		return nil, fmt.Errorf("fetching forecast data: %w", err)
 	}
@@ -85,7 +103,20 @@ func (c *Client) FetchForecast() (*Forecast, error) {
 		return nil, fmt.Errorf("AEMET returned empty forecast array")
 	}
 
+	// Cache the forecast data under our synthetic URL for future requests
+	// We need to manually write to cache since we're using a synthetic URL
+	c.cacheForecastData(syntheticURL, forecastBody)
+
 	return &forecasts[0], nil
+}
+
+// cacheForecastData manually writes forecast data to the HTTP cache under a synthetic URL
+// This allows us to cache forecast results independently of the temporary AEMET URLs
+func (c *Client) cacheForecastData(syntheticURL string, forecastBody []byte) {
+	// Access the cache through the fetch client
+	// We need to write a cache entry manually since we're using a synthetic URL
+	// that was never actually fetched from the network
+	c.fetchClient.CacheForecast(syntheticURL, forecastBody)
 }
 
 // fetchWithAPIKey makes an HTTP request with the AEMET API key header
