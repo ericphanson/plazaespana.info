@@ -806,6 +806,9 @@ func main() {
 		// Create weather client
 		weatherClient := weather.NewClientWithBaseURL(apiKey, cfg.Weather.MunicipalityCode, client, baseURL)
 
+		// Set longer cache TTL for weather forecasts (updates 3-4x daily, safe to cache 6 hours)
+		client.SetCacheTTLOverride("aemet-forecast://", 6*time.Hour)
+
 		// Wait 2 seconds before weather fetch (respectful delay)
 		log.Println("Waiting 2 seconds before weather fetch (respectful delay)...")
 		time.Sleep(2 * time.Second)

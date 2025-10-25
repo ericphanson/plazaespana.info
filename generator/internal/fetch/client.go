@@ -63,11 +63,32 @@ func (c *Client) SetCacheTTLOverride(urlPattern string, ttl time.Duration) {
 	c.cache.SetTTLOverride(urlPattern, ttl)
 }
 
+// CacheForecast manually writes data to the cache under a synthetic URL.
+// This is used by the weather client to cache forecast data independently of
+// the temporary AEMET URLs that expire.
+func (c *Client) CacheForecast(syntheticURL string, body []byte) {
+	entry := CacheEntry{
+		URL:        syntheticURL,
+		Body:       body,
+		StatusCode: 200,
+	}
+	// Ignore errors - cache write failures shouldn't break the build
+	_ = c.cache.Set(entry)
+}
+
+// InvalidateCache removes a cache entry for the given URL.
+// Useful for removing corrupted cache entries when parse errors occur.
+// This is idempotent - calling it on a non-existent entry is safe.
+func (c *Client) InvalidateCache(url string) error {
+	return c.cache.Delete(url)
+}
+
 // FetchWithHeaders fetches a URL with custom HTTP headers.
 // Uses the same caching, throttling, and audit trail as other fetch methods.
 // Useful for APIs requiring authentication (e.g., AEMET API key header).
-func (c *Client) FetchWithHeaders(url string, headers map[string]string) ([]byte, error) {
-	return c.fetchWithHeaders(url, headers)
+// If skipCache is true, bypasses the cache for this request (but still caches the response for future use).
+func (c *Client) FetchWithHeaders(url string, headers map[string]string, skipCache bool) ([]byte, error) {
+	return c.fetchWithHeaders(url, headers, skipCache)
 }
 
 // FetchJSON fetches and decodes JSON from the given URL.
@@ -318,17 +339,35 @@ func getField(row []string, headerMap map[string]int, fieldName string) string {
 // Supports both HTTP(S) URLs and file:// URLs.
 // Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
 func (c *Client) fetch(url string) ([]byte, error) {
-	return c.fetchWithHeaders(url, nil)
+	return c.fetchWithHeaders(url, nil, false)
 }
 
 // fetchWithHeaders retrieves data from a URL with custom HTTP headers.
-// Supports both HTTP(S) URLs and file:// URLs.
+// Supports both HTTP(S) URLs, file:// URLs, and synthetic URLs (cache-only).
 // Uses HTTP caching with If-Modified-Since and throttling for respectful fetching.
-func (c *Client) fetchWithHeaders(url string, headers map[string]string) ([]byte, error) {
+// If skipCache is true, bypasses reading from cache (but still writes to cache for future use).
+func (c *Client) fetchWithHeaders(url string, headers map[string]string, skipCache bool) ([]byte, error) {
 	// Handle file:// URLs (no caching for local files)
 	if strings.HasPrefix(url, "file://") {
 		path := strings.TrimPrefix(url, "file://")
 		return os.ReadFile(path)
+	}
+
+	// Handle synthetic URLs (cache-only, no network fetch)
+	// Used for caching data under predictable keys (e.g., weather forecasts)
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		// Only check cache, never make network request
+		cached, err := c.cache.Get(url)
+		if err != nil || cached == nil {
+			return nil, fmt.Errorf("cache miss for synthetic URL: %s", url)
+		}
+		c.auditor.Record(RequestRecord{
+			URL:       url,
+			Timestamp: time.Now(),
+			CacheHit:  true,
+			Synthetic: true,
+		})
+		return cached.Body, nil
 	}
 
 	// Strict test mode: block all external HTTP requests if PLAZAESPANA_NO_API is set
@@ -339,21 +378,25 @@ func (c *Client) fetchWithHeaders(url string, headers map[string]string) ([]byte
 		}
 	}
 
-	// Check cache first
-	cached, err := c.cache.Get(url)
-	if err != nil {
-		// Cache read error - log but continue to fetch
-		fmt.Fprintf(os.Stderr, "Warning: cache read error: %v\n", err)
-	}
+	// Check cache first (unless skipCache is true)
+	var cached *CacheEntry
+	if !skipCache {
+		var err error
+		cached, err = c.cache.Get(url)
+		if err != nil {
+			// Cache read error - log but continue to fetch
+			fmt.Fprintf(os.Stderr, "Warning: cache read error: %v\n", err)
+		}
 
-	if cached != nil {
-		// Cache hit! Use cached data
-		c.auditor.Record(RequestRecord{
-			URL:       url,
-			Timestamp: time.Now(),
-			CacheHit:  true,
-		})
-		return cached.Body, nil
+		if cached != nil {
+			// Cache hit! Use cached data
+			c.auditor.Record(RequestRecord{
+				URL:       url,
+				Timestamp: time.Now(),
+				CacheHit:  true,
+			})
+			return cached.Body, nil
+		}
 	}
 
 	// Cache miss - need to make HTTP request

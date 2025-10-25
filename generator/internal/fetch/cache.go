@@ -105,6 +105,17 @@ func (c *HTTPCache) Set(entry CacheEntry) error {
 	return nil
 }
 
+// Delete removes a cache entry for the given URL.
+// Returns nil if the entry doesn't exist (idempotent).
+func (c *HTTPCache) Delete(url string) error {
+	path := c.cachePath(url)
+	err := os.Remove(path)
+	if err != nil && os.IsNotExist(err) {
+		return nil // Already deleted, not an error
+	}
+	return err
+}
+
 // cachePath generates a safe filename from URL using SHA256 hash.
 func (c *HTTPCache) cachePath(url string) string {
 	hash := sha256.Sum256([]byte(url))

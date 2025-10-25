@@ -23,38 +23,18 @@ func TestFetchForecast(t *testing.T) {
 		t.Fatalf("Failed to load forecast fixture: %v", err)
 	}
 
-	// Create mock server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check API key header
-		apiKey := r.Header.Get("api_key")
-		if apiKey != "test-api-key" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Serve metadata or forecast based on URL
-		if r.URL.Path == "/metadata" {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(metadataJSON)
-		} else if r.URL.Path == "/forecast" {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(forecastJSON)
-		} else {
-			http.Error(w, "Not Found", http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	// Update the metadata fixture to point to our test forecast URL
+	// Parse metadata to modify it
 	var metadata MetadataResponse
 	if err := json.Unmarshal(metadataJSON, &metadata); err != nil {
 		t.Fatalf("Failed to parse metadata fixture: %v", err)
 	}
-	metadata.DataURL = server.URL + "/forecast"
-	updatedMetadata, _ := json.Marshal(metadata)
 
-	// Create another server with updated metadata
+	// Create mock server that serves both metadata and forecast
+	requestCount := 0
+	var serverURL string
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+
 		// Check API key header
 		apiKey := r.Header.Get("api_key")
 		if apiKey != "test-api-key" {
@@ -62,10 +42,15 @@ func TestFetchForecast(t *testing.T) {
 			return
 		}
 
-		if r.URL.Path == "/metadata" {
+		// Serve different responses based on path
+		if r.URL.Path == "/prediccion/especifica/municipio/diaria/28079" {
+			// Metadata request - return metadata with datos URL pointing to this server
+			metadata.DataURL = serverURL + "/forecast-data"
+			updatedMetadata, _ := json.Marshal(metadata)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(updatedMetadata)
-		} else if r.URL.Path == "/forecast" {
+		} else if r.URL.Path == "/forecast-data" {
+			// Forecast data request
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(forecastJSON)
 		} else {
@@ -73,6 +58,7 @@ func TestFetchForecast(t *testing.T) {
 		}
 	}))
 	defer testServer.Close()
+	serverURL = testServer.URL
 
 	// Create fetch client with test cache
 	tempDir := t.TempDir()
@@ -86,11 +72,47 @@ func TestFetchForecast(t *testing.T) {
 		t.Fatalf("Failed to create fetch client: %v", err)
 	}
 
-	// This won't work directly because the client hardcodes the AEMET URL
-	// We need to refactor the client to accept a base URL for testing
-	// For now, let's test the metadata parsing
-	t.Skip("Client needs base URL injection for testing")
-	_ = fetchClient
+	// Create weather client with test base URL
+	weatherClient := NewClientWithBaseURL("test-api-key", "28079", fetchClient, testServer.URL)
+
+	// Test 1: First fetch (should make 2 HTTP requests: metadata + datos)
+	requestCount = 0
+	forecast, err := weatherClient.FetchForecast()
+	if err != nil {
+		t.Fatalf("Failed to fetch forecast: %v", err)
+	}
+	if forecast == nil {
+		t.Fatal("Forecast should not be nil")
+	}
+	if requestCount != 2 {
+		t.Errorf("Expected 2 requests (metadata + datos), got %d", requestCount)
+	}
+
+	// Verify forecast structure
+	if forecast.Origin.Producer == "" {
+		t.Error("Producer should not be empty")
+	}
+	if len(forecast.Prediction.Days) == 0 {
+		t.Error("Should have at least one day of forecast")
+	}
+
+	// Test 2: Second fetch (should use cache, 0 HTTP requests)
+	requestCount = 0
+	forecast2, err := weatherClient.FetchForecast()
+	if err != nil {
+		t.Fatalf("Failed to fetch cached forecast: %v", err)
+	}
+	if forecast2 == nil {
+		t.Fatal("Cached forecast should not be nil")
+	}
+	if requestCount != 0 {
+		t.Errorf("Expected 0 requests (cache hit), got %d", requestCount)
+	}
+
+	// Verify cached forecast has same data
+	if len(forecast2.Prediction.Days) != len(forecast.Prediction.Days) {
+		t.Error("Cached forecast should have same number of days")
+	}
 }
 
 func TestFetchForecast_NoAPIKey(t *testing.T) {
