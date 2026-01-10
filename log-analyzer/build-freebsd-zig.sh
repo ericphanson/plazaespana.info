@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Cross-compile log-analyzer for FreeBSD using Zig
+# Build log-analyzer for FreeBSD (cross-compile) and macOS (native) using Zig
 set -euo pipefail
 
-echo "🔨 Cross-compiling log-analyzer for FreeBSD using Zig..."
+echo "🔨 Building log-analyzer for FreeBSD and macOS using Zig..."
 echo ""
 
 # Check if Zig is installed
@@ -69,18 +69,60 @@ zig cc \
 
 if [ -f "build/log-analyzer-freebsd" ]; then
     echo ""
-    echo "✅ Build complete!"
+    echo "✅ FreeBSD build complete!"
     echo ""
     echo "Binary info:"
     file build/log-analyzer-freebsd 2>/dev/null || echo "  FreeBSD x86-64 executable"
     ls -lh build/log-analyzer-freebsd
+else
     echo ""
-    echo "📦 Ready for deployment to NearlyFreeSpeech.NET"
+    echo "❌ FreeBSD build failed"
+    exit 1
+fi
+
+echo ""
+echo "🎯 Compiling for macOS (native)..."
+echo ""
+
+# Detect native architecture
+ARCH=$(uname -m)
+if [ "$ARCH" = "arm64" ]; then
+    TARGET="aarch64-macos"
+    ARCH_LABEL="Apple Silicon (arm64)"
+else
+    TARGET="x86_64-macos"
+    ARCH_LABEL="Intel (x86_64)"
+fi
+
+zig cc \
+    -lc \
+    -target "$TARGET" \
+    -Os \
+    -I. \
+    -I"$JANET_SRC/src/include" \
+    -I"$JANET_SRC/src/core" \
+    -DJANET_BUILD=\"zig-native\" \
+    -DJANET_SINGLE_THREADED=1 \
+    build/log-analyzer.c \
+    "$JANET_AMALG" \
+    -o build/log-analyzer
+
+if [ -f "build/log-analyzer" ]; then
     echo ""
-    echo "To deploy:"
+    echo "✅ macOS build complete!"
+    echo ""
+    echo "Binary info:"
+    file build/log-analyzer
+    ls -lh build/log-analyzer
+    echo ""
+    echo "📦 Summary:"
+    echo "  - FreeBSD: build/log-analyzer-freebsd (for NearlyFreeSpeech.NET)"
+    echo "  - macOS:   build/log-analyzer ($ARCH_LABEL)"
+    echo ""
+    echo "To deploy FreeBSD binary:"
     echo "  scp build/log-analyzer-freebsd \$NFSN_USER@\$NFSN_HOST:/home/private/bin/log-analyzer"
 else
     echo ""
-    echo "❌ Build failed"
+    echo "❌ macOS build failed"
     exit 1
 fi
