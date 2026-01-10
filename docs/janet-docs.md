@@ -865,9 +865,248 @@ Fibers are lightweight coroutines:
 # Returns: "<html><h1>Welcome</h1><p>This is a paragraph</p></html>"
 ```
 
+## Compilation and Binary Distribution
+
+Janet supports compiling scripts to standalone binaries for distribution. This process allows you to create self-contained executables that don't require users to have Janet installed.
+
+### Understanding Janet Images
+
+An **image** is a serialized environment table containing all defined symbols and their values. Images are created through a process called "marshaling" that captures your program's state.
+
+**Key concept:** Top-level statements execute during compilation (compile-time), while the `main` function executes when the image runs (runtime).
+
+### Creating Image Files
+
+Compile a Janet script to an image:
+
+```bash
+janet -c example.janet example.jimage
+```
+
+Run a compiled image:
+
+```bash
+janet -i example.jimage
+```
+
+### Marshaling Limitations
+
+Not all values can be serialized into images. These types **cannot** be marshaled:
+- File handles
+- Network connections
+- Abstract machine types (in safe mode)
+
+Attempting to marshal these will produce an error: `"cannot marshal file in safe mode"`
+
+### Embedding Resources at Compile Time
+
+You can embed external files into your binary at compile time:
+
+```janet
+# Load shader file at compile time
+(def gamma-shader (slurp "gamma.fs"))
+
+(defn main [&]
+  (print gamma-shader))  # Embedded content, no external file needed
+```
+
+After compilation, the file content is embedded in the binary—no external files required for distribution.
+
+### Building Standalone Executables with jpm
+
+`jpm` (Janet Project Manager) is Janet's build tool, similar to npm or Cargo. It compiles Janet code into standalone native binaries through a three-step process:
+
+1. Compile Janet source into an image
+2. Embed the image in a C file with Janet runtime and interpreter
+3. Compile the resulting C file using your system's C compiler
+
+#### Setting Up a Project
+
+Create a `project.janet` file in your project root:
+
+```janet
+(declare-project
+  :name "mytool"
+  :description "A useful command-line tool"
+  :dependencies ["https://github.com/janet-lang/spork.git"])
+
+(declare-executable
+  :name "mytool"
+  :entry "main.janet"
+  :install true)
+```
+
+#### Entry Point Requirements
+
+Your entry file (`main.janet`) must define a `main` function that accepts command-line arguments:
+
+```janet
+(defn main [& args]
+  (print "Hello from mytool!")
+  (print "Arguments: " (string/join args ", ")))
+```
+
+**Important:** Top-level code in the entry file executes during `jpm build` (compile-time), not when the binary runs. Only the `main` function executes at runtime.
+
+#### Building the Executable
+
+```bash
+# Install jpm if not already installed
+# (Usually comes with Janet installation)
+
+# Build the project
+jpm build
+
+# Built executable appears in: build/mytool
+./build/mytool arg1 arg2
+
+# Install to system
+jpm install
+```
+
+#### Tree-Shaking Optimization
+
+Janet's compiler performs automatic tree-shaking: if you import a library with 1000 functions but only use one, the final executable includes bytecode for only that one function. This significantly reduces binary size.
+
+### Creating Static Binaries
+
+For fully static binaries (no external library dependencies), add `:lflags`:
+
+```janet
+(declare-executable
+  :name "mytool"
+  :entry "main.janet"
+  :lflags ["-static"]
+  :install true)
+```
+
+#### Platform-Specific Notes
+
+**Linux (glibc):** Most Linux distributions use glibc, which doesn't fully support static linking. The binary may still have `.so` dependencies.
+
+**Linux (musl):** For truly static binaries, use Alpine Linux (which uses musl libc):
+
+```bash
+# In Alpine Linux or Alpine Docker container
+apk add gcc musl-dev janet
+
+# Build with -static flag
+jpm build
+```
+
+**Verify static linking:**
+
+```bash
+ldd ./build/mytool
+# Fully static: "not a dynamic binary"
+# Partially static: lists .so dependencies
+```
+
+**macOS:** May work with `-static` flag, but results vary.
+
+**Windows:** Requires different linker flags (platform-specific).
+
+### Additional declare- Functions
+
+**Pure Janet library:**
+
+```janet
+(declare-source
+  :source ["mylib.janet"])
+```
+
+**Native C module:**
+
+```janet
+(declare-native
+  :name "mynative"
+  :source ["mynative.c" "support.c"]
+  :embedded ["extra.janet"])
+```
+
+**Script with shebang:**
+
+```janet
+(declare-binscript
+  :main "myscript"
+  :is-janet true)
+```
+
+**Headers for other libraries:**
+
+```janet
+(declare-headers
+  :headers ["mylib.h"])
+```
+
+**Man pages:**
+
+```janet
+(declare-manpage
+  :name "mytool.1")
+```
+
+### Complete Example: Command-Line Tool
+
+**project.janet:**
+
+```janet
+(declare-project
+  :name "greeter"
+  :description "Friendly greeting tool")
+
+(declare-executable
+  :name "greeter"
+  :entry "src/main.janet"
+  :install true)
+```
+
+**src/main.janet:**
+
+```janet
+(defn greet [name]
+  (print "Hello, " name "!"))
+
+(defn main [& args]
+  (if (empty? args)
+    (print "Usage: greeter <name>")
+    (each name args
+      (greet name))))
+```
+
+**Build and run:**
+
+```bash
+jpm build
+./build/greeter Alice Bob
+# Output:
+# Hello, Alice!
+# Hello, Bob!
+
+jpm install          # Install to system
+greeter World        # Now available in PATH
+```
+
+### Distribution Workflow
+
+1. Write your Janet code with a `main` function
+2. Create `project.janet` with `declare-executable`
+3. Run `jpm build` to create executable
+4. Distribute the binary from `build/` directory
+5. Users run the binary—no Janet installation required
+
 ## Additional Resources
 
 - Official documentation: https://janet-lang.org/docs/
 - Janet Guide ("Janet for Mortals"): https://janet.guide/
+- Janet Guide - Compilation: https://janet.guide/compilation-and-imagination/
 - API Reference: https://janet-lang.org/api/
 - Source code: https://github.com/janet-lang/janet
+- jpm documentation: https://janet-lang.org/docs/jpm.html
+
+## Sources
+
+Information about Janet compilation and binary creation:
+- [Janet Guide - Compilation and Imagination](https://janet.guide/compilation-and-imagination/)
+- [Janet project.janet Configuration](https://janet-lang.org/jpm/project.janet.html)
+- [GitHub Discussion: Compile to static binary](https://github.com/janet-lang/janet/discussions/818)
