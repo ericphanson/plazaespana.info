@@ -15,7 +15,7 @@
   ~{:main (* :ip :s "-" :s :user :s "[" :datetime "]" :s
             "\"" :request "\"" :s :status :s :bytes :s
             (? (* "\"" :referrer "\"" :s "\"" :user-agent "\"")))
-    :ip (<- (some (+ :d (set ".:a-fA-F"))))  # IPv4 or IPv6
+    :ip (<- (some (+ :d (range "af") (range "AF") (set ".:"))))  # IPv4 or IPv6
     :user (+ "-" (<- (some (if-not :s 1))))
     :datetime (* :day "/" :month "/" :year ":" :hour ":" :min ":" :sec :s :tz)
     :day (<- (between 1 2 :d))
