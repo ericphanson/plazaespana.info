@@ -38,6 +38,15 @@ scp build/log-analyzer-freebsd $NFSN_USER@$NFSN_HOST:/home/private/bin/log-analy
 - Generates a proper Janet amalgamation via `make` before cross-compiling
 - Produces a 712KB FreeBSD ELF executable
 
+## Testing
+
+```bash
+# Run all tests
+jpm test
+```
+
+Tests are in `test/` and cover the HyperLogLog implementation.
+
 ## Usage
 
 ```bash
@@ -84,7 +93,10 @@ Total unique visitors (all time): 3236
 log-analyzer/
 ├── project.janet          # Build configuration
 ├── src/
-│   └── main.janet        # Main source code
+│   ├── main.janet        # Main source code
+│   └── hll.janet         # HyperLogLog implementation
+├── test/
+│   └── hll-test.janet    # HLL tests (run with jpm test)
 ├── build/
 │   ├── log-analyzer      # Compiled executable
 │   ├── log-analyzer.c    # Generated C source
