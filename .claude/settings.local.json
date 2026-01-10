@@ -36,7 +36,10 @@
       "Bash(./log-analyzer/build/log-analyzer:*)",
       "Bash(jpm build:*)",
       "Bash(otool:*)",
-      "Bash(./build-freebsd-zig.sh:*)"
+      "Bash(./build-freebsd-zig.sh:*)",
+      "Bash(jpm test:*)",
+      "Bash(wc:*)",
+      "Bash(command cat /Users/eph/plazaespana.info/awstats-data/logs/access_log.20251025)"
     ],
     "deny": [],
     "ask": []
