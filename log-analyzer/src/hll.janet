@@ -163,67 +163,127 @@
     (put br i (max (get b1 i) (get b2 i))))
   result)
 
-(defn serialize
-  "Serialize HLL to a compact buffer for storage.
-   Each bucket is 5 bits, packed into bytes.
-   Returns a buffer."
-  [hll]
-  (def buckets (hll :buckets))
-  # Pack 5-bit values: 8 buckets fit into 5 bytes (40 bits)
-  # Total: 16384 buckets * 5 bits / 8 = 10240 bytes
-  (def packed-size (math/ceil (/ (* hll-num-buckets 5) 8)))
+(def- dense-size 10240)  # Size of dense 5-bit packed format
+(def- sparse-threshold 3412)  # Use sparse when non-zero count < this (3 + n*3 < 10240)
+
+# Serialization format header
+# Bytes 0-2: Magic "HLL"
+# Byte 3: Version (currently 1)
+# Byte 4: Precision (p value)
+# Byte 5: Format (0=dense, 1=sparse)
+# Bytes 6+: Data
+(def- hll-magic "HLL")
+(def- hll-version 1)
+(def- hll-header-size 6)
+
+(defn- serialize-dense
+  "Serialize HLL in dense 5-bit packed format"
+  [buckets]
   (def buf @"")
   (var bit-pos 0)
   (var current-byte 0)
 
   (each v buckets
-    # Write 5 bits of v into the buffer
-    (def v5 (band v 0x1F))  # Ensure 5 bits
+    (def v5 (band v 0x1F))
     (def bits-remaining (- 8 (% bit-pos 8)))
 
     (if (>= bits-remaining 5)
-      # All 5 bits fit in current byte
       (do
         (set current-byte (bor current-byte (blshift v5 (- bits-remaining 5))))
         (set bit-pos (+ bit-pos 5))
         (when (= (% bit-pos 8) 0)
           (buffer/push-byte buf current-byte)
           (set current-byte 0)))
-      # Need to split across bytes
       (do
-        # Write upper bits to current byte
         (set current-byte (bor current-byte (brshift v5 (- 5 bits-remaining))))
         (buffer/push-byte buf current-byte)
-        # Write lower bits to next byte
         (set current-byte (blshift (band v5 (- (blshift 1 (- 5 bits-remaining)) 1))
                                    (+ 8 bits-remaining (- 5))))
         (set bit-pos (+ bit-pos 5)))))
 
-  # Flush any remaining bits
   (when (not= (% bit-pos 8) 0)
     (buffer/push-byte buf current-byte))
+  buf)
+
+(defn- serialize-sparse
+  "Serialize HLL in sparse format: 2-byte count + (2-byte index, 1-byte value) pairs"
+  [buckets]
+  (def buf @"")
+  # Collect non-zero entries
+  (def entries @[])
+  (for i 0 (length buckets)
+    (def v (get buckets i))
+    (when (not= v 0)
+      (array/push entries [i v])))
+
+  # Write count (2 bytes, little-endian)
+  (def count (length entries))
+  (buffer/push-byte buf (band count 0xFF))
+  (buffer/push-byte buf (band (brshift count 8) 0xFF))
+
+  # Write entries
+  (each [idx val] entries
+    # Index: 2 bytes little-endian
+    (buffer/push-byte buf (band idx 0xFF))
+    (buffer/push-byte buf (band (brshift idx 8) 0xFF))
+    # Value: 1 byte
+    (buffer/push-byte buf (band val 0x1F)))
 
   buf)
 
-(defn deserialize
-  "Deserialize an HLL from a packed buffer.
-   Returns a new HLL sketch."
-  [buf]
+(defn serialize
+  "Serialize HLL to a compact buffer for storage.
+   Automatically chooses sparse or dense format based on data.
+
+   Header format (6 bytes):
+     Bytes 0-2: Magic 'HLL'
+     Byte 3: Version (1)
+     Byte 4: Precision (14)
+     Byte 5: Format (0=dense, 1=sparse)
+
+   Returns a buffer."
+  [hll]
+  (def buckets (hll :buckets))
+  (def precision (hll :precision))
+
+  # Count non-zero buckets
+  (var non-zero 0)
+  (each v buckets
+    (when (not= v 0) (++ non-zero)))
+
+  # Build header
+  (def buf @"")
+  (buffer/push-string buf hll-magic)
+  (buffer/push-byte buf hll-version)
+  (buffer/push-byte buf precision)
+
+  # Choose format and append data
+  (if (< non-zero sparse-threshold)
+    (do
+      (buffer/push-byte buf 1)  # Sparse format marker
+      (buffer/push-string buf (serialize-sparse buckets)))
+    (do
+      (buffer/push-byte buf 0)  # Dense format marker
+      (buffer/push-string buf (serialize-dense buckets))))
+
+  buf)
+
+(defn- deserialize-dense
+  "Deserialize HLL from dense 5-bit packed format"
+  [buf offset]
   (def hll (new))
   (def buckets (hll :buckets))
   (var bit-pos 0)
   (var bucket-idx 0)
 
   (while (< bucket-idx hll-num-buckets)
-    (def byte-pos (math/floor (/ bit-pos 8)))
+    (def byte-pos (+ offset (math/floor (/ bit-pos 8))))
     (def bit-offset (% bit-pos 8))
     (def bits-in-first-byte (- 8 bit-offset))
 
     (var value 0)
     (if (>= bits-in-first-byte 5)
-      # All 5 bits in one byte
       (set value (band (brshift (get buf byte-pos) (- bits-in-first-byte 5)) 0x1F))
-      # Split across two bytes
       (do
         (def first-bits (band (get buf byte-pos) (- (blshift 1 bits-in-first-byte) 1)))
         (def second-bits (brshift (get buf (+ byte-pos 1)) (+ 8 bits-in-first-byte (- 5))))
@@ -234,6 +294,51 @@
     (++ bucket-idx))
 
   hll)
+
+(defn- deserialize-sparse
+  "Deserialize HLL from sparse format"
+  [buf offset]
+  (def hll (new))
+  (def buckets (hll :buckets))
+
+  # Read count (2 bytes, little-endian)
+  (def count (bor (get buf offset) (blshift (get buf (+ offset 1)) 8)))
+
+  # Read entries
+  (var pos (+ offset 2))
+  (for i 0 count
+    (def idx (bor (get buf pos) (blshift (get buf (+ pos 1)) 8)))
+    (def val (get buf (+ pos 2)))
+    (put buckets idx (band val 0x1F))
+    (set pos (+ pos 3)))
+
+  hll)
+
+(defn deserialize
+  "Deserialize an HLL from a packed buffer.
+   Validates header and handles both sparse and dense formats.
+   Returns a new HLL sketch."
+  [buf]
+  # Validate header
+  (assert (>= (length buf) hll-header-size)
+          "Buffer too small for HLL header")
+
+  (def magic (string/slice buf 0 3))
+  (assert (= magic hll-magic)
+          (string/format "Invalid HLL magic: expected 'HLL', got '%s'" magic))
+
+  (def version (get buf 3))
+  (assert (= version hll-version)
+          (string/format "Unsupported HLL version: %d (expected %d)" version hll-version))
+
+  (def precision (get buf 4))
+  (assert (= precision hll-precision)
+          (string/format "Precision mismatch: %d (expected %d)" precision hll-precision))
+
+  (def format-byte (get buf 5))
+  (if (= format-byte 1)
+    (deserialize-sparse buf hll-header-size)
+    (deserialize-dense buf hll-header-size)))
 
 (defn to-base64
   "Serialize HLL to base64 string for JSON storage"

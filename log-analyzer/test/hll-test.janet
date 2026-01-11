@@ -224,12 +224,24 @@
   (def buf (hll/serialize h))
   (assert (buffer? buf) "serialize should return a buffer"))
 
-(deftest "serialize produces consistent size"
+(deftest "serialize uses sparse format for sparse HLLs"
   (def h (hll/new))
   (def buf (hll/serialize h))
-  # 16384 buckets * 5 bits / 8 bits = 10240 bytes
-  (assert (= (length buf) 10240)
-          (string/format "Expected 10240 bytes, got %d" (length buf))))
+  # Empty HLL: header (6 bytes) + count (2 bytes) = 8 bytes
+  (assert (= (length buf) 8)
+          (string/format "Empty HLL should be 8 bytes, got %d" (length buf)))
+  # Verify header
+  (assert (= (string/slice buf 0 3) "HLL") "Should have HLL magic")
+  (assert (= (get buf 3) 1) "Should be version 1")
+  (assert (= (get buf 4) 14) "Should have precision 14")
+  (assert (= (get buf 5) 1) "Empty HLL should use sparse format")
+  # After adding items, should grow
+  (for i 0 100
+    (hll/add h (string "item-" i)))
+  (def buf2 (hll/serialize h))
+  # ~100 non-zero buckets * 3 bytes + 8 header = ~308 bytes
+  (assert (and (> (length buf2) 100) (< (length buf2) 500))
+          (string/format "Sparse HLL with 100 items should be 100-500 bytes, got %d" (length buf2))))
 
 (deftest "deserialize restores empty HLL"
   (def h1 (hll/new))

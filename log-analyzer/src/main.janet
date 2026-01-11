@@ -16,7 +16,7 @@
             "\"" :request "\"" :s :status :s :bytes :s
             (? (* "\"" :referrer "\"" :s "\"" :user-agent "\"")))
     :ip (<- (some (+ :d (range "af") (range "AF") (set ".:"))))  # IPv4 or IPv6
-    :user (+ "-" (<- (some (if-not :s 1))))
+    :user (+ "-" (some (if-not :s 1)))  # Don't capture user field
     :datetime (* :day "/" :month "/" :year ":" :hour ":" :min ":" :sec :s :tz)
     :day (<- (between 1 2 :d))
     :month (<- (+ "Jan" "Feb" "Mar" "Apr" "May" "Jun"
