@@ -107,7 +107,7 @@ _deploy-files:
     scp ops/log-analyzer-weekly.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-weekly.sh.new"
 
     echo "📤 Uploading log-analyzer publish script..."
-    scp ops/log-analyzer-publish.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-publish.sh.new"
+    scp ops/log-analyzer-publish.py "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-publish.py.new"
 
     echo "📤 Uploading hashed CSS and hash files..."
     scp public/assets/site.*.css public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
@@ -160,10 +160,10 @@ _deploy-files:
         mv /home/private/bin/log-analyzer.new /home/private/bin/log-analyzer &&
         mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh &&
         mv /home/private/bin/log-analyzer-weekly.sh.new /home/private/bin/log-analyzer-weekly.sh &&
-        mv /home/private/bin/log-analyzer-publish.sh.new /home/private/bin/log-analyzer-publish.sh &&
+        mv /home/private/bin/log-analyzer-publish.py.new /home/private/bin/log-analyzer-publish.py &&
         mv /home/private/config.toml.new /home/private/config.toml &&
         mv /home/private/templates/index.tmpl.html.new /home/private/templates/index.tmpl.html &&
-        chmod +x /home/private/bin/buildsite /home/private/bin/log-analyzer /home/private/bin/cron-generate.sh /home/private/bin/log-analyzer-weekly.sh /home/private/bin/log-analyzer-publish.sh
+        chmod +x /home/private/bin/buildsite /home/private/bin/log-analyzer /home/private/bin/cron-generate.sh /home/private/bin/log-analyzer-weekly.sh /home/private/bin/log-analyzer-publish.py
     '
 
     # Promote Bunny files if staged in this deploy

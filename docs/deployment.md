@@ -200,7 +200,7 @@ ops/htaccess                         → /home/public/.htaccess
 # Log analyzer
 log-analyzer/build/log-analyzer-freebsd → /home/private/bin/log-analyzer
 ops/log-analyzer-weekly.sh              → /home/private/bin/log-analyzer-weekly.sh
-ops/log-analyzer-publish.sh             → /home/private/bin/log-analyzer-publish.sh
+ops/log-analyzer-publish.py             → /home/private/bin/log-analyzer-publish.py
 $BUNNY_* (env, optional)                → /home/private/bunny-*.txt
 ```
 
@@ -217,7 +217,7 @@ Log analyzer generates (via weekly cron):
 
 Notes:
 - `lifetime.json` is rebuilt from persisted month files and remains stable across log rotation.
-- `report.html` reflects the current run (based on retained `access_log*` files).
+- `report.html` is generated from persisted JSON files, so historical months remain represented after log rotation.
 
 ## NFSN Directory Structure
 
@@ -229,7 +229,7 @@ Notes:
       cron-generate.sh  # Site generation wrapper (hourly cron)
       log-analyzer      # Log analyzer binary (FreeBSD)
       log-analyzer-weekly.sh # Aggregate analytics snapshot job (weekly cron)
-      log-analyzer-publish.sh # Publish + privacy + backup wrapper
+      log-analyzer-publish.py # Publish + privacy + backup wrapper
     config.toml         # Site generator config
     aemet-api-key.txt   # AEMET API key (optional, mode 600)
     bunny-storage-key.txt      # Bunny storage key (optional, mode 600)

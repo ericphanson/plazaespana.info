@@ -101,7 +101,7 @@ This mirrors the existing AEMET key pattern and avoids manual drift.
 
 ## 6. Script Changes
 
-### 6.1 Add `ops/log-analyzer-publish.sh`
+### 6.1 Add `ops/log-analyzer-publish.py`
 
 Responsibilities:
 
@@ -237,7 +237,7 @@ External stale check:
 
 ## 11. Changes Needed in This Repository
 
-1. Add `ops/log-analyzer-publish.sh`.
+1. Add `ops/log-analyzer-publish.py`.
 2. Update `ops/log-analyzer-weekly.sh` to call publish script and enforce privacy gates.
 3. Update root `justfile` deploy flow to upload Bunny secret/config files to NFS (`/home/private`, `chmod 600`).
 4. Update `docs/deployment.md` for Apache-served report + Bunny backup mirroring.
@@ -268,7 +268,7 @@ External stale check:
 1. Bunny Storage Zone configured (Pull Zone optional).
 2. Bunny publish key generated.
 3. Deploy flow supports `BUNNY_*` env vars and writes `/home/private/bunny-*.txt`.
-4. `ops/log-analyzer-publish.sh` implemented and deployed.
+4. `ops/log-analyzer-publish.py` implemented and deployed.
 5. `ops/log-analyzer-weekly.sh` updated for validate-then-publish flow.
 6. Privacy gates enabled and tested with known bad fixtures.
 7. Immutable-file guard logic tested (attempted overwrite/delete must fail).

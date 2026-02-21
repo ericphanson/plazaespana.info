@@ -3,7 +3,7 @@
 set -euo pipefail
 
 BIN=/home/private/bin/log-analyzer
-PUBLISH_BIN=/home/private/bin/log-analyzer-publish.sh
+PUBLISH_BIN=/home/private/bin/log-analyzer-publish.py
 SOURCE_LOG_DIR=/home/logs
 DATA_DIR=/home/private/log-analyzer-data
 TMP_DIR_BASE=/tmp
@@ -25,19 +25,70 @@ if [ ! -x "$PUBLISH_BIN" ]; then
     exit 1
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "ERROR: python3 is required by publish script" >&2
+    exit 1
+fi
+
 if [ ! -d "$SOURCE_LOG_DIR" ]; then
     echo "ERROR: log directory not found at $SOURCE_LOG_DIR" >&2
     exit 1
 fi
 
 TMP_OUT="$(mktemp -d "$TMP_DIR_BASE/log-analyzer.XXXXXX")"
+TMP_LOG_DIR="$(mktemp -d "$TMP_DIR_BASE/log-analyzer-logs.XXXXXX")"
+
+unique_dest() {
+    local base_path="$1"
+    local candidate="$base_path"
+    local n=1
+    while [ -e "$candidate" ]; do
+        candidate="${base_path}.${n}"
+        n=$((n + 1))
+    done
+    printf '%s\n' "$candidate"
+}
 
 cleanup() {
-    rm -rf "$TMP_OUT"
+    rm -rf "$TMP_OUT" "$TMP_LOG_DIR"
 }
 trap cleanup EXIT
 
-if ! "$BIN" --out-dir "$TMP_OUT" "$SOURCE_LOG_DIR" >> "$LOG_FILE" 2>&1; then
+HAVE_LOGS=0
+HAVE_GZ=0
+for src in "$SOURCE_LOG_DIR"/access_log*; do
+    if [ ! -e "$src" ]; then
+        continue
+    fi
+    HAVE_LOGS=1
+    base="$(basename "$src")"
+    if [[ "$base" == *.gz ]]; then
+        HAVE_GZ=1
+        if ! command -v gzip >/dev/null 2>&1; then
+            echo "ERROR: found .gz logs but gzip is not available" >&2
+            exit 1
+        fi
+        dest="$(unique_dest "$TMP_LOG_DIR/${base%.gz}")"
+        if ! gzip -cd "$src" > "$dest"; then
+            echo "ERROR: failed to decompress $src" >&2
+            exit 1
+        fi
+    else
+        dest="$(unique_dest "$TMP_LOG_DIR/$base")"
+        cp "$src" "$dest"
+    fi
+done
+
+if [ "$HAVE_LOGS" -eq 0 ]; then
+    echo "ERROR: no access_log* files found in $SOURCE_LOG_DIR" >&2
+    exit 1
+fi
+
+if [ "$HAVE_GZ" -eq 1 ]; then
+    echo "Detected .gz log files; expanded into $TMP_LOG_DIR" >> "$LOG_FILE"
+fi
+
+if ! "$BIN" --mode analyze --out-dir "$TMP_OUT" "$TMP_LOG_DIR" >> "$LOG_FILE" 2>&1; then
     echo "ERROR: log-analyzer failed at $(date '+%Y-%m-%d %H:%M:%S')" >&2
     echo "==================== LOG TAIL ====================" >&2
     tail -200 "$LOG_FILE" >&2 || true
@@ -45,7 +96,7 @@ if ! "$BIN" --out-dir "$TMP_OUT" "$SOURCE_LOG_DIR" >> "$LOG_FILE" 2>&1; then
     exit 1
 fi
 
-if ! "$PUBLISH_BIN" "$TMP_OUT" "$DATA_DIR" "$PUBLIC_ANALYTICS_DIR" >> "$LOG_FILE" 2>&1; then
+if ! python3 "$PUBLISH_BIN" "$TMP_OUT" "$DATA_DIR" "$PUBLIC_ANALYTICS_DIR" >> "$LOG_FILE" 2>&1; then
     echo "ERROR: publish step failed at $(date '+%Y-%m-%d %H:%M:%S')" >&2
     echo "==================== LOG TAIL ====================" >&2
     tail -200 "$LOG_FILE" >&2 || true

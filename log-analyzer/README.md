@@ -13,7 +13,9 @@ Apache access log analyzer that outputs JSON analytics with privacy-preserving u
 - Classifies browsers and platforms for non-bot traffic
 - Bot detection via User-Agent substring matching
 - Top paths per hour with "other" bucket (query strings stripped)
-- Optional split output: per-month JSON + lifetime.json + HTML report
+- Two-phase CLI:
+  - `analyze` mode generates JSON artifacts
+  - `report` mode consumes JSON artifacts and renders `report.html`
 
 ## Building
 
@@ -74,8 +76,11 @@ Tests are in `test/` and cover the HyperLogLog implementation and the main analy
 # JSON to stdout (default)
 ./build/log-analyzer /path/to/logs
 
-# Split output: per-month JSON + lifetime.json + report.html
-./build/log-analyzer --out-dir /path/to/output /path/to/logs
+# Phase 1: generate per-month JSON + lifetime.json
+./build/log-analyzer --mode analyze --out-dir /path/to/output /path/to/logs
+
+# Phase 2: render report from JSON artifacts
+./build/log-analyzer --mode report --json-dir /path/to/output --report-path /path/to/output/report.html
 
 # If no log directory is provided, defaults to /home/logs
 ./build/log-analyzer
@@ -91,10 +96,12 @@ Tests are in `test/` and cover the HyperLogLog implementation and the main analy
 
 JSON to stdout by default. See [DESIGN.md](DESIGN.md) for the full output schema.
 
-With `--out-dir`, writes:
+With `--mode analyze --out-dir`, writes:
 - `YYYY-MM.json` per month (hourly data + monthly summary)
 - `lifetime.json` (merged HLLs, total counts, list of months)
-- `report.html` (self-contained static HTML, no JavaScript, dark mode)
+
+With `--mode report --json-dir ... --report-path ...`, writes:
+- `report.html` (self-contained static HTML, no JavaScript, dark mode) from persisted JSON artifacts
 
 ## Data Retention
 
@@ -103,6 +110,7 @@ The analyzer is stateless — it re-reads all `access_log*` files from scratch e
 - **Raw logs** (`access_log*`): Needed for exact counts. NFSN rotates weekly and retains 4-8 weeks, so exact hourly/monthly stats cover that window. Once a log file is deleted, its data is gone from future runs.
 - **Monthly JSON** (`YYYY-MM.json`): Preserves exact counts and hourly breakdowns for that month. Keep these persisted indefinitely (for example in `/home/private/log-analyzer-data` plus Bunny backup) — they're small and should remain immutable once a month is closed.
 - **HLL sketches** (`unique_visitors_hll` in each monthly file): These are the key to long-term unique visitor counts. The lifetime total in `lifetime.json` is computed by merging all monthly HLLs. Even after raw logs are deleted, the HLL gives a ~1% accurate unique count for that month, and merging HLLs correctly handles visitors who appear in multiple months.
+- **Compressed logs** (`access_log*.gz`): The NFS cron wrapper expands `.gz` logs into a temp dir before `analyze` mode runs, so rotated compressed files are included.
 
 In short: raw logs are ephemeral, monthly JSON files are the permanent record, and HLL sketches are what make lifetime unique counts possible without storing any IPs.
 
@@ -116,7 +124,9 @@ log-analyzer/
 ├── src/
 │   ├── main.janet         # Main source code
 │   ├── hll.janet          # HyperLogLog implementation
-│   └── json.janet         # JSON encoder
+│   ├── json.janet         # JSON encoder
+│   ├── json_decode.janet  # JSON decoder (for report mode)
+│   └── report.janet       # Report renderer from persisted JSON
 ├── test/
 │   ├── hll-test.janet     # HLL tests
 │   └── main-test.janet    # Analyzer function tests

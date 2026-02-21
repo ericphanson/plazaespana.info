@@ -11,6 +11,7 @@ build:
 # Run test suite
 test:
     jpm test
+    python3 ../ops/test_log_analyzer_publish.py
 
 # Rebuild from scratch
 rebuild: clean build

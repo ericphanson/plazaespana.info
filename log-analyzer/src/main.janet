@@ -10,6 +10,7 @@
 
 (import ./hll)
 (import ./json)
+(import ./report)
 
 (def apache-log-peg
   "PEG grammar for Apache Combined Log Format"
@@ -39,6 +40,12 @@
   {"Jan" "01" "Feb" "02" "Mar" "03" "Apr" "04"
    "May" "05" "Jun" "06" "Jul" "07" "Aug" "08"
    "Sep" "09" "Oct" "10" "Nov" "11" "Dec" "12"})
+
+(defn- log-file-candidate?
+  "Accept plain-text access log files; wrapper handles .gz expansion."
+  [name]
+  (and (string/has-prefix? "access_log" name)
+       (not (string/has-suffix? ".gz" name))))
 
 # ============================================================================
 # Timezone conversion
@@ -429,8 +436,7 @@
 
   # Find all access_log* files
   (def log-files
-    (sort (filter |(string/has-prefix? "access_log" $)
-                  (os/dir log-dir))))
+    (sort (filter log-file-candidate? (os/dir log-dir))))
 
   (when (empty? log-files)
     (eprint "No access_log files found in " log-dir)
@@ -581,274 +587,105 @@
   (eprintf "Wrote %s\n" lifetime-path))
 
 # ============================================================================
-# HTML report
-# ============================================================================
-
-(defn build-html-report
-  "Generate a self-contained static HTML report (no JavaScript)"
-  [stats log-files]
-  (def monthly-json (build-monthly-json (stats :monthly)))
-  (def hourly-json (build-hourly-json (stats :hourly)))
-  (def generated-at (os/strftime "%Y-%m-%dT%H:%M:%SZ" (os/time)))
-  (def total-requests (sum (map |(get $ :requests) (values (stats :monthly)))))
-  (def total-uniques (math/round (hll/count-estimate (stats :total-hll))))
-
-  # Aggregate top paths across all hours
-  (def all-paths @{})
-  (each entry hourly-json
-    (each p (entry :top_paths)
-      (def path (p :path))
-      (when (not= path "other")
-        (put all-paths path (+ (get all-paths path 0) (p :requests))))))
-  (def top-paths-all (take 20 (sort-by |(- (get $ 1)) (pairs all-paths))))
-
-  # Aggregate browsers/platforms/referrers across all hours
-  (def all-browsers @{})
-  (def all-platforms @{})
-  (def all-referrers @{})
-  (each entry hourly-json
-    (eachp [k v] (entry :browsers)
-      (put all-browsers k (+ (get all-browsers k 0) v)))
-    (eachp [k v] (entry :platforms)
-      (put all-platforms k (+ (get all-platforms k 0) v)))
-    (eachp [k v] (entry :referrer_categories)
-      (put all-referrers k (+ (get all-referrers k 0) v))))
-
-  # Aggregate traffic type totals and status codes per type
-  (var total-bots 0)
-  (var total-scans 0)
-  (var total-visitors 0)
-  (def all-status @{})
-  (def status-bots @{})
-  (def status-scans @{})
-  (def status-visitors @{})
-  (each entry hourly-json
-    (+= total-bots (entry :bots))
-    (+= total-scans (entry :scans))
-    (+= total-visitors (entry :visitors))
-    (eachp [k v] (get (entry :status_by_type) :bots @{})
-      (put status-bots k (+ (get status-bots k 0) v)))
-    (eachp [k v] (get (entry :status_by_type) :scans @{})
-      (put status-scans k (+ (get status-scans k 0) v)))
-    (eachp [k v] (get (entry :status_by_type) :visitors @{})
-      (put status-visitors k (+ (get status-visitors k 0) v)))
-    (eachp [k v] (entry :status_codes)
-      (put all-status k (+ (get all-status k 0) v))))
-
-  # Find max daily requests for bar chart scaling
-  (def daily-requests @{})
-  (each entry hourly-json
-    (def day (string/slice (entry :hour) 0 10))
-    (put daily-requests day (+ (get daily-requests day 0) (entry :requests))))
-  (def max-daily (max ;(values daily-requests) 1))
-
-  (def buf @"")
-
-  (buffer/push-string buf
-    ```
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Log Analysis Report</title>
-    <style>
-    :root {
-      --bg: #fff; --fg: #1a1a1a; --muted: #666; --border: #e0e0e0;
-      --accent: #2563eb; --bar-bg: #e5e7eb; --card-bg: #f9fafb;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #111; --fg: #e5e5e5; --muted: #999; --border: #333;
-        --accent: #60a5fa; --bar-bg: #1f2937; --card-bg: #1a1a2e;
-      }
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg);
-           max-width: 900px; margin: 0 auto; padding: 1rem; line-height: 1.5; }
-    h1 { margin-bottom: 0.25rem; }
-    h2 { margin: 1.5rem 0 0.75rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; }
-h3 { margin: 1.25rem 0 0.5rem; color: var(--fg); }
-    .meta { color: var(--muted); margin-bottom: 1rem; font-size: 0.9rem; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
-    .card .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .card .value { font-size: 1.5rem; font-weight: bold; margin-top: 0.25rem; }
-    table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
-    th, td { text-align: left; padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--border); }
-    th { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .bar-container { background: var(--bar-bg); border-radius: 4px; height: 1.2rem; overflow: hidden; }
-    .bar { background: var(--accent); height: 100%; border-radius: 4px; min-width: 2px; }
-    footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);
-             font-size: 0.8rem; color: var(--muted); }
-    </style>
-    </head>
-    <body>
-    ```)
-
-  (buffer/push-string buf
-    (string/format "<h1>Log Analysis Report</h1>\n<p class=\"meta\">Generated: %s</p>\n" generated-at))
-
-  # Summary cards
-  (buffer/push-string buf "<div class=\"cards\">\n")
-  (buffer/push-string buf
-    (string/format
-      "<div class=\"card\"><div class=\"label\">Total Requests</div><div class=\"value\">%d</div></div>\n"
-      total-requests))
-  (buffer/push-string buf
-    (string/format
-      "<div class=\"card\"><div class=\"label\">Unique Visitors</div><div class=\"value\">%d</div></div>\n"
-      total-uniques))
-  (buffer/push-string buf
-    (string/format
-      "<div class=\"card\"><div class=\"label\">Months</div><div class=\"value\">%d</div></div>\n"
-      (length monthly-json)))
-  (buffer/push-string buf
-    (string/format
-      "<div class=\"card\"><div class=\"label\">Log Files</div><div class=\"value\">%d</div></div>\n"
-      (length log-files)))
-  (buffer/push-string buf "</div>\n")
-
-  # ---- All Traffic section ----
-
-  # Traffic breakdown table
-  (defn- status-summary [tbl]
-    (string/join
-      (map (fn [[s c]] (string/format "%s: %d" s c))
-           (sort-by |(- (get $ 1)) (pairs tbl)))
-      ", "))
-
-  (buffer/push-string buf "<h2>Traffic Breakdown</h2>\n<table>\n")
-  (buffer/push-string buf "<tr><th>Type</th><th>Requests</th><th>%</th><th>Status Codes</th></tr>\n")
-  (each [label count status-tbl]
-        [["Visitors" total-visitors status-visitors]
-         ["Scans" total-scans status-scans]
-         ["Bots" total-bots status-bots]]
-    (def pct (if (> total-requests 0) (/ (* 100 count) total-requests) 0))
-    (buffer/push-string buf
-      (string/format "<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%.1f%%</td><td>%s</td></tr>\n"
-        label count pct (status-summary status-tbl))))
-  (buffer/push-string buf
-    (string/format "<tr><td><strong>Total</strong></td><td class=\"num\"><strong>%d</strong></td><td class=\"num\"><strong>100%%</strong></td><td>%s</td></tr>\n"
-      total-requests (status-summary all-status)))
-  (buffer/push-string buf "</table>\n")
-
-  # Daily request bar chart (all traffic)
-  (def sorted-days (sort (keys daily-requests)))
-  (buffer/push-string buf "<h2>Daily Requests</h2>\n<table>\n")
-  (buffer/push-string buf "<tr><th>Date</th><th>Requests</th><th></th></tr>\n")
-  (each day sorted-days
-    (def count (get daily-requests day))
-    (def pct (math/round (* 100 (/ count max-daily))))
-    (buffer/push-string buf
-      (string/format
-        "<tr><td>%s</td><td class=\"num\">%d</td><td><div class=\"bar-container\"><div class=\"bar\" style=\"width:%d%%\"></div></div></td></tr>\n"
-        day count pct)))
-  (buffer/push-string buf "</table>\n")
-
-  # Top paths (all traffic)
-  (buffer/push-string buf "<h2>Top Paths</h2>\n<table>\n")
-  (buffer/push-string buf "<tr><th>Path</th><th>Requests</th></tr>\n")
-  (each [path count] top-paths-all
-    (buffer/push-string buf
-      (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" path count)))
-  (buffer/push-string buf "</table>\n")
-
-  # Referrer categories (all traffic)
-  (when (not (empty? all-referrers))
-    (def sorted-refs (sort-by |(- (get $ 1)) (pairs all-referrers)))
-    (buffer/push-string buf "<h2>Referrer Categories</h2>\n<table>\n")
-    (buffer/push-string buf "<tr><th>Category</th><th>Requests</th></tr>\n")
-    (each [cat count] sorted-refs
-      (buffer/push-string buf
-        (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" cat count)))
-    (buffer/push-string buf "</table>\n"))
-
-  # ---- Visitors Only section ----
-  (buffer/push-string buf "<h2>Visitors</h2>\n<p class=\"meta\">The following sections exclude bots and vulnerability scans.</p>\n")
-
-  # Monthly summary table (visitors)
-  (buffer/push-string buf "<h3>Monthly Summary</h3>\n<table>\n")
-  (buffer/push-string buf "<tr><th>Month</th><th>All Requests</th><th>Unique Visitors</th><th>HLL Estimate</th></tr>\n")
-  (each m monthly-json
-    (buffer/push-string buf
-      (string/format "<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%d</td><td class=\"num\">%d</td></tr>\n"
-        (m :month) (m :requests) (m :unique_visitors_exact) (m :unique_visitors_estimate))))
-  (buffer/push-string buf "</table>\n")
-
-  # Browser breakdown (visitors only)
-  (when (not (empty? all-browsers))
-    (def sorted-browsers (sort-by |(- (get $ 1)) (pairs all-browsers)))
-    (buffer/push-string buf "<h3>Browsers</h3>\n<table>\n")
-    (buffer/push-string buf "<tr><th>Browser</th><th>Requests</th></tr>\n")
-    (each [browser count] sorted-browsers
-      (buffer/push-string buf
-        (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" browser count)))
-    (buffer/push-string buf "</table>\n"))
-
-  # Platform breakdown (visitors only)
-  (when (not (empty? all-platforms))
-    (def sorted-platforms (sort-by |(- (get $ 1)) (pairs all-platforms)))
-    (buffer/push-string buf "<h3>Platforms</h3>\n<table>\n")
-    (buffer/push-string buf "<tr><th>Platform</th><th>Requests</th></tr>\n")
-    (each [platform count] sorted-platforms
-      (buffer/push-string buf
-        (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" platform count)))
-    (buffer/push-string buf "</table>\n"))
-
-  (buffer/push-string buf "<footer>Generated by log-analyzer</footer>\n</body>\n</html>")
-  (string buf))
-
-# ============================================================================
 # CLI
 # ============================================================================
 
 (defn- parse-args
-  "Parse CLI arguments. Returns {:log-dir :out-dir}"
+  "Parse CLI arguments.
+   Modes:
+   - analyze (default): read logs and emit JSON
+   - report: read persisted JSON files and emit report.html"
   [args]
-  (def result @{:log-dir nil :out-dir nil})
+  (def result @{:mode "analyze"
+                :log-dir nil
+                :out-dir nil
+                :json-dir nil
+                :report-path nil})
   (var i 1)  # Skip executable name at index 0
   (while (< i (length args))
     (def arg (get args i))
     (cond
-      (or (= arg "--out-dir") (= arg "-o"))
-      (do (++ i)
-          (put result :out-dir (get args i)))
+      (= arg "--mode")
+      (do
+        (++ i)
+        (put result :mode (or (get args i) "")))
 
-      # Positional: log directory
-      (nil? (result :log-dir))
-      (put result :log-dir arg))
+      (or (= arg "--out-dir") (= arg "-o"))
+      (do
+        (++ i)
+        (put result :out-dir (or (get args i) "")))
+
+      (= arg "--json-dir")
+      (do
+        (++ i)
+        (put result :json-dir (or (get args i) "")))
+
+      (= arg "--report-path")
+      (do
+        (++ i)
+        (put result :report-path (or (get args i) "")))
+
+      (string/has-prefix? "-" arg)
+      (do
+        (eprintf "Unknown option: %s\n" arg)
+        (os/exit 1))
+
+      # Positional arg
+      true
+      (if (= (result :mode) "report")
+        (if (nil? (result :json-dir))
+          (put result :json-dir arg)
+          (do
+            (eprintf "Unexpected extra positional argument: %s\n" arg)
+            (os/exit 1)))
+        (if (nil? (result :log-dir))
+          (put result :log-dir arg)
+          (do
+            (eprintf "Unexpected extra positional argument: %s\n" arg)
+            (os/exit 1)))))
 
     (++ i))
 
-  # Default log directory
-  (when (nil? (result :log-dir))
-    (put result :log-dir "/home/logs"))
+  (def mode (result :mode))
+  (when (and (not= mode "analyze") (not= mode "report"))
+    (eprintf "Invalid --mode: %s (expected analyze or report)\n" mode)
+    (os/exit 1))
+
+  (if (= mode "report")
+    (do
+      (when (nil? (result :json-dir))
+        (if (not (nil? (result :out-dir)))
+          (put result :json-dir (result :out-dir))
+          (put result :json-dir "/home/private/log-analyzer-data")))
+      (when (nil? (result :report-path))
+        (put result :report-path (string (result :json-dir) "/report.html"))))
+    (when (nil? (result :log-dir))
+      (put result :log-dir "/home/logs")))
 
   result)
 
 (defn main [& args]
   (def opts (parse-args args))
-  (def log-dir (opts :log-dir))
-  (def out-dir (opts :out-dir))
+  (def mode (opts :mode))
 
-  (eprintf "Analyzing Apache access logs in: %s\n\n" log-dir)
+  (if (= mode "report")
+    (let [json-dir (opts :json-dir)
+          report-path (opts :report-path)
+          result (report/generate-report-from-json-dir json-dir report-path)]
+      (eprintf "Built report from JSON dir: %s\n" json-dir)
+      (eprintf "Wrote %s\n" (result :report-path)))
+    (let [log-dir (opts :log-dir)
+          out-dir (opts :out-dir)]
+      (eprintf "Analyzing Apache access logs in: %s\n\n" log-dir)
 
-  # Get list of log files before analysis
-  (def log-files
-    (sort (filter |(string/has-prefix? "access_log" $)
-                  (os/dir log-dir))))
+      # Get list of log files before analysis
+      (def log-files
+        (sort (filter log-file-candidate? (os/dir log-dir))))
 
-  # Analyze logs
-  (def stats (analyze-logs log-dir))
+      # Analyze logs
+      (def stats (analyze-logs log-dir))
 
-  # Output
-  (if out-dir
-    (do
-      (output-split stats log-files out-dir)
-      # Also write HTML report to out-dir
-      (def html (build-html-report stats log-files))
-      (write-file (string out-dir "/report.html") html)
-      (eprintf "Wrote %s/report.html\n" out-dir))
-    (output-json stats log-files)))
+      # Output
+      (if out-dir
+        (output-split stats log-files out-dir)
+        (output-json stats log-files)))))
