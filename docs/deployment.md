@@ -19,6 +19,7 @@ This guide covers deploying the Madrid Events site to NearlyFreeSpeech.NET (NFSN
 - SSH access to your NFSN account
 - SSH key pair for authentication
 - **direnv** (recommended) - [Install direnv](https://direnv.net/docs/installation.html)
+- NFS host has `python3` and `curl` available (required by analytics publish/backup script)
 
 ## Quick Start
 
@@ -72,35 +73,21 @@ just deploy
 
 Add these secrets in repository Settings → Secrets and variables → Actions:
 
-| Secret Name        | Description                  | Value                               | Required |
-|--------------------|------------------------------|-------------------------------------|----------|
-| `NFSN_SSH_KEY`     | Private SSH key              | Contents of `~/.ssh/id_ed25519`     | Yes      |
-| `NFSN_HOST`        | NFSN SSH hostname            | SSH hostname from site information  | Yes      |
-| `NFSN_USER`        | NFSN username                | `your_username`                     | Yes      |
-| `NFSN_KNOWN_HOST`  | SSH host key (for security)  | Output from `ssh-keyscan` command   | Yes      |
-| `AEMET_API_KEY`    | AEMET weather API key        | Your AEMET OpenData API key         | Yes      |
+| Secret Name               | Description                          | Value                               | Required |
+|---------------------------|--------------------------------------|-------------------------------------|----------|
+| `NFSN_SSH_KEY`            | Private SSH key                      | Contents of `~/.ssh/id_ed25519`     | Yes      |
+| `NFSN_HOST`               | NFSN SSH hostname                    | SSH hostname from site information  | Yes      |
+| `NFSN_USER`               | NFSN username                        | `your_username`                     | Yes      |
+| `NFSN_KNOWN_HOST`         | SSH host key (preview/cleanup jobs)  | Output from `ssh-keyscan -H`        | Yes      |
+| `AEMET_API_KEY`           | AEMET weather API key                | Your AEMET OpenData API key         | Yes      |
+| `BUNNY_STORAGE_KEY`       | Bunny storage API key                | Bunny storage key                   | Recommended |
+| `BUNNY_STORAGE_ZONE`      | Bunny storage zone                   | e.g. `my-analytics-zone`            | Recommended |
+| `BUNNY_STORAGE_ENDPOINT`  | Bunny storage endpoint host          | e.g. `storage.bunnycdn.com`         | Recommended |
+| `BUNNY_BASE_PATH`         | Bunny backup path prefix             | default: `analytics-backup/current` | Optional |
 
 ⚠️ Use the **private key** that matches the public key uploaded to NFSN.
 
 **Note:** `AEMET_API_KEY` is required. Without it, site builds will fail.
-
-### How to populate NFSN_KNOWN_HOST
-
-To securely verify the NFSN host key, run this command **from a trusted machine** (not in CI):
-
-```bash
-ssh-keyscan -H "$NFSN_HOST"
-```
-
-This will output something like:
-```
-|1|abc123...= ssh-ed25519 AAAA...
-|1|def456...= ssh-rsa AAAA...
-```
-
-**Copy the entire output** and paste it as the value for the `NFSN_KNOWN_HOST` secret.
-
-**Why this matters:** This prevents man-in-the-middle attacks during GitHub Actions deployments. By capturing the host key once from a trusted network and storing it as a secret, all future CI runs will verify they're connecting to the legitimate NFSN server.
 
 ## Cron Setup on NFSN
 
@@ -213,6 +200,8 @@ ops/htaccess                         → /home/public/.htaccess
 # Log analyzer
 log-analyzer/build/log-analyzer-freebsd → /home/private/bin/log-analyzer
 ops/log-analyzer-weekly.sh              → /home/private/bin/log-analyzer-weekly.sh
+ops/log-analyzer-publish.sh             → /home/private/bin/log-analyzer-publish.sh
+$BUNNY_* (env, optional)                → /home/private/bunny-*.txt
 ```
 
 After upload, binary runs to generate:
@@ -221,8 +210,14 @@ After upload, binary runs to generate:
 - `/home/private/data/` - Cache & audit logs (not web-accessible)
 
 Log analyzer generates (via weekly cron):
-- `/home/private/log-analyzer-data/` - aggregate monthly JSON + lifetime JSON + report HTML
-- Synced to git via GitHub Actions into `log-analyzer-data/`
+- `/home/private/log-analyzer-data/` - canonical aggregate monthly JSON + lifetime JSON + report HTML
+- `/home/public/analytics/report.html` - public analytics report
+- `/home/public/analytics/data/*.json` - public aggregate JSON
+- Bunny mirror at `analytics-backup/current/` (JSON backup; immutable old month files)
+
+Notes:
+- `lifetime.json` is rebuilt from persisted month files and remains stable across log rotation.
+- `report.html` reflects the current run (based on retained `access_log*` files).
 
 ## NFSN Directory Structure
 
@@ -234,15 +229,23 @@ Log analyzer generates (via weekly cron):
       cron-generate.sh  # Site generation wrapper (hourly cron)
       log-analyzer      # Log analyzer binary (FreeBSD)
       log-analyzer-weekly.sh # Aggregate analytics snapshot job (weekly cron)
+      log-analyzer-publish.sh # Publish + privacy + backup wrapper
     config.toml         # Site generator config
     aemet-api-key.txt   # AEMET API key (optional, mode 600)
+    bunny-storage-key.txt      # Bunny storage key (optional, mode 600)
+    bunny-storage-zone.txt     # Bunny storage zone (optional, mode 600)
+    bunny-storage-endpoint.txt # Bunny endpoint host (optional, mode 600)
+    bunny-base-path.txt        # Bunny base path (optional, mode 600)
     templates/          # HTML templates
     data/               # Site generator cache, audit logs (auto-created)
-    log-analyzer-data/  # Aggregate analytics snapshots (synced to git)
+    log-analyzer-data/  # Canonical aggregate analytics snapshots
 
   public/               # ✅ Web root (served via HTTP)
     index.html          # Generated event listing
     events.json         # Generated JSON API
+    analytics/
+      report.html       # Analytics report
+      data/*.json       # Public aggregate JSON
     assets/             # CSS files and weather icons
       site.*.css        # Hashed main site CSS
       build-report.*.css # Hashed build report CSS
@@ -297,23 +300,23 @@ The wrapper script:
 - Logs all activity to `/home/logs/log-analyzer.log`
 - Emits stderr on failures (so cron can alert)
 
-### 3. Setup Stats Sync (GitHub Actions)
+### 3. Configure Bunny Backup (Recommended)
 
-For automated PR creation with latest aggregate analytics:
+Set these env vars before deployment (local or CI), then run `just deploy`:
 
-1. Generate dedicated SSH key for sync:
-   ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/nfsn_stats -N ""
-   ```
-2. Add public key to NFSN authorized keys.
-3. Add/update GitHub secrets:
-   - `NFSN_SSH_KEY`: private key contents
-   - `NFSN_HOST`
-   - `NFSN_USER`
-   - `NFSN_KNOWN_HOST`
-4. Run workflow: GitHub → Actions → "Fetch Log Analyzer Stats".
+- `BUNNY_STORAGE_KEY`
+- `BUNNY_STORAGE_ZONE`
+- `BUNNY_STORAGE_ENDPOINT`
+- `BUNNY_BASE_PATH` (optional, default `analytics-backup/current`)
 
-The workflow pulls `/home/private/log-analyzer-data`, enforces privacy checks, and opens/updates a PR against canonical branch `log-analyzer-data`.
+Deployment writes these to `/home/private/bunny-*.txt` with mode `600`.
+If neither env vars nor existing Bunny files are present, `just deploy` fails to prevent a broken cron publish path.
+
+By default, publish will fail if Bunny config is missing (`BUNNY_BACKUP_REQUIRED=1` default).
+Temporary bypass (not recommended long-term):
+```bash
+BUNNY_BACKUP_REQUIRED=0 /home/private/bin/log-analyzer-weekly.sh
+```
 
 ### 4. Configure NFSN Log Rotation
 
@@ -341,7 +344,7 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 
 ### GitHub Actions deployment fails
 
-1. Verify required secrets are set in repository settings (`NFSN_SSH_KEY`, `NFSN_HOST`, `NFSN_USER`, `NFSN_KNOWN_HOST`, `AEMET_API_KEY`)
+1. Verify required secrets are set in repository settings (`NFSN_SSH_KEY`, `NFSN_HOST`, `NFSN_USER`, `AEMET_API_KEY`)
 2. Ensure `NFSN_SSH_KEY` private key matches public key on NFSN
 3. Check GitHub Actions logs for specific errors
 
@@ -381,25 +384,21 @@ ls -lh /home/private/log-analyzer-data/
 tail -100 /home/logs/log-analyzer.log
 ```
 
-### Database sync workflow fails
+### Bunny backup sync fails
 
 **Common causes:**
-1. SSH key not added to NFSN
-2. `NFSN_SSH_KEY` secret has wrong key
-3. `gh` authentication failed
+1. Missing `/home/private/bunny-*.txt` files
+2. Invalid Bunny storage key / zone / endpoint
+3. Immutable month mismatch (historical JSON changed unexpectedly)
 
 **Fix:**
 ```bash
-# Test SSH access locally
-ssh -i ~/.ssh/nfsn_stats $NFSN_USER@$NFSN_HOST ls /home/private/log-analyzer-data/
+# Check Bunny config on NFS
+ssh "$NFSN_USER@$NFSN_HOST" 'ls -l /home/private/bunny-*.txt'
 
-# Test SCP access
-scp "$NFSN_USER@$NFSN_HOST:/home/private/log-analyzer-data/*.json" /tmp/test-log-analyzer/
-
-# Verify GitHub CLI auth
-gh auth status
-
-# Check workflow logs for specific error
+# Run analytics job manually and inspect logs
+ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/log-analyzer-weekly.sh'
+ssh "$NFSN_USER@$NFSN_HOST" 'tail -100 /home/logs/log-analyzer.log'
 ```
 
 ## Security
@@ -408,7 +407,7 @@ gh auth status
 - Private keys belong in `~/.ssh/` (local) and GitHub Secrets (CI)
 - Public keys are safe to share (uploaded to NFSN)
 - Use `ed25519` keys (more secure than RSA)
-- Keep separate SSH keys for deployment vs. analytics sync (better security isolation)
+- Keep Bunny credentials in `/home/private` with mode `600` and rotate periodically
 
 ## Deployment Checklist
 
@@ -430,10 +429,13 @@ gh auth status
 **Log-analyzer setup (after first deployment):**
 - [ ] Run initial processing: `/home/private/bin/log-analyzer-weekly.sh`
 - [ ] Verify output files in `/home/private/log-analyzer-data/`
+- [ ] Verify public analytics endpoints:
+  - `/analytics/report.html`
+  - `/analytics/data/lifetime.json`
 - [ ] Configure NFSN log rotation: Weekly with compression (NFSN web UI → Site Information)
 - [ ] Configure log-analyzer cron job: `0 1 * * 0` (Sunday 1 AM)
-- [ ] Setup analytics sync SSH key and GitHub secrets
-- [ ] Test sync workflow: GitHub Actions → "Fetch Log Analyzer Stats" → Run workflow
+- [ ] Configure Bunny backup env vars (`BUNNY_STORAGE_*`) and redeploy
+- [ ] Verify Bunny mirror was updated (check `/home/logs/log-analyzer.log`)
 
 **After each deployment:**
 - [ ] Verify site updates with new content

@@ -101,7 +101,7 @@ With `--out-dir`, writes:
 The analyzer is stateless — it re-reads all `access_log*` files from scratch every run. This means accuracy depends on what you keep around:
 
 - **Raw logs** (`access_log*`): Needed for exact counts. NFSN rotates weekly and retains 4-8 weeks, so exact hourly/monthly stats cover that window. Once a log file is deleted, its data is gone from future runs.
-- **Monthly JSON** (`YYYY-MM.json`): Preserves exact counts and hourly breakdowns for that month. Keep these in the repo indefinitely — they're small and won't change once the month's logs are rotated away.
+- **Monthly JSON** (`YYYY-MM.json`): Preserves exact counts and hourly breakdowns for that month. Keep these persisted indefinitely (for example in `/home/private/log-analyzer-data` plus Bunny backup) — they're small and should remain immutable once a month is closed.
 - **HLL sketches** (`unique_visitors_hll` in each monthly file): These are the key to long-term unique visitor counts. The lifetime total in `lifetime.json` is computed by merging all monthly HLLs. Even after raw logs are deleted, the HLL gives a ~1% accurate unique count for that month, and merging HLLs correctly handles visitors who appear in multiple months.
 
 In short: raw logs are ephemeral, monthly JSON files are the permanent record, and HLL sketches are what make lifetime unique counts possible without storing any IPs.

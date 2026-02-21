@@ -134,6 +134,10 @@ jobs:
       NFSN_HOST: ${{ secrets.NFSN_HOST }}
       NFSN_USER: ${{ secrets.NFSN_USER }}
       AEMET_API_KEY: ${{ secrets.AEMET_API_KEY }}  # Required: for weather forecasts
+      BUNNY_STORAGE_KEY: ${{ secrets.BUNNY_STORAGE_KEY }}
+      BUNNY_STORAGE_ZONE: ${{ secrets.BUNNY_STORAGE_ZONE }}
+      BUNNY_STORAGE_ENDPOINT: ${{ secrets.BUNNY_STORAGE_ENDPOINT }}
+      BUNNY_BASE_PATH: ${{ secrets.BUNNY_BASE_PATH }}
 
     steps:
       - name: Check out code

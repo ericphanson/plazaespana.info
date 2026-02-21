@@ -69,7 +69,11 @@ _deploy-files:
 
     # Create remote directories if needed
     echo "📁 Creating remote directories..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/private/log-analyzer-data /home/public/assets'
+    ssh "$NFSN_USER@$NFSN_HOST" '
+        command -v python3 >/dev/null 2>&1 || { echo "python3 is required for log-analyzer publish pipeline"; exit 1; }
+        command -v curl >/dev/null 2>&1 || { echo "curl is required for Bunny backup sync"; exit 1; }
+        mkdir -p /home/private/bin /home/private/templates /home/private/data /home/private/log-analyzer-data /home/public/assets /home/public/analytics
+    '
 
     # Upload new files with .new suffix (atomic swap later)
     echo "📤 Uploading binary..."
@@ -102,6 +106,9 @@ _deploy-files:
     echo "📤 Uploading log-analyzer cron wrapper script..."
     scp ops/log-analyzer-weekly.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-weekly.sh.new"
 
+    echo "📤 Uploading log-analyzer publish script..."
+    scp ops/log-analyzer-publish.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-publish.sh.new"
+
     echo "📤 Uploading hashed CSS and hash files..."
     scp public/assets/site.*.css public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
     scp public/assets/css.hash public/assets/build-report-css.hash "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
@@ -116,9 +123,60 @@ _deploy-files:
     echo "📤 Uploading robots.txt..."
     scp ops/robots.txt "$NFSN_USER@$NFSN_HOST:/home/public/robots.txt"
 
+    # Upload Bunny backup credentials/config if present in env
+    if [ -n "${BUNNY_STORAGE_KEY:-}${BUNNY_STORAGE_ZONE:-}${BUNNY_STORAGE_ENDPOINT:-}${BUNNY_BASE_PATH:-}" ]; then
+        if [ -z "${BUNNY_STORAGE_KEY:-}" ] || [ -z "${BUNNY_STORAGE_ZONE:-}" ] || [ -z "${BUNNY_STORAGE_ENDPOINT:-}" ]; then
+            echo "❌ Error: If any Bunny variable is set, BUNNY_STORAGE_KEY, BUNNY_STORAGE_ZONE, and BUNNY_STORAGE_ENDPOINT are all required"
+            exit 1
+        fi
+
+        echo "📤 Uploading Bunny backup config files..."
+        echo -n "$BUNNY_STORAGE_KEY" > build/bunny-storage-key.txt
+        echo -n "$BUNNY_STORAGE_ZONE" > build/bunny-storage-zone.txt
+        echo -n "$BUNNY_STORAGE_ENDPOINT" > build/bunny-storage-endpoint.txt
+        echo -n "${BUNNY_BASE_PATH:-analytics-backup/current}" > build/bunny-base-path.txt
+        chmod 600 build/bunny-storage-key.txt build/bunny-storage-zone.txt build/bunny-storage-endpoint.txt build/bunny-base-path.txt
+
+        scp build/bunny-storage-key.txt "$NFSN_USER@$NFSN_HOST:/home/private/bunny-storage-key.txt.new"
+        scp build/bunny-storage-zone.txt "$NFSN_USER@$NFSN_HOST:/home/private/bunny-storage-zone.txt.new"
+        scp build/bunny-storage-endpoint.txt "$NFSN_USER@$NFSN_HOST:/home/private/bunny-storage-endpoint.txt.new"
+        scp build/bunny-base-path.txt "$NFSN_USER@$NFSN_HOST:/home/private/bunny-base-path.txt.new"
+
+        rm -f build/bunny-storage-key.txt build/bunny-storage-zone.txt build/bunny-storage-endpoint.txt build/bunny-base-path.txt
+    else
+        if ssh "$NFSN_USER@$NFSN_HOST" '[ -f /home/private/bunny-storage-key.txt ] && [ -f /home/private/bunny-storage-zone.txt ] && [ -f /home/private/bunny-storage-endpoint.txt ]'; then
+            echo "⚠️  Bunny backup env vars not set - keeping existing Bunny config on server"
+        else
+            echo "❌ Bunny backup config missing on server and BUNNY_* env vars not provided."
+            echo "   Set BUNNY_STORAGE_KEY, BUNNY_STORAGE_ZONE, BUNNY_STORAGE_ENDPOINT (and optional BUNNY_BASE_PATH) before deploy."
+            exit 1
+        fi
+    fi
+
     # Atomically swap new files into place
     echo "🔄 Activating new files..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/log-analyzer.new /home/private/bin/log-analyzer && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/bin/log-analyzer-weekly.sh.new /home/private/bin/log-analyzer-weekly.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index.tmpl.html.new /home/private/templates/index.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/log-analyzer /home/private/bin/cron-generate.sh /home/private/bin/log-analyzer-weekly.sh'
+    ssh "$NFSN_USER@$NFSN_HOST" '
+        mv /home/private/bin/buildsite.new /home/private/bin/buildsite &&
+        mv /home/private/bin/log-analyzer.new /home/private/bin/log-analyzer &&
+        mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh &&
+        mv /home/private/bin/log-analyzer-weekly.sh.new /home/private/bin/log-analyzer-weekly.sh &&
+        mv /home/private/bin/log-analyzer-publish.sh.new /home/private/bin/log-analyzer-publish.sh &&
+        mv /home/private/config.toml.new /home/private/config.toml &&
+        mv /home/private/templates/index.tmpl.html.new /home/private/templates/index.tmpl.html &&
+        chmod +x /home/private/bin/buildsite /home/private/bin/log-analyzer /home/private/bin/cron-generate.sh /home/private/bin/log-analyzer-weekly.sh /home/private/bin/log-analyzer-publish.sh
+    '
+
+    # Promote Bunny files if staged in this deploy
+    ssh "$NFSN_USER@$NFSN_HOST" '
+        if [ -f /home/private/bunny-storage-key.txt.new ]; then mv /home/private/bunny-storage-key.txt.new /home/private/bunny-storage-key.txt; fi
+        if [ -f /home/private/bunny-storage-zone.txt.new ]; then mv /home/private/bunny-storage-zone.txt.new /home/private/bunny-storage-zone.txt; fi
+        if [ -f /home/private/bunny-storage-endpoint.txt.new ]; then mv /home/private/bunny-storage-endpoint.txt.new /home/private/bunny-storage-endpoint.txt; fi
+        if [ -f /home/private/bunny-base-path.txt.new ]; then mv /home/private/bunny-base-path.txt.new /home/private/bunny-base-path.txt; fi
+        if [ -f /home/private/bunny-storage-key.txt ]; then chmod 600 /home/private/bunny-storage-key.txt; fi
+        if [ -f /home/private/bunny-storage-zone.txt ]; then chmod 600 /home/private/bunny-storage-zone.txt; fi
+        if [ -f /home/private/bunny-storage-endpoint.txt ]; then chmod 600 /home/private/bunny-storage-endpoint.txt; fi
+        if [ -f /home/private/bunny-base-path.txt ]; then chmod 600 /home/private/bunny-base-path.txt; fi
+    '
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
@@ -142,7 +200,7 @@ _deploy-files:
     echo "      b) Analytics snapshot (aggregate JSON):"
     echo "         Command: /home/private/bin/log-analyzer-weekly.sh"
     echo "         Schedule: 0 1 * * 0 (Sunday 1 AM)"
-    echo "         Note: Logs to /home/logs/log-analyzer.log"
+    echo "         Note: Logs to /home/logs/log-analyzer.log; serves report at /analytics/report.html"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
 deploy: freebsd log-analyzer-freebsd hash-css _deploy-files
@@ -251,11 +309,6 @@ fetch-fixtures:
     @echo "📥 Fetching test fixtures..."
     @./scripts/fetch-fixtures.sh
     @echo "✅ Fixtures updated in generator/testdata/fixtures/"
-
-# Fetch latest log-analyzer aggregate stats and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
-fetch-log-analyzer-stats:
-    @echo "📊 Fetching log-analyzer aggregate stats..."
-    @./scripts/fetch-log-analyzer-stats.sh
 
 # Build site for preview deployment with custom base path
 # Usage: just preview-build PR5
