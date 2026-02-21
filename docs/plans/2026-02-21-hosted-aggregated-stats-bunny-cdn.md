@@ -35,7 +35,7 @@ This removes ongoing PR maintenance while preserving privacy and recoverability.
 
 ### 3.1 Data flow
 
-1. Cron executes `/home/private/bin/log-analyzer-weekly.sh`.
+1. Cron executes `/home/private/bin/log-analyzer-daily.sh`.
 2. Script runs `/home/private/bin/log-analyzer` and generates output in a temp directory.
 3. Publish step runs privacy validation checks on generated and merged artifacts.
 4. Temp artifacts are promoted to `/home/private/log-analyzer-data` atomically.
@@ -127,7 +127,7 @@ Mutable vs immutable backup files:
 2. Immutable:
    - all older `YYYY-MM.json` files
 
-### 6.2 Update `ops/log-analyzer-weekly.sh`
+### 6.2 Update `ops/log-analyzer-daily.sh`
 
 Use explicit phases:
 
@@ -240,7 +240,7 @@ External stale check:
 ## 11. Changes Needed in This Repository
 
 1. Add `ops/log-analyzer-publish.py`.
-2. Update `ops/log-analyzer-weekly.sh` to call publish script and enforce privacy gates.
+2. Update `ops/log-analyzer-daily.sh` to call publish script and enforce privacy gates.
 3. Update root `justfile` deploy flow to upload Bunny secret/config files to NFS (`/home/private`, `chmod 600`).
 4. Update `docs/deployment.md` for Apache-served report + Bunny backup mirroring.
 5. Remove git-sync analytics workflow/scripts after cutover.
@@ -271,7 +271,7 @@ External stale check:
 2. Bunny publish key generated.
 3. Deploy flow supports `BUNNY_*` env vars and writes `/home/private/bunny-*.txt`.
 4. `ops/log-analyzer-publish.py` implemented and deployed.
-5. `ops/log-analyzer-weekly.sh` updated for validate-then-publish flow.
+5. `ops/log-analyzer-daily.sh` updated for validate-then-publish flow.
 6. Privacy gates enabled and tested with known bad fixtures.
 7. Immutable-file guard logic tested (attempted overwrite/delete must fail).
 8. `manifest.json` generated and published with each run.

@@ -62,6 +62,22 @@ _deploy-files:
         exit 1
     fi
 
+    if [ ! -x build/buildsite ]; then
+        echo "❌ Error: missing build/buildsite"
+        echo "   Run: just freebsd"
+        exit 1
+    fi
+    if [ ! -x log-analyzer/build/log-analyzer-freebsd ]; then
+        echo "❌ Error: missing log-analyzer/build/log-analyzer-freebsd"
+        echo "   Run: just log-analyzer-freebsd"
+        exit 1
+    fi
+    if [ ! -f public/assets/css.hash ] || [ ! -f public/assets/build-report-css.hash ]; then
+        echo "❌ Error: missing hashed CSS artifacts in public/assets/"
+        echo "   Run: just hash-css"
+        exit 1
+    fi
+
     echo "🚀 Deploying to NearlyFreeSpeech.NET..."
     echo "   Host: $NFSN_HOST"
     echo "   User: $NFSN_USER"
@@ -104,7 +120,7 @@ _deploy-files:
     scp ops/cron-generate.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/cron-generate.sh.new"
 
     echo "📤 Uploading log-analyzer cron wrapper script..."
-    scp ops/log-analyzer-weekly.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-weekly.sh.new"
+    scp ops/log-analyzer-daily.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-daily.sh.new"
 
     echo "📤 Uploading log-analyzer publish script..."
     scp ops/log-analyzer-publish.py "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-publish.py.new"
@@ -159,11 +175,12 @@ _deploy-files:
         mv /home/private/bin/buildsite.new /home/private/bin/buildsite &&
         mv /home/private/bin/log-analyzer.new /home/private/bin/log-analyzer &&
         mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh &&
-        mv /home/private/bin/log-analyzer-weekly.sh.new /home/private/bin/log-analyzer-weekly.sh &&
+        mv /home/private/bin/log-analyzer-daily.sh.new /home/private/bin/log-analyzer-daily.sh &&
         mv /home/private/bin/log-analyzer-publish.py.new /home/private/bin/log-analyzer-publish.py &&
         mv /home/private/config.toml.new /home/private/config.toml &&
         mv /home/private/templates/index.tmpl.html.new /home/private/templates/index.tmpl.html &&
-        chmod +x /home/private/bin/buildsite /home/private/bin/log-analyzer /home/private/bin/cron-generate.sh /home/private/bin/log-analyzer-weekly.sh /home/private/bin/log-analyzer-publish.py
+        ln -sf /home/private/bin/log-analyzer-daily.sh /home/private/bin/log-analyzer-weekly.sh &&
+        chmod +x /home/private/bin/buildsite /home/private/bin/log-analyzer /home/private/bin/cron-generate.sh /home/private/bin/log-analyzer-daily.sh /home/private/bin/log-analyzer-publish.py
     '
 
     # Promote Bunny files if staged in this deploy
@@ -198,7 +215,7 @@ _deploy-files:
     echo "         Schedule: Every hour"
     echo "         Note: Logs to /home/logs/generate.log, emails only on errors"
     echo "      b) Analytics snapshot (aggregate JSON):"
-    echo "         Command: /home/private/bin/log-analyzer-weekly.sh"
+    echo "         Command: /home/private/bin/log-analyzer-daily.sh"
     echo "         Schedule: 15 1 * * * (daily at 01:15)"
     echo "         Note: Logs to /home/logs/log-analyzer.log; serves report at /analytics/report.html"
 

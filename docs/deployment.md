@@ -67,6 +67,11 @@ ssh your_username@ssh.phx.nearlyfreespeech.net
 just deploy
 ```
 
+`just deploy` now fails early with actionable errors if common prerequisites are missing:
+- `build/buildsite` missing (`just freebsd`)
+- `log-analyzer/build/log-analyzer-freebsd` missing (`just log-analyzer-freebsd`)
+- hashed CSS artifacts missing (`just hash-css`)
+
 **Automatic:** GitHub Actions deploys on push to `main` (after tests pass).
 
 ## GitHub Actions Setup
@@ -199,7 +204,7 @@ ops/htaccess                         → /home/public/.htaccess
 
 # Log analyzer
 log-analyzer/build/log-analyzer-freebsd → /home/private/bin/log-analyzer
-ops/log-analyzer-weekly.sh              → /home/private/bin/log-analyzer-weekly.sh
+ops/log-analyzer-daily.sh               → /home/private/bin/log-analyzer-daily.sh
 ops/log-analyzer-publish.py             → /home/private/bin/log-analyzer-publish.py
 $BUNNY_* (env, optional)                → /home/private/bunny-*.txt
 ```
@@ -228,7 +233,7 @@ Notes:
       buildsite         # Site generator binary
       cron-generate.sh  # Site generation wrapper (hourly cron)
       log-analyzer      # Log analyzer binary (FreeBSD)
-      log-analyzer-weekly.sh # Aggregate analytics snapshot job (cron)
+      log-analyzer-daily.sh # Aggregate analytics snapshot job (cron)
       log-analyzer-publish.py # Publish + privacy + backup wrapper
     config.toml         # Site generator config
     aemet-api-key.txt   # AEMET API key (optional, mode 600)
@@ -272,7 +277,7 @@ After first deployment with `log-analyzer`, complete these steps on NFSN.
 ssh $NFSN_USER@$NFSN_HOST
 
 # Run initial analytics snapshot
-/home/private/bin/log-analyzer-weekly.sh
+/home/private/bin/log-analyzer-daily.sh
 
 # Check output and logs
 ls -lh /home/private/log-analyzer-data/
@@ -290,9 +295,9 @@ Add analytics processing:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
 2. Add task:
-   - **Command:** `/home/private/bin/log-analyzer-weekly.sh`
+   - **Command:** `/home/private/bin/log-analyzer-daily.sh`
    - **Schedule:** `15 1 * * *` (daily at 01:15)
-   - **Tag:** `log-analyzer-weekly` (optional)
+   - **Tag:** `log-analyzer-daily` (optional)
 
 The wrapper script:
 - Reads logs from `/home/logs/access_log*`
@@ -300,6 +305,8 @@ The wrapper script:
 - Logs all activity to `/home/logs/log-analyzer.log`
 - Emits stderr on failures (so cron can alert)
 - Uses a lock directory to prevent overlapping runs
+- Cleans stale temp directories in `/tmp` from interrupted prior runs
+- Deployment also creates `/home/private/bin/log-analyzer-weekly.sh` as a compatibility symlink to the daily script
 
 ### 3. Configure Bunny Backup (Recommended)
 
@@ -316,8 +323,20 @@ If neither env vars nor existing Bunny files are present, `just deploy` fails to
 By default, publish will fail if Bunny config is missing (`BUNNY_BACKUP_REQUIRED=1` default).
 Temporary bypass (not recommended long-term):
 ```bash
-BUNNY_BACKUP_REQUIRED=0 /home/private/bin/log-analyzer-weekly.sh
+BUNNY_BACKUP_REQUIRED=0 /home/private/bin/log-analyzer-daily.sh
 ```
+
+Runtime knobs for analytics job:
+
+- `MONTH_CLOSE_GRACE_DAYS` (default `7`)
+- `BUNNY_BACKUP_REQUIRED` (default `1`)
+- `LOG_ANALYZER_TMP_DIR_BASE` (default `/tmp`)
+- `LOG_ANALYZER_KEEP_TMP_ON_FAILURE` (`1` preserves temp dirs for debugging)
+- `BUNNY_CURL_CONNECT_TIMEOUT_SEC` (default `10`)
+- `BUNNY_CURL_MAX_TIME_SEC` (default `120`)
+- `BUNNY_CURL_RETRIES` (default `3`)
+- `BUNNY_CURL_RETRY_DELAY_SEC` (default `2`)
+- `BUNNY_CURL_RETRY_MAX_TIME_SEC` (default `180`)
 
 ### 4. Configure NFSN Log Rotation
 
@@ -392,7 +411,7 @@ ls -lh /home/logs/access_log
 ls -lh /home/private/log-analyzer-data/
 
 # Manually process current logs
-/home/private/bin/log-analyzer-weekly.sh
+/home/private/bin/log-analyzer-daily.sh
 
 # Inspect logs
 tail -100 /home/logs/log-analyzer.log
@@ -412,7 +431,7 @@ tail -100 /home/logs/log-analyzer.log
 ssh "$NFSN_USER@$NFSN_HOST" 'ls -l /home/private/bunny-*.txt'
 
 # Run analytics job manually and inspect logs
-ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/log-analyzer-weekly.sh'
+ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/log-analyzer-daily.sh'
 ssh "$NFSN_USER@$NFSN_HOST" 'tail -100 /home/logs/log-analyzer.log'
 ```
 
@@ -442,7 +461,7 @@ ssh "$NFSN_USER@$NFSN_HOST" 'tail -100 /home/logs/log-analyzer.log'
 - [ ] View `build-report.html` to verify weather data fetching
 
 **Log-analyzer setup (after first deployment):**
-- [ ] Run initial processing: `/home/private/bin/log-analyzer-weekly.sh`
+- [ ] Run initial processing: `/home/private/bin/log-analyzer-daily.sh`
 - [ ] Verify output files in `/home/private/log-analyzer-data/`
 - [ ] Verify public analytics endpoints:
   - `/analytics/report.html`

@@ -49,6 +49,20 @@ def env_flag(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def env_int(name: str, default: int, minimum: int = 0) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        value = default
+    else:
+        try:
+            value = int(raw.strip())
+        except ValueError as e:
+            raise RuntimeError(f"{name} must be an integer (got {raw!r})") from e
+    if value < minimum:
+        raise RuntimeError(f"{name} must be >= {minimum} (got {value})")
+    return value
+
+
 class Logger:
     def __init__(self, log_file: Path) -> None:
         self.log_file = log_file
@@ -410,8 +424,30 @@ def bunny_sync(
     if not bunny_key or not bunny_zone or not bunny_endpoint or not bunny_base_path:
         fail(log, "Bunny configuration files must be non-empty")
 
+    try:
+        curl_connect_timeout = env_int("BUNNY_CURL_CONNECT_TIMEOUT_SEC", 10, minimum=1)
+        curl_max_time = env_int("BUNNY_CURL_MAX_TIME_SEC", 120, minimum=1)
+        curl_retries = env_int("BUNNY_CURL_RETRIES", 3, minimum=0)
+        curl_retry_delay = env_int("BUNNY_CURL_RETRY_DELAY_SEC", 2, minimum=0)
+        curl_retry_max_time = env_int("BUNNY_CURL_RETRY_MAX_TIME_SEC", 180, minimum=1)
+    except RuntimeError as e:
+        fail(log, str(e))
+
     bunny_endpoint = bunny_endpoint.removeprefix("http://").removeprefix("https://").rstrip("/")
     bunny_base_path = bunny_base_path.lstrip("/").rstrip("/")
+
+    curl_common_flags = [
+        "--connect-timeout",
+        str(curl_connect_timeout),
+        "--max-time",
+        str(curl_max_time),
+        "--retry",
+        str(curl_retries),
+        "--retry-delay",
+        str(curl_retry_delay),
+        "--retry-max-time",
+        str(curl_retry_max_time),
+    ]
 
     def bunny_url(rel: str) -> str:
         return f"https://{bunny_endpoint}/{bunny_zone}/{rel}"
@@ -420,6 +456,7 @@ def bunny_sync(
         cmd = [
             "curl",
             "-sS",
+            *curl_common_flags,
             "-o",
             str(out),
             "-w",
@@ -443,6 +480,7 @@ def bunny_sync(
         cmd = [
             "curl",
             "-sS",
+            *curl_common_flags,
             "-o",
             "/dev/null",
             "-w",

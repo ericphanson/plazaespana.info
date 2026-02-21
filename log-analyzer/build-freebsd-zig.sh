@@ -22,6 +22,8 @@ JANET_SRC="/tmp/janet-${JANET_VERSION}"
 JANET_AMALG="/tmp/janet-single-threaded-${JANET_VERSION}.c"
 JANETCONF="${JANET_SRC}/src/conf/janetconf.h"
 JANETCONF_BACKUP=""
+JANET_FORCE_REFRESH="${JANET_FORCE_REFRESH:-0}"
+JANET_FORCE_AMALG_REBUILD="${JANET_FORCE_AMALG_REBUILD:-0}"
 
 restore_janetconf() {
     if [ -n "${JANETCONF_BACKUP}" ] && [ -f "${JANETCONF_BACKUP}" ]; then
@@ -29,6 +31,11 @@ restore_janetconf() {
     fi
 }
 trap restore_janetconf EXIT
+
+if [ "${JANET_FORCE_REFRESH}" = "1" ]; then
+    echo "♻️  JANET_FORCE_REFRESH=1 set; removing cached Janet source..."
+    rm -rf "${JANET_SRC}"
+fi
 
 if [ ! -d "${JANET_SRC}/.git" ]; then
     echo "📥 Cloning Janet source (${JANET_VERSION})..."
@@ -44,6 +51,11 @@ if [ "${CURRENT_TAG}" != "${JANET_VERSION}" ]; then
 fi
 
 # Use properly built single-threaded Janet amalgamation
+if [ "${JANET_FORCE_AMALG_REBUILD}" = "1" ]; then
+    echo "♻️  JANET_FORCE_AMALG_REBUILD=1 set; removing cached amalgamation..."
+    rm -f "${JANET_AMALG}"
+fi
+
 if [ ! -f "${JANET_AMALG}" ]; then
     echo "🔧 Building Janet amalgamation (single-threaded)..."
     cd "${JANET_SRC}"

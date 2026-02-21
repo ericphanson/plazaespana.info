@@ -22,8 +22,11 @@ constraints it operates under. The source of truth is `log-analyzer/src/main.jan
 
 - Logs are Apache Combined format (`access_log*`) and live on the server.
 - NFSN rotates logs weekly and retains 4-8 weeks.
-- The analyzer runs via cron and writes JSON to stdout or split files;
-  a wrapper script handles file placement and atomic writes.
+- The analyzer has two modes:
+  - `--mode analyze` generates month JSON shards + `lifetime.json`.
+  - `--mode report` renders `report.html` from persisted JSON shards.
+- The NFS cron wrapper runs analyze mode, then publish logic performs
+  merge/validation/atomic publish and invokes report mode.
 
 ## Current Implementation
 
@@ -38,8 +41,10 @@ constraints it operates under. The source of truth is `log-analyzer/src/main.jan
 log-analyzer [flags] [log-directory]
 
 Flags:
-  --out-dir, -o <dir>   Write per-month JSON + lifetime.json + report.html to dir
-                        (default: single JSON to stdout)
+  --mode <analyze|report>    Operation mode (default: analyze)
+  --out-dir, -o <dir>        Analyze mode output dir for month shards + lifetime.json
+  --json-dir <dir>           Report mode input dir (default: /home/private/log-analyzer-data)
+  --report-path <path>       Report mode output HTML path (default: <json-dir>/report.html)
 ```
 
 ### Processing
@@ -78,8 +83,14 @@ The analyzer outputs a single JSON document to stdout:
       "bytes_sent": 340000,
       "unique_ips": 12,
       "bots": 3,
-      "humans": 20,
+      "scans": 2,
+      "visitors": 18,
       "status_codes": {"200": 20, "304": 2, "404": 1},
+      "status_by_type": {
+        "bots": {"200": 2, "404": 1},
+        "scans": {"404": 2},
+        "visitors": {"200": 18}
+      },
       "top_paths": [
         {"path": "/", "requests": 15},
         {"path": "/events.json", "requests": 8},
@@ -108,21 +119,26 @@ Notes:
 - `browsers` and `platforms` are tracked for non-bot traffic only.
 - `referrer_categories` classifies without storing full URLs.
 
-### Output Schema (split mode: `-out-dir <dir>`)
+### Output Schema (analyze mode with `--out-dir <dir>`)
 
 When `--out-dir` is specified, the analyzer writes:
 
 - `YYYY-MM.json` per month (that month's hourly data + monthly summary)
 - `lifetime.json` (merged HLLs, total counts, list of months)
-- `report.html` (self-contained static HTML report, no JavaScript)
+
+`report.html` is generated separately by report mode:
+
+- `log-analyzer --mode report --json-dir <dir> --report-path <path>`
 
 ## Data Flow
 
 ```
 raw logs (server only)
-  -> log-analyzer (dedup + parse + classify + aggregate)
-  -> JSON to stdout  OR  split files to out-dir
-  -> wrapper script handles placement
+  -> log-analyzer --mode analyze (dedup + parse + classify + aggregate)
+  -> generated month shards + lifetime.json
+  -> publish pipeline (privacy checks + immutable month merge + lifetime/manifest rebuild)
+  -> log-analyzer --mode report (render report.html from persisted JSON)
+  -> atomic publish to /home/private/log-analyzer-data and /home/public/analytics
 ```
 
 ## Privacy Model
@@ -139,7 +155,10 @@ raw logs (server only)
 
 - The timezone offset from each log line is parsed and used to convert
   timestamps to UTC before bucketing.
-- All output timestamps use the `Z` suffix and represent true UTC.
+- Buckets are hourly, and conversion currently applies hour-level offset
+  adjustment (minute offsets are rare in server logs and effectively round to
+  nearest hour boundary behavior).
+- All output timestamps use the `Z` suffix and represent UTC-hour buckets.
 - Hour buckets are in UTC regardless of the server's local timezone.
 
 ## Line Deduplication
@@ -148,6 +167,8 @@ raw logs (server only)
 - Duplicate lines (from overlapping rotated log files) are skipped.
 - Dedup stats are reported to stderr per file.
 - This makes request/byte/status counts correct even with overlapping files.
+- Tradeoff: 32-bit hashing keeps memory bounded, but very rare hash collisions can
+  undercount requests.
 
 ## Classification
 

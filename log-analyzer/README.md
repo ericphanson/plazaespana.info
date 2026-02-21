@@ -61,6 +61,10 @@ scp build/log-analyzer-freebsd $NFSN_USER@$NFSN_HOST:/home/private/bin/log-analy
   - `build/log-analyzer-freebsd` (`x86_64-freebsd`)
   - `build/log-analyzer` (native macOS arch)
 
+**Cache control flags (for troubleshooting):**
+- `JANET_FORCE_REFRESH=1 ./build-freebsd-zig.sh` (refresh cached Janet clone in `/tmp`)
+- `JANET_FORCE_AMALG_REBUILD=1 ./build-freebsd-zig.sh` (rebuild cached amalgamation in `/tmp`)
+
 ## Testing
 
 ```bash
@@ -90,7 +94,7 @@ Tests cover the HyperLogLog implementation, analyzer functions (parsing, timezon
 
 ```bash
 # Production entrypoint (analyze + publish + backup + report)
-/home/private/bin/log-analyzer-weekly.sh
+/home/private/bin/log-analyzer-daily.sh
 
 # Direct analyzer invocation (debug only)
 /home/private/bin/log-analyzer --mode analyze --out-dir /tmp/log-analyzer-out /home/logs
