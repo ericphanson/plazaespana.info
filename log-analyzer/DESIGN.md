@@ -30,7 +30,7 @@ constraints it operates under. The source of truth is `log-analyzer/src/main.jan
 ### Inputs
 
 - All files in the log directory with names starting with `access_log`.
-- Default log directory: `awstats-data/logs` (override via CLI arg).
+- Default log directory: `/home/logs` (override via CLI arg).
 
 ### CLI Flags
 
@@ -49,6 +49,7 @@ For each log line, the analyzer:
 - Deduplicates using FNV-1a hash of the raw line (skips already-seen lines).
 - Parses IP, timestamp, request path, status code, bytes, referrer, and
   User-Agent using a PEG grammar.
+- Strips query strings from request paths before aggregation/output.
 - Converts timestamps to UTC using the log timezone offset.
 - Buckets by hour and month (in UTC).
 - Tracks hourly counts and unique IPs (exact per hour, in-memory hash set).

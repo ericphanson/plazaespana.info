@@ -17,34 +17,60 @@ if [ ! -f "build/log-analyzer.c" ]; then
     jpm build
 fi
 
-# Check if we have Janet source
-JANET_SRC="/tmp/janet-temp"
-if [ ! -d "$JANET_SRC" ]; then
-    echo "📥 Cloning Janet source..."
-    git clone --depth=1 https://github.com/janet-lang/janet.git "$JANET_SRC"
+# Janet source pinned to a known-good release.
+JANET_VERSION="v1.41.2"
+JANET_REPO="https://github.com/janet-lang/janet.git"
+JANET_SRC="/tmp/janet-${JANET_VERSION}"
+JANET_AMALG="/tmp/janet-single-threaded-${JANET_VERSION}.c"
+JANETCONF="${JANET_SRC}/src/conf/janetconf.h"
+JANETCONF_BACKUP=""
+
+restore_janetconf() {
+    if [ -n "${JANETCONF_BACKUP}" ] && [ -f "${JANETCONF_BACKUP}" ]; then
+        mv "${JANETCONF_BACKUP}" "${JANETCONF}"
+    fi
+}
+trap restore_janetconf EXIT
+
+if [ ! -d "${JANET_SRC}/.git" ]; then
+    echo "📥 Cloning Janet source (${JANET_VERSION})..."
+    rm -rf "${JANET_SRC}"
+    git clone --branch "${JANET_VERSION}" --depth=1 "${JANET_REPO}" "${JANET_SRC}"
+fi
+
+CURRENT_TAG="$(git -C "${JANET_SRC}" describe --tags --exact-match 2>/dev/null || true)"
+if [ "${CURRENT_TAG}" != "${JANET_VERSION}" ]; then
+    echo "🔄 Refreshing Janet source at ${JANET_VERSION}..."
+    rm -rf "${JANET_SRC}"
+    git clone --branch "${JANET_VERSION}" --depth=1 "${JANET_REPO}" "${JANET_SRC}"
 fi
 
 # Use properly built single-threaded Janet amalgamation
-JANET_AMALG="/tmp/janet-single-threaded.c"
-if [ ! -f "$JANET_AMALG" ]; then
+if [ ! -f "${JANET_AMALG}" ]; then
     echo "🔧 Building Janet amalgamation (single-threaded)..."
-    cd "$JANET_SRC"
+    cd "${JANET_SRC}"
 
-    # Enable JANET_SINGLE_THREADED in janetconf.h
-    sed -i.bak 's|/\* #define JANET_SINGLE_THREADED \*/|#define JANET_SINGLE_THREADED|' src/conf/janetconf.h
+    # Ensure single-threaded mode is enabled regardless of janetconf.h formatting.
+    if ! grep -Eq '^[[:space:]]*#define[[:space:]]+JANET_SINGLE_THREADED([[:space:]]|$)' "${JANETCONF}"; then
+        JANETCONF_BACKUP="${JANETCONF}.bak"
+        cp "${JANETCONF}" "${JANETCONF_BACKUP}"
+        cat >> "${JANETCONF}" <<'EOF'
+
+#ifndef JANET_SINGLE_THREADED
+#define JANET_SINGLE_THREADED
+#endif
+EOF
+    fi
 
     # Build Janet (this generates build/c/janet.c with the config)
     make clean > /dev/null 2>&1
     make > /dev/null 2>&1
 
     # Copy the amalgamated source
-    cp build/c/janet.c "$JANET_AMALG"
-
-    # Restore original janetconf.h
-    mv src/conf/janetconf.h.bak src/conf/janetconf.h
+    cp build/c/janet.c "${JANET_AMALG}"
 
     cd - > /dev/null
-    echo "✓ Generated single-threaded Janet amalgamation"
+    echo "✓ Generated single-threaded Janet amalgamation (${JANET_VERSION})"
 fi
 
 echo "🎯 Compiling for FreeBSD/amd64..."
@@ -53,18 +79,16 @@ echo ""
 # Use Zig to cross-compile
 # -target x86_64-freebsd: Target FreeBSD on x86_64
 # -Os: Optimize for size
-# Use local janetconf.h with JANET_SINGLE_THREADED defined
 zig cc \
     -lc \
     -target x86_64-freebsd \
     -Os \
-    -I. \
-    -I"$JANET_SRC/src/include" \
-    -I"$JANET_SRC/src/core" \
-    -DJANET_BUILD=\"zig-cross\" \
+    -I"${JANET_SRC}/src/include" \
+    -I"${JANET_SRC}/src/core" \
+    -I"${JANET_SRC}/src/conf" \
     -DJANET_SINGLE_THREADED=1 \
     build/log-analyzer.c \
-    "$JANET_AMALG" \
+    "${JANET_AMALG}" \
     -o build/log-analyzer-freebsd
 
 if [ -f "build/log-analyzer-freebsd" ]; then
@@ -98,13 +122,12 @@ zig cc \
     -lc \
     -target "$TARGET" \
     -Os \
-    -I. \
-    -I"$JANET_SRC/src/include" \
-    -I"$JANET_SRC/src/core" \
-    -DJANET_BUILD=\"zig-native\" \
+    -I"${JANET_SRC}/src/include" \
+    -I"${JANET_SRC}/src/core" \
+    -I"${JANET_SRC}/src/conf" \
     -DJANET_SINGLE_THREADED=1 \
     build/log-analyzer.c \
-    "$JANET_AMALG" \
+    "${JANET_AMALG}" \
     -o build/log-analyzer
 
 if [ -f "build/log-analyzer" ]; then

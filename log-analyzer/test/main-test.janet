@@ -108,8 +108,8 @@
 (deftest "extract-path gets path from POST request"
   (assert (= (m/extract-path "POST /api/data HTTP/1.1") "/api/data")))
 
-(deftest "extract-path handles path with query string"
-  (assert (= (m/extract-path "GET /search?q=test HTTP/1.1") "/search?q=test")))
+(deftest "extract-path strips query string"
+  (assert (= (m/extract-path "GET /search?q=test HTTP/1.1") "/search")))
 
 (deftest "extract-path returns / for empty request"
   (assert (= (m/extract-path "") "/")))

@@ -37,6 +37,13 @@ freebsd:
     @echo "✅ Built: build/buildsite (FreeBSD binary)"
     @ls -lh build/buildsite
 
+# Build log-analyzer FreeBSD binary (for NFSN deployment)
+log-analyzer-freebsd:
+    @echo "🔨 Building log-analyzer FreeBSD binary..."
+    @cd log-analyzer && ./build-freebsd-zig.sh
+    @echo "✅ Built: log-analyzer/build/log-analyzer-freebsd"
+    @ls -lh log-analyzer/build/log-analyzer-freebsd
+
 # Deploy files to NFSN (internal helper, assumes binary already built)
 [private]
 _deploy-files:
@@ -62,11 +69,14 @@ _deploy-files:
 
     # Create remote directories if needed
     echo "📁 Creating remote directories..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/public/assets /home/public/stats'
+    ssh "$NFSN_USER@$NFSN_HOST" 'mkdir -p /home/private/bin /home/private/templates /home/private/data /home/private/log-analyzer-data /home/public/assets'
 
     # Upload new files with .new suffix (atomic swap later)
     echo "📤 Uploading binary..."
     scp build/buildsite "$NFSN_USER@$NFSN_HOST:/home/private/bin/buildsite.new"
+
+    echo "📤 Uploading log-analyzer binary..."
+    scp log-analyzer/build/log-analyzer-freebsd "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer.new"
 
     echo "📤 Uploading config..."
     scp config.toml "$NFSN_USER@$NFSN_HOST:/home/private/config.toml.new"
@@ -89,14 +99,8 @@ _deploy-files:
     echo "📤 Uploading cron wrapper script..."
     scp ops/cron-generate.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/cron-generate.sh.new"
 
-    echo "📤 Uploading AWStats config..."
-    scp ops/awstats.conf "$NFSN_USER@$NFSN_HOST:/home/private/awstats.conf"
-
-    echo "📤 Uploading AWStats weekly script..."
-    scp ops/awstats-weekly.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/awstats-weekly.sh.new"
-
-    echo "📤 Uploading AWStats stats directory htaccess..."
-    scp ops/stats.htaccess "$NFSN_USER@$NFSN_HOST:/home/public/stats/.htaccess"
+    echo "📤 Uploading log-analyzer cron wrapper script..."
+    scp ops/log-analyzer-weekly.sh "$NFSN_USER@$NFSN_HOST:/home/private/bin/log-analyzer-weekly.sh.new"
 
     echo "📤 Uploading hashed CSS and hash files..."
     scp public/assets/site.*.css public/assets/build-report.*.css "$NFSN_USER@$NFSN_HOST:/home/public/assets/"
@@ -114,7 +118,7 @@ _deploy-files:
 
     # Atomically swap new files into place
     echo "🔄 Activating new files..."
-    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/bin/awstats-weekly.sh.new /home/private/bin/awstats-weekly.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index.tmpl.html.new /home/private/templates/index.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/cron-generate.sh /home/private/bin/awstats-weekly.sh'
+    ssh "$NFSN_USER@$NFSN_HOST" 'mv /home/private/bin/buildsite.new /home/private/bin/buildsite && mv /home/private/bin/log-analyzer.new /home/private/bin/log-analyzer && mv /home/private/bin/cron-generate.sh.new /home/private/bin/cron-generate.sh && mv /home/private/bin/log-analyzer-weekly.sh.new /home/private/bin/log-analyzer-weekly.sh && mv /home/private/config.toml.new /home/private/config.toml && mv /home/private/templates/index.tmpl.html.new /home/private/templates/index.tmpl.html && chmod +x /home/private/bin/buildsite /home/private/bin/log-analyzer /home/private/bin/cron-generate.sh /home/private/bin/log-analyzer-weekly.sh'
 
     # Run buildsite to regenerate the site
     echo "🔨 Regenerating site on server..."
@@ -135,16 +139,13 @@ _deploy-files:
     echo "         Command: /home/private/bin/cron-generate.sh"
     echo "         Schedule: Every hour"
     echo "         Note: Logs to /home/logs/generate.log, emails only on errors"
-    echo "      b) AWStats weekly rollup:"
-    echo "         Command: /home/private/bin/awstats-weekly.sh"
+    echo "      b) Analytics snapshot (aggregate JSON):"
+    echo "         Command: /home/private/bin/log-analyzer-weekly.sh"
     echo "         Schedule: 0 1 * * 0 (Sunday 1 AM)"
-    echo "         Note: Logs to /home/logs/awstats.log"
-    echo "   3. Setup Basic Auth for /stats/:"
-    echo "      SSH to NFSN and run: htpasswd -c /home/private/.htpasswd username"
-    echo "      Set permissions: chmod 600 /home/private/.htpasswd && chmod 711 /home/private"
+    echo "         Note: Logs to /home/logs/log-analyzer.log"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
-deploy: freebsd hash-css _deploy-files
+deploy: freebsd log-analyzer-freebsd hash-css _deploy-files
 
 # Deploy to NFSN (for CI - assumes binary already built and CSS hashed)
 deploy-only: _deploy-files
@@ -251,10 +252,10 @@ fetch-fixtures:
     @./scripts/fetch-fixtures.sh
     @echo "✅ Fixtures updated in generator/testdata/fixtures/"
 
-# Fetch new AWStats statistics archives and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
-fetch-stats-archives:
-    @echo "📊 Fetching AWStats database archives..."
-    @./scripts/fetch-stats-archives.sh
+# Fetch latest log-analyzer aggregate stats and update/create PR (requires NFSN_HOST and NFSN_USER env vars)
+fetch-log-analyzer-stats:
+    @echo "📊 Fetching log-analyzer aggregate stats..."
+    @./scripts/fetch-log-analyzer-stats.sh
 
 # Build site for preview deployment with custom base path
 # Usage: just preview-build PR5

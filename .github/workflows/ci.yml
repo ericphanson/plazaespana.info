@@ -41,6 +41,24 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
 
+      - name: Install Janet/JPM and Zig
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl xz-utils
+
+          git clone --depth=1 --branch v1.41.2 https://github.com/janet-lang/janet.git /tmp/janet
+          make -C /tmp/janet
+          sudo make -C /tmp/janet install
+
+          ZIG_VERSION=0.13.0
+          curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz
+          tar -xf /tmp/zig.tar.xz -C /tmp
+          sudo mv "/tmp/zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/zig
+
+          janet -v
+          jpm --help >/dev/null
+          zig version
+
       - name: Check formatting
         run: just fmt-check
 
@@ -49,8 +67,14 @@ jobs:
           PLAZAESPANA_NO_API: "1"  # Block all external API calls - tests must use fixtures
         run: just test
 
+      - name: Run log-analyzer tests
+        run: cd log-analyzer && just test
+
       - name: Build FreeBSD binary
         run: just freebsd
+
+      - name: Build log-analyzer FreeBSD binary
+        run: just log-analyzer-freebsd
 
       - name: Upload FreeBSD binary
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -58,6 +82,14 @@ jobs:
         with:
           name: buildsite-freebsd
           path: build/buildsite
+          retention-days: 1
+
+      - name: Upload log-analyzer FreeBSD binary
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: log-analyzer-freebsd
+          path: log-analyzer/build/log-analyzer-freebsd
           retention-days: 1
 
   integration-tests:
@@ -115,6 +147,12 @@ jobs:
         with:
           name: buildsite-freebsd
           path: build/
+
+      - name: Download log-analyzer FreeBSD binary
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: log-analyzer-freebsd
+          path: log-analyzer/build/
 
       - name: Hash CSS
         run: just hash-css

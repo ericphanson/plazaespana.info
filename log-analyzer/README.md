@@ -12,7 +12,7 @@ Apache access log analyzer that outputs JSON analytics with privacy-preserving u
 - Classifies referrers (direct/search/social/internal/external)
 - Classifies browsers and platforms for non-bot traffic
 - Bot detection via User-Agent substring matching
-- Top paths per hour with "other" bucket
+- Top paths per hour with "other" bucket (query strings stripped)
 - Optional split output: per-month JSON + lifetime.json + HTML report
 
 ## Building
@@ -24,6 +24,17 @@ Apache access log analyzer that outputs JSON analytics with privacy-preserving u
 jpm build
 
 # Executable will be in: build/log-analyzer
+```
+
+Using `just`:
+
+```bash
+# Show available commands
+just
+
+# Build and test
+just build
+just test
 ```
 
 ### FreeBSD Cross-Compilation (for NFSN Deployment)
@@ -40,9 +51,13 @@ scp build/log-analyzer-freebsd $NFSN_USER@$NFSN_HOST:/home/private/bin/log-analy
 
 **How it works:**
 - Uses Zig's cross-compilation to target `x86_64-freebsd`
+- Pins Janet to `v1.41.2` for reproducible builds
 - Builds Janet with `JANET_SINGLE_THREADED` enabled (no pthread dependency)
-- Generates a proper Janet amalgamation via `make` before cross-compiling
-- Produces a ~724KB FreeBSD ELF executable
+- Generates a Janet amalgamation (`build/c/janet.c`) via `make` before cross-compiling
+- Reuses cached Janet sources/amalgamation in `/tmp` for faster rebuilds
+- Builds both binaries in one run:
+  - `build/log-analyzer-freebsd` (`x86_64-freebsd`)
+  - `build/log-analyzer` (native macOS arch)
 
 ## Testing
 
@@ -61,6 +76,9 @@ Tests are in `test/` and cover the HyperLogLog implementation and the main analy
 
 # Split output: per-month JSON + lifetime.json + report.html
 ./build/log-analyzer --out-dir /path/to/output /path/to/logs
+
+# If no log directory is provided, defaults to /home/logs
+./build/log-analyzer
 ```
 
 ### On NFSN
@@ -92,6 +110,7 @@ In short: raw logs are ephemeral, monthly JSON files are the permanent record, a
 
 ```
 log-analyzer/
+├── justfile              # Developer commands (build/test/run/freebsd)
 ├── project.janet          # Build configuration
 ├── DESIGN.md              # Detailed design and output schema
 ├── src/

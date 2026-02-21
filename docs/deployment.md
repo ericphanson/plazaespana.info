@@ -201,7 +201,7 @@ build/buildsite                      → /home/private/bin/buildsite
 ops/cron-generate.sh                 → /home/private/bin/cron-generate.sh
 config.toml                          → /home/private/config.toml
 $AEMET_API_KEY (env)                 → /home/private/aemet-api-key.txt (if set)
-templates/index-grouped.tmpl.html    → /home/private/templates/index-grouped.tmpl.html
+generator/templates/index.tmpl.html  → /home/private/templates/index.tmpl.html
 
 # Static assets
 public/assets/site.*.css             → /home/public/assets/
@@ -210,10 +210,9 @@ public/assets/*.hash                 → /home/public/assets/
 public/assets/weather-icons/*.png    → /home/public/assets/weather-icons/
 ops/htaccess                         → /home/public/.htaccess
 
-# AWStats
-ops/awstats.conf                     → /home/private/awstats.conf
-ops/awstats-weekly.sh                → /home/private/bin/awstats-weekly.sh
-ops/stats.htaccess                   → /home/public/stats/.htaccess
+# Log analyzer
+log-analyzer/build/log-analyzer-freebsd → /home/private/bin/log-analyzer
+ops/log-analyzer-weekly.sh              → /home/private/bin/log-analyzer-weekly.sh
 ```
 
 After upload, binary runs to generate:
@@ -221,9 +220,9 @@ After upload, binary runs to generate:
 - `/home/public/events.json` - JSON API (web-accessible)
 - `/home/private/data/` - Cache & audit logs (not web-accessible)
 
-AWStats generates (via weekly cron):
-- `/home/public/stats/` - AWStats HTML pages (Basic Auth protected)
-- `/home/private/awstats-data/` - AWStats database files (synced to git via GitHub Actions)
+Log analyzer generates (via weekly cron):
+- `/home/private/log-analyzer-data/` - aggregate monthly JSON + lifetime JSON + report HTML
+- Synced to git via GitHub Actions into `log-analyzer-data/`
 
 ## NFSN Directory Structure
 
@@ -233,16 +232,13 @@ AWStats generates (via weekly cron):
     bin/
       buildsite         # Site generator binary
       cron-generate.sh  # Site generation wrapper (hourly cron)
-      awstats-weekly.sh # AWStats processor (weekly cron)
+      log-analyzer      # Log analyzer binary (FreeBSD)
+      log-analyzer-weekly.sh # Aggregate analytics snapshot job (weekly cron)
     config.toml         # Site generator config
     aemet-api-key.txt   # AEMET API key (optional, mode 600)
-    awstats.conf        # AWStats config
     templates/          # HTML templates
     data/               # Site generator cache, audit logs (auto-created)
-    awstats-data/       # AWStats database files (synced to git)
-
-  protected/            # 🔒 Apache-readable only (not web-accessible)
-    .htpasswd           # Basic Auth passwords
+    log-analyzer-data/  # Aggregate analytics snapshots (synced to git)
 
   public/               # ✅ Web root (served via HTTP)
     index.html          # Generated event listing
@@ -251,176 +247,84 @@ AWStats generates (via weekly cron):
       site.*.css        # Hashed main site CSS
       build-report.*.css # Hashed build report CSS
       weather-icons/    # AEMET weather icons (PNG)
-    stats/              # AWStats HTML (Basic Auth protected)
-      .htaccess         # Basic Auth config for stats
-      index.html        # AWStats main page
     .htaccess           # Apache config (caching, security headers)
 
   logs/                 # Log files
     access_log          # Apache access log (NFSN rotates automatically)
     generate.log        # Site generation log
-    awstats.log         # AWStats processing log
+    log-analyzer.log    # Log analyzer processing log
 ```
 
 **Access control:**
 - Only `/home/public/` is web-accessible via HTTP/HTTPS
-- `/home/public/stats/` requires Basic Auth (username/password)
-- `/home/protected/` is readable by Apache (for .htpasswd) but not web-accessible
 - All other files (`/home/private/`, `/home/logs/`) are SSH-only
 
-## AWStats Setup (One-Time Configuration)
+## Log Analyzer Setup (One-Time Configuration)
 
-After first deployment with AWStats files, complete these one-time setup steps on NFSN.
+After first deployment with `log-analyzer`, complete these steps on NFSN.
 
-### 1. Create Basic Auth Password
-
-Protect the `/stats/` directory with a password:
-
-```bash
-# SSH to NFSN
-ssh $NFSN_USER@$NFSN_HOST
-
-# Create protected directory if it doesn't exist
-mkdir -p /home/protected
-
-# Create htpasswd file (username: awstats)
-htpasswd -c /home/protected/.htpasswd awstats
-# Enter password when prompted
-
-# Set secure permissions
-chmod 600 /home/protected/.htpasswd
-chmod 755 /home/protected
-
-# Exit SSH
-exit
-```
-
-**Important:** Remember this username/password - you'll need it to access `https://plazaespana.info/stats/`
-
-### 2. Verify AWStats Config
-
-Test that AWStats can read the config:
+### 1. Run Initial Aggregation
 
 ```bash
 ssh $NFSN_USER@$NFSN_HOST
 
-# Test config syntax
-perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest
+# Run initial analytics snapshot
+/home/private/bin/log-analyzer-weekly.sh
 
-# Expected output should show:
-# Config file '/home/private/awstats.conf' read successfully
-# LogFile = /home/logs/access_log
-# SiteDomain = plazaespana.info
+# Check output and logs
+ls -lh /home/private/log-analyzer-data/
+tail -50 /home/logs/log-analyzer.log
 ```
 
-### 3. Run Initial AWStats Processing
+Expected output:
+- `/home/private/log-analyzer-data/lifetime.json`
+- `/home/private/log-analyzer-data/YYYY-MM.json` files
+- `/home/private/log-analyzer-data/report.html`
 
-Generate the first stats manually:
+### 2. Setup NFSN Cron Job
 
-```bash
-# Still on NFSN via SSH
-
-# IMPORTANT: If you previously ran AWStats without privacy settings,
-# clean existing database files to remove stored IP addresses
-rm -f /home/private/awstats-data/*.txt
-
-# Run initial processing with privacy-focused config
-/home/private/bin/awstats-weekly.sh
-
-# Check for errors
-tail -50 /home/logs/awstats.log
-
-# Verify files were created
-ls -lh /home/public/stats/
-ls -lh /home/private/awstats-data/
-```
-
-**Expected output:**
-- `/home/public/stats/index.html` and other AWStats HTML files
-- `/home/private/awstats-data/*.txt` - AWStats database files (aggregate statistics only, no IPs)
-
-### 4. Test Web Access
-
-Visit `https://plazaespana.info/stats/` in your browser:
-- Should prompt for username/password (Basic Auth)
-- After login, should show AWStats statistics page
-- If you see Apache directory listing or 403 error, check `.htaccess` deployment
-
-### 5. Setup AWStats Cron Job
-
-Add weekly AWStats processing to NFSN scheduled tasks:
+Add weekly analytics processing:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
 2. Add task:
-   - **Command:** `/home/private/bin/awstats-weekly.sh`
+   - **Command:** `/home/private/bin/log-analyzer-weekly.sh`
    - **Schedule:** `0 1 * * 0` (Sunday at 1 AM)
-   - **Tag:** `awstats-weekly` (optional, for identification)
+   - **Tag:** `log-analyzer-weekly` (optional)
 
 The wrapper script:
-- Logs all output to `/home/logs/awstats.log` with timestamps
-- Only sends email on processing failures (non-zero exit code)
-- Includes full log in error emails for complete debugging context
+- Reads logs from `/home/logs/access_log*`
+- Writes aggregate output to `/home/private/log-analyzer-data`
+- Logs all activity to `/home/logs/log-analyzer.log`
+- Emits stderr on failures (so cron can alert)
 
-**Why Sunday 1 AM?**
-- Low traffic time
-- After weekend events (captures full week)
-- Weekly processing schedule
+### 3. Setup Stats Sync (GitHub Actions)
 
-**View logs:**
-```bash
-ssh your_username@ssh.phx.nearlyfreespeech.net
-tail -f /home/logs/awstats.log
-```
+For automated PR creation with latest aggregate analytics:
 
-### 6. Setup AWStats Database Sync (GitHub Actions)
-
-For automated PR creation when statistics database is updated:
-
-1. **Generate dedicated SSH key for database sync:**
+1. Generate dedicated SSH key for sync:
    ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/nfsn_awstats -N ""
+   ssh-keygen -t ed25519 -f ~/.ssh/nfsn_stats -N ""
    ```
+2. Add public key to NFSN authorized keys.
+3. Add/update GitHub secrets:
+   - `NFSN_SSH_KEY`: private key contents
+   - `NFSN_HOST`
+   - `NFSN_USER`
+   - `NFSN_KNOWN_HOST`
+4. Run workflow: GitHub → Actions → "Fetch Log Analyzer Stats".
 
-2. **Add public key to NFSN:**
-   - NFSN web interface → Sites → your_site → SSH/SFTP → Authorized Keys
-   - Upload `~/.ssh/nfsn_awstats.pub`
+The workflow pulls `/home/private/log-analyzer-data`, enforces privacy checks, and opens/updates a PR against canonical branch `log-analyzer-data`.
 
-3. **Add GitHub Secrets:**
-   - Repository Settings → Secrets and variables → Actions
-   - Add secrets:
-     - `NFSN_SSH_KEY`: Paste contents of `~/.ssh/nfsn_awstats` (private key)
-     - `NFSN_HOST`: Your NFSN hostname (e.g., `ssh.phx.nearlyfreespeech.net`)
-     - `NFSN_USER`: Your NFSN username (format: `username_sitename`)
+### 4. Configure NFSN Log Rotation
 
-4. **Test workflow:**
-   - GitHub → Actions → "Fetch AWStats Archives" → Run workflow
-   - Should create/update PR with AWStats database files from `/home/private/awstats-data/`
+`log-analyzer` is stateless and reprocesses all available `access_log*` files each run.
 
-**What gets synced:**
-- Monthly statistics files (`awstatsMMYYYY.awstats.txt`)
-- DNS cache and other state files
-- **Privacy:** Only aggregate statistics (no IPs or individual requests)
+Recommended:
+- Rotate weekly
+- Keep at least 4–8 weeks
+- Enable compression
 
-**Note:** The workflow runs automatically after each push to `main`, or manually via workflow_dispatch.
-
-### 7. Configure NFSN Log Rotation
-
-Since AWStats tracks its position in the log file, NFSN's automatic log rotation won't cause issues. However, you should verify rotation is configured:
-
-1. **NFSN web interface → Sites → your_site → Site Information**
-2. Look for "Log Rotation" settings
-3. **Recommended:** Daily or weekly rotation with compression
-
-**Why this matters:**
-- Without rotation, `access_log` grows indefinitely
-- AWStats uses `KeepBackupOfHistoricFiles=1` to track position across rotations
-- After rotation, AWStats automatically detects the new log file and continues processing
-- Historical data is preserved in AWStats database files (synced to git)
-
-**Example rotation schedule:**
-- Rotate: Weekly (recommended)
-- Keep: 4 weeks of compressed logs
-- Compression: gzip
+This controls how much exact history is available before only HLL-based long-term unique estimates remain.
 
 ## Troubleshooting
 
@@ -437,7 +341,7 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 
 ### GitHub Actions deployment fails
 
-1. Verify all three secrets are set in repository settings
+1. Verify required secrets are set in repository settings (`NFSN_SSH_KEY`, `NFSN_HOST`, `NFSN_USER`, `NFSN_KNOWN_HOST`, `AEMET_API_KEY`)
 2. Ensure `NFSN_SSH_KEY` private key matches public key on NFSN
 3. Check GitHub Actions logs for specific errors
 
@@ -452,43 +356,29 @@ tail -100 /home/logs/generate.log
 **Run manually to debug:**
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
-/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production
+/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index.tmpl.html -fetch-mode production
 ```
 
-### AWStats shows "No data available"
+### Log analyzer output missing or stale
 
 **Causes:**
 1. Access log is empty (no traffic yet)
-2. AWStats hasn't processed any logs
-3. Config pointing to wrong log file
+2. Log-analyzer cron hasn't run yet
+3. Wrapper script failed
 
 **Fix:**
 ```bash
 # Check if logs exist
 ls -lh /home/logs/access_log
 
-# Check if AWStats data exists
-ls -lh /home/private/awstats-data/
+# Check if aggregate output exists
+ls -lh /home/private/log-analyzer-data/
 
-# Manually process current log
-/home/private/bin/awstats-weekly.sh
-```
+# Manually process current logs
+/home/private/bin/log-analyzer-weekly.sh
 
-### Basic Auth not working for /stats/
-
-**Symptom:** Can access `/stats/` without password, or get 500 error
-
-**Fix:**
-```bash
-# Verify .htaccess was deployed
-ssh $NFSN_USER@$NFSN_HOST ls -la /home/public/stats/.htaccess
-
-# Verify .htpasswd exists
-ssh $NFSN_USER@$NFSN_HOST ls -la /home/protected/.htpasswd
-
-# Check permissions
-ssh $NFSN_USER@$NFSN_HOST "stat -f '%A %N' /home/protected/.htpasswd /home/protected"
-# Should show: 600 /home/protected/.htpasswd and 755 /home/protected
+# Inspect logs
+tail -100 /home/logs/log-analyzer.log
 ```
 
 ### Database sync workflow fails
@@ -501,10 +391,10 @@ ssh $NFSN_USER@$NFSN_HOST "stat -f '%A %N' /home/protected/.htpasswd /home/prote
 **Fix:**
 ```bash
 # Test SSH access locally
-ssh -i ~/.ssh/nfsn_awstats $NFSN_USER@$NFSN_HOST ls /home/private/awstats-data/
+ssh -i ~/.ssh/nfsn_stats $NFSN_USER@$NFSN_HOST ls /home/private/log-analyzer-data/
 
 # Test SCP access
-scp "$NFSN_USER@$NFSN_HOST:/home/private/awstats-data/*.txt" /tmp/test-awstats/
+scp "$NFSN_USER@$NFSN_HOST:/home/private/log-analyzer-data/*.json" /tmp/test-log-analyzer/
 
 # Verify GitHub CLI auth
 gh auth status
@@ -518,7 +408,7 @@ gh auth status
 - Private keys belong in `~/.ssh/` (local) and GitHub Secrets (CI)
 - Public keys are safe to share (uploaded to NFSN)
 - Use `ed25519` keys (more secure than RSA)
-- Keep separate SSH keys for deployment vs. database sync (better security isolation)
+- Keep separate SSH keys for deployment vs. analytics sync (better security isolation)
 
 ## Deployment Checklist
 
@@ -537,19 +427,15 @@ gh auth status
 - [ ] Check `/home/private/data/request-audit.json` for errors (via SSH)
 - [ ] View `build-report.html` to verify weather data fetching
 
-**AWStats setup (after first deployment):**
-- [ ] Create protected directory: `mkdir -p /home/protected`
-- [ ] Create Basic Auth password: `htpasswd -c /home/protected/.htpasswd awstats`
-- [ ] Set permissions: `chmod 600 /home/protected/.htpasswd && chmod 755 /home/protected`
-- [ ] Verify AWStats config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest`
-- [ ] Run initial processing: `/home/private/bin/awstats-weekly.sh`
-- [ ] Test web access: Visit `https://plazaespana.info/stats/` (should prompt for password)
+**Log-analyzer setup (after first deployment):**
+- [ ] Run initial processing: `/home/private/bin/log-analyzer-weekly.sh`
+- [ ] Verify output files in `/home/private/log-analyzer-data/`
 - [ ] Configure NFSN log rotation: Weekly with compression (NFSN web UI → Site Information)
-- [ ] Configure AWStats cron job: `0 1 * * 0` (Sunday 1 AM)
-- [ ] Setup database sync SSH key and GitHub secrets
-- [ ] Test database sync workflow: GitHub Actions → "Fetch AWStats Archives" → Run workflow
+- [ ] Configure log-analyzer cron job: `0 1 * * 0` (Sunday 1 AM)
+- [ ] Setup analytics sync SSH key and GitHub secrets
+- [ ] Test sync workflow: GitHub Actions → "Fetch Log Analyzer Stats" → Run workflow
 
 **After each deployment:**
 - [ ] Verify site updates with new content
 - [ ] Check `/home/logs/generate.log` for build errors
-- [ ] If AWStats enabled, check `/home/logs/awstats.log` for stats errors
+- [ ] Check `/home/logs/log-analyzer.log` for analytics errors

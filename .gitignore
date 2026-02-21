@@ -73,4 +73,4 @@ temp/
 scan-results/
 node_modules
 
-awstats-data/logs
+log-analyzer/output/

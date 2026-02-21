@@ -145,7 +145,7 @@
   (def log-dir
     (if (> (length args) 1)
       (get args 1)
-      "/Users/eph/plazaespana.info/awstats-data/logs"))
+      "/home/logs"))
 
   (print "HLL Accuracy Check")
   (print "Log directory: " log-dir)

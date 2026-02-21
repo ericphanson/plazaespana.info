@@ -1,0 +1,29 @@
+# Log Analyzer - quick development commands
+
+[private]
+default:
+    just --list
+
+# Build executable (build/log-analyzer)
+build:
+    jpm build
+
+# Run test suite
+test:
+    jpm test
+
+# Rebuild from scratch
+rebuild: clean build
+
+# Run analyzer binary with arbitrary args
+# Example: just run -- --out-dir output /path/to/logs
+run +args: build
+    ./build/log-analyzer {{args}}
+
+# Cross-compile for FreeBSD and native macOS via Zig
+freebsd:
+    ./build-freebsd-zig.sh
+
+# Remove build artifacts
+clean:
+    rm -f build/log-analyzer build/log-analyzer-freebsd build/log-analyzer.c

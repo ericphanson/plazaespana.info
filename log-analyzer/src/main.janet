@@ -124,11 +124,16 @@
         :user-agent (or user-agent "")})))
 
 (defn extract-path
-  "Extract path from request string like 'GET /path HTTP/1.1'"
+  "Extract path from request string like 'GET /path HTTP/1.1'.
+   Drops query strings to avoid persisting tracking parameters."
   [request]
-  (if-let [match (peg/match ~(* (some :S) :s (<- (some (if-not :s 1)))) request)]
-    (first match)
-    "/"))
+  (def path
+    (if-let [match (peg/match ~(* (some :S) :s (<- (some (if-not :s 1)))) request)]
+      (first match)
+      "/"))
+  (if-let [qmark (string/find "?" path)]
+    (string/slice path 0 qmark)
+    path))
 
 # ============================================================================
 # Classification functions
@@ -819,7 +824,7 @@ h3 { margin: 1.25rem 0 0.5rem; color: var(--fg); }
 
   # Default log directory
   (when (nil? (result :log-dir))
-    (put result :log-dir "/Users/eph/plazaespana.info/awstats-data/logs"))
+    (put result :log-dir "/home/logs"))
 
   result)
 

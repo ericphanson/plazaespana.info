@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - this is a static site regenerated ~hourly. We only use CSS/HTML, no JS.
 - we input data feeds, process them, and generate CSS/HTML/JSON. Since data processing is a core function, we generate an audit log so we can understand what has been filtered etc.
 - we are careful about our upstream requests, especially during development. We use only fixtures during automated testing, and cache and wait during development runs.
-- we keep anonymized aggregate stats in repo with awsstats
+- we keep anonymized aggregate stats in repo with log-analyzer-data
 - we use github as a development platform, not deployment platform. Site regeneration happens on NFSN, not github.
 
 ## Project Overview
@@ -75,9 +75,9 @@ generator/          # All Go code and generator resources
   go.mod, go.sum    # Go module files
 
 scripts/            # Build and deployment scripts
-ops/                # Server configuration (htaccess, cron, awstats)
+ops/                # Server configuration (htaccess, cron wrappers)
 docs/               # Documentation
-awstats-data/       # Anonymized aggregate stats
+log-analyzer-data/  # Anonymized aggregate stats
 justfile            # Task automation
 config.toml         # Runtime configuration
 ```
