@@ -134,6 +134,96 @@
   (assert (not (m/is-bot? "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"))))
 
 # ============================================================================
+# is-scan? tests (path-based detection, regardless of status)
+# ============================================================================
+
+(deftest "is-scan? detects wp-admin"
+  (assert (m/is-scan? "/wp-admin/setup-config.php" "200")))
+
+(deftest "is-scan? detects wp-login"
+  (assert (m/is-scan? "/wp-login.php" "404")))
+
+(deftest "is-scan? detects xmlrpc.php"
+  (assert (m/is-scan? "/xmlrpc.php" "200")))
+
+(deftest "is-scan? detects xmlrpc.php with query string"
+  (assert (m/is-scan? "/xmlrpc.php?rsd" "404")))
+
+(deftest "is-scan? detects random php files"
+  (assert (m/is-scan? "/adminfuns.php" "404")))
+
+(deftest "is-scan? detects .env probe"
+  (assert (m/is-scan? "/.env" "403")))
+
+(deftest "is-scan? detects .git/config probe"
+  (assert (m/is-scan? "/.git/config" "404")))
+
+(deftest "is-scan? detects wordpress path"
+  (assert (m/is-scan? "/wordpress/wp-admin/setup-config.php" "404")))
+
+(deftest "is-scan? detects wlwmanifest.xml"
+  (assert (m/is-scan? "/blog/wp-includes/wlwmanifest.xml" "404")))
+
+(deftest "is-scan? detects phpmyadmin"
+  (assert (m/is-scan? "/phpmyadmin/index.php" "404")))
+
+(deftest "is-scan? detects admin paths"
+  (assert (m/is-scan? "/admin.php" "404")))
+
+(deftest "is-scan? detects login probes"
+  (assert (m/is-scan? "/login" "404")))
+
+(deftest "is-scan? detects ALFA shell probe"
+  (assert (m/is-scan? "/ALFA_DATA/alfacgiapi/" "404")))
+
+(deftest "is-scan? detects fileupload exploit"
+  (assert (m/is-scan? "/modules/mod_simplefileuploadv1.3/elements/" "404")))
+
+# ============================================================================
+# is-scan? status-based detection (404s to non-legit paths)
+# ============================================================================
+
+(deftest "is-scan? flags unknown 404 paths as scans"
+  (assert (m/is-scan? "/some/random/path" "404")))
+
+(deftest "is-scan? flags directory traversal probes"
+  (assert (m/is-scan? "/files/" "404")))
+
+(deftest "is-scan? flags image directory probes"
+  (assert (m/is-scan? "/images/" "404")))
+
+# ============================================================================
+# is-scan? legitimate requests (not scans)
+# ============================================================================
+
+(deftest "is-scan? does not flag root path"
+  (assert (not (m/is-scan? "/" "200"))))
+
+(deftest "is-scan? does not flag CSS assets (200)"
+  (assert (not (m/is-scan? "/assets/site.17728ba4.css" "200"))))
+
+(deftest "is-scan? does not flag weather icons (200)"
+  (assert (not (m/is-scan? "/assets/weather-icons/12.png" "200"))))
+
+(deftest "is-scan? does not flag robots.txt (200)"
+  (assert (not (m/is-scan? "/robots.txt" "200"))))
+
+(deftest "is-scan? does not flag build-report.html (200)"
+  (assert (not (m/is-scan? "/build-report.html" "200"))))
+
+(deftest "is-scan? does not flag favicon.ico 404 (legit missing)"
+  (assert (not (m/is-scan? "/favicon.ico" "404"))))
+
+(deftest "is-scan? does not flag apple-touch-icon 404 (legit missing)"
+  (assert (not (m/is-scan? "/apple-touch-icon.png" "404"))))
+
+(deftest "is-scan? does not flag .well-known 404 (legit missing)"
+  (assert (not (m/is-scan? "/.well-known/traffic-advice" "404"))))
+
+(deftest "is-scan? does not flag asset 404 (legit missing, e.g. old CSS hash)"
+  (assert (not (m/is-scan? "/assets/site.old-hash.css" "404"))))
+
+# ============================================================================
 # classify-referrer tests
 # ============================================================================
 

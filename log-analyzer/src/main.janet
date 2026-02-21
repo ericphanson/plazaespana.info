@@ -153,6 +153,58 @@
       (string/find "facebookexternalhit" ua-lower)
       (string/find "twitterbot" ua-lower)))
 
+(defn is-scan?
+  "Check if a request looks like a vulnerability scan.
+   Uses two strategies:
+   1. Path-based: known scan paths (WordPress, PHP, config files, etc.)
+   2. Status-based: 404s to paths that aren't plausible missing resources
+
+   A static site serves a small set of known paths. A 404 to /wp-login.php
+   is a scan. A 404 to /favicon.ico is a browser looking for an icon we
+   don't serve. We distinguish between the two."
+  [path status]
+  (def path-lower (string/ascii-lower path))
+  (or
+    # Strategy 1: known scan paths (always a scan regardless of status)
+    (string/has-prefix? "/wp-" path-lower)
+    (string/has-prefix? "/wordpress" path-lower)
+    (string/find "xmlrpc.php" path-lower)
+    # PHP files (this is a static site, no PHP exists)
+    (string/has-suffix? ".php" path-lower)
+    # Config/sensitive file probes
+    (string/has-prefix? "/.env" path-lower)
+    (string/has-prefix? "/.git" path-lower)
+    (string/has-prefix? "/.aws" path-lower)
+    (string/has-prefix? "/.docker" path-lower)
+    (string/has-prefix? "/.ssh" path-lower)
+    (string/has-prefix? "/.svn" path-lower)
+    (string/has-prefix? "/.htpasswd" path-lower)
+    (string/has-prefix? "/.DS_Store" path-lower)
+    # Admin panels
+    (string/has-prefix? "/admin" path-lower)
+    (string/has-prefix? "/phpmyadmin" path-lower)
+    (string/has-prefix? "/cgi-bin" path-lower)
+    # Common exploit paths
+    (string/find "wlwmanifest.xml" path-lower)
+    (string/find "/eval" path-lower)
+    (string/find "/shell" path-lower)
+    (string/find "/config." path-lower)
+    (string/find "alfacgiapi" path-lower)
+    (string/find "fileupload" path-lower)
+    (string/has-prefix? "/login" path-lower)
+    (string/has-prefix? "/signin" path-lower)
+    (string/has-prefix? "/modules/" path-lower)
+
+    # Strategy 2: 404s that aren't plausible browser requests
+    # Browsers legitimately 404 on favicon, apple-touch-icon, .well-known, etc.
+    # Everything else that 404s on a static site is a scan.
+    (and (= status "404")
+         (not (or (= path-lower "/favicon.ico")
+                  (string/has-prefix? "/apple-touch-icon" path-lower)
+                  (and (string/has-prefix? "/.well-known/" path-lower)
+                       (not (string/has-suffix? ".php" path-lower)))
+                  (string/has-prefix? "/assets/" path-lower))))))
+
 (defn classify-referrer
   "Classify a referrer URL into a category.
    Returns one of: direct, search, social, internal, external"
@@ -248,7 +300,7 @@
 (defn process-log-file
   "Process a log file and accumulate stats.
    stats is a table with:
-   - :hourly - table of hour -> {:ips :requests :bytes :status-codes :paths :bots :humans
+   - :hourly - table of hour -> {:ips :requests :bytes :status-codes :paths :bots :visitors
                                   :referrer-categories :browsers :platforms}
    - :monthly - table of month -> {:hll :ips :requests}
    - :total-hll - HLL for all unique visitors
@@ -276,7 +328,8 @@
                    :status status :bytes bytes :referrer referrer
                    :user-agent ua} parsed
                   path (extract-path request)
-                  bot (is-bot? ua)]
+                  bot (is-bot? ua)
+                  scan (and (not bot) (is-scan? path status))]
 
               # Update hourly stats
               (def hourly-entry
@@ -285,8 +338,10 @@
                                   :requests 0
                                   :bytes 0
                                   :bots 0
-                                  :humans 0
+                                  :scans 0
+                                  :visitors 0
                                   :status-codes @{}
+                                  :status-by-type @{:bots @{} :scans @{} :visitors @{}}
                                   :paths @{}
                                   :referrer-categories @{}
                                   :browsers @{}
@@ -294,16 +349,19 @@
                       (put (stats :hourly) hour entry)
                       entry)))
 
-              (put (hourly-entry :ips) ip true)
               (put hourly-entry :requests (+ 1 (hourly-entry :requests)))
               (put hourly-entry :bytes (+ bytes (hourly-entry :bytes)))
-              (if bot
-                (put hourly-entry :bots (+ 1 (hourly-entry :bots)))
-                (put hourly-entry :humans (+ 1 (hourly-entry :humans))))
+              (cond
+                bot (put hourly-entry :bots (+ 1 (hourly-entry :bots)))
+                scan (put hourly-entry :scans (+ 1 (hourly-entry :scans)))
+                (put hourly-entry :visitors (+ 1 (hourly-entry :visitors))))
 
-              # Track status codes
+              # Track status codes (overall + per traffic type)
               (def status-counts (hourly-entry :status-codes))
               (put status-counts status (+ 1 (get status-counts status 0)))
+              (def type-key (cond bot :bots scan :scans :visitors))
+              (def type-status (get (hourly-entry :status-by-type) type-key))
+              (put type-status status (+ 1 (get type-status status 0)))
 
               # Track paths
               (def path-counts (hourly-entry :paths))
@@ -314,29 +372,38 @@
               (def ref-cat (classify-referrer referrer))
               (put ref-cats ref-cat (+ 1 (get ref-cats ref-cat 0)))
 
-              # Track browser and platform (non-bots only)
-              (when (not bot)
+              # Track unique visitors, browsers, platforms (visitors only)
+              (when (not (or bot scan))
+                (put (hourly-entry :ips) ip true)
+
                 (def browsers (hourly-entry :browsers))
                 (def browser (classify-browser ua))
                 (put browsers browser (+ 1 (get browsers browser 0)))
 
                 (def platforms (hourly-entry :platforms))
                 (def platform (classify-platform ua))
-                (put platforms platform (+ 1 (get platforms platform 0))))
+                (put platforms platform (+ 1 (get platforms platform 0)))
 
-              # Update monthly stats (HLL + exact hash set)
+                # Update monthly uniques (HLL + exact hash set)
+                (def monthly-entry
+                  (or (get (stats :monthly) month)
+                      (let [entry @{:hll (hll/new) :ips @{} :requests 0}]
+                        (put (stats :monthly) month entry)
+                        entry)))
+
+                (hll/add (monthly-entry :hll) ip)
+                (put (monthly-entry :ips) ip true)
+
+                # Update total HLL
+                (hll/add (stats :total-hll) ip))
+
+              # Update monthly request count (all traffic)
               (def monthly-entry
                 (or (get (stats :monthly) month)
                     (let [entry @{:hll (hll/new) :ips @{} :requests 0}]
                       (put (stats :monthly) month entry)
                       entry)))
-
-              (hll/add (monthly-entry :hll) ip)
-              (put (monthly-entry :ips) ip true)
-              (put monthly-entry :requests (+ 1 (monthly-entry :requests)))
-
-              # Update total HLL
-              (hll/add (stats :total-hll) ip))
+              (put monthly-entry :requests (+ 1 (monthly-entry :requests))))
 
             # Parse error
             (++ parse-errors)))))
@@ -419,8 +486,10 @@
       :bytes_sent (entry :bytes)
       :unique_ips (length (entry :ips))
       :bots (entry :bots)
-      :humans (entry :humans)
+      :scans (entry :scans)
+      :visitors (entry :visitors)
       :status_codes (entry :status-codes)
+      :status_by_type (entry :status-by-type)
       :top_paths (format-top-paths (entry :paths) 20)
       :referrer_categories (entry :referrer-categories)
       :browsers (entry :browsers)
@@ -540,6 +609,27 @@
     (eachp [k v] (entry :referrer_categories)
       (put all-referrers k (+ (get all-referrers k 0) v))))
 
+  # Aggregate traffic type totals and status codes per type
+  (var total-bots 0)
+  (var total-scans 0)
+  (var total-visitors 0)
+  (def all-status @{})
+  (def status-bots @{})
+  (def status-scans @{})
+  (def status-visitors @{})
+  (each entry hourly-json
+    (+= total-bots (entry :bots))
+    (+= total-scans (entry :scans))
+    (+= total-visitors (entry :visitors))
+    (eachp [k v] (get (entry :status_by_type) :bots @{})
+      (put status-bots k (+ (get status-bots k 0) v)))
+    (eachp [k v] (get (entry :status_by_type) :scans @{})
+      (put status-scans k (+ (get status-scans k 0) v)))
+    (eachp [k v] (get (entry :status_by_type) :visitors @{})
+      (put status-visitors k (+ (get status-visitors k 0) v)))
+    (eachp [k v] (entry :status_codes)
+      (put all-status k (+ (get all-status k 0) v))))
+
   # Find max daily requests for bar chart scaling
   (def daily-requests @{})
   (each entry hourly-json
@@ -614,9 +704,31 @@
       (length log-files)))
   (buffer/push-string buf "</div>\n")
 
+  # Traffic breakdown table
+  (defn- status-summary [tbl]
+    (string/join
+      (map (fn [[s c]] (string/format "%s: %d" s c))
+           (sort-by |(- (get $ 1)) (pairs tbl)))
+      ", "))
+
+  (buffer/push-string buf "<h2>Traffic Breakdown</h2>\n<table>\n")
+  (buffer/push-string buf "<tr><th>Type</th><th>Requests</th><th>%</th><th>Status Codes</th></tr>\n")
+  (each [label count status-tbl]
+        [["Visitors" total-visitors status-visitors]
+         ["Scans" total-scans status-scans]
+         ["Bots" total-bots status-bots]]
+    (def pct (if (> total-requests 0) (/ (* 100 count) total-requests) 0))
+    (buffer/push-string buf
+      (string/format "<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%.1f%%</td><td>%s</td></tr>\n"
+        label count pct (status-summary status-tbl))))
+  (buffer/push-string buf
+    (string/format "<tr><td><strong>Total</strong></td><td class=\"num\"><strong>%d</strong></td><td class=\"num\"><strong>100%%</strong></td><td>%s</td></tr>\n"
+      total-requests (status-summary all-status)))
+  (buffer/push-string buf "</table>\n")
+
   # Monthly summary table
-  (buffer/push-string buf "<h2>Monthly Summary</h2>\n<table>\n")
-  (buffer/push-string buf "<tr><th>Month</th><th>Requests</th><th>Unique Visitors</th><th>HLL Estimate</th></tr>\n")
+  (buffer/push-string buf "<h2>Monthly Summary</h2>\n<p class=\"meta\">Unique visitors exclude bots and scans.</p>\n<table>\n")
+  (buffer/push-string buf "<tr><th>Month</th><th>All Requests</th><th>Unique Visitors</th><th>HLL Estimate</th></tr>\n")
   (each m monthly-json
     (buffer/push-string buf
       (string/format "<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%d</td><td class=\"num\">%d</td></tr>\n"
@@ -647,7 +759,7 @@
   # Browser breakdown
   (when (not (empty? all-browsers))
     (def sorted-browsers (sort-by |(- (get $ 1)) (pairs all-browsers)))
-    (buffer/push-string buf "<h2>Browsers</h2>\n<table>\n")
+    (buffer/push-string buf "<h2>Browsers (visitors only)</h2>\n<table>\n")
     (buffer/push-string buf "<tr><th>Browser</th><th>Requests</th></tr>\n")
     (each [browser count] sorted-browsers
       (buffer/push-string buf
@@ -657,7 +769,7 @@
   # Platform breakdown
   (when (not (empty? all-platforms))
     (def sorted-platforms (sort-by |(- (get $ 1)) (pairs all-platforms)))
-    (buffer/push-string buf "<h2>Platforms</h2>\n<table>\n")
+    (buffer/push-string buf "<h2>Platforms (visitors only)</h2>\n<table>\n")
     (buffer/push-string buf "<tr><th>Platform</th><th>Requests</th></tr>\n")
     (each [platform count] sorted-platforms
       (buffer/push-string buf
