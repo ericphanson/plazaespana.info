@@ -72,7 +72,7 @@ scp build/log-analyzer-freebsd $NFSN_USER@$NFSN_HOST:/home/private/bin/log-analy
 just test
 ```
 
-Tests cover the HyperLogLog implementation, analyzer functions (parsing, timezone conversion, classification, path bucketing), JSON encoder/decoder roundtrips, report rendering safety, and Python/Janet HLL compatibility for publish-time merging.
+Tests cover the HyperLogLog implementation, analyzer functions (parsing, timezone conversion, classification, path bucketing), JSON encoder/decoder roundtrips, report rendering safety, and publish-time lifetime rebuild behavior.
 
 ## Usage
 
@@ -85,6 +85,9 @@ Tests cover the HyperLogLog implementation, analyzer functions (parsing, timezon
 
 # Phase 2: render report from JSON artifacts
 ./build/log-analyzer --mode report --json-dir /path/to/output --report-path /path/to/output/report.html
+
+# Rebuild lifetime.json from persisted month shards
+./build/log-analyzer --mode rebuild --json-dir /path/to/output --lifetime-source /path/to/generated/lifetime.json
 
 # If no log directory is provided, defaults to /home/logs
 ./build/log-analyzer
@@ -110,6 +113,9 @@ With `--mode analyze --out-dir`, writes:
 
 With `--mode report --json-dir ... --report-path ...`, writes:
 - `report.html` (self-contained static HTML, no JavaScript, dark mode) from persisted JSON artifacts
+
+With `--mode rebuild --json-dir ... [--lifetime-source ...]`, writes:
+- `lifetime.json` rebuilt from persisted month files using Janet HLL merge/count logic
 
 ## Data Retention
 

@@ -11,6 +11,7 @@
 (import ./hll)
 (import ./json)
 (import ./report)
+(import ./rebuild)
 
 (def apache-log-peg
   "PEG grammar for Apache Combined Log Format"
@@ -594,13 +595,15 @@
   "Parse CLI arguments.
    Modes:
    - analyze (default): read logs and emit JSON
-   - report: read persisted JSON files and emit report.html"
+   - report: read persisted JSON files and emit report.html
+   - rebuild: rebuild lifetime.json from persisted month shards"
   [args]
   (def result @{:mode "analyze"
                 :log-dir nil
                 :out-dir nil
                 :json-dir nil
-                :report-path nil})
+                :report-path nil
+                :lifetime-source nil})
   (var i 1)  # Skip executable name at index 0
   (while (< i (length args))
     (def arg (get args i))
@@ -625,6 +628,11 @@
         (++ i)
         (put result :report-path (or (get args i) "")))
 
+      (= arg "--lifetime-source")
+      (do
+        (++ i)
+        (put result :lifetime-source (or (get args i) "")))
+
       (string/has-prefix? "-" arg)
       (do
         (eprintf "Unknown option: %s\n" arg)
@@ -632,7 +640,7 @@
 
       # Positional arg
       true
-      (if (= (result :mode) "report")
+      (if (or (= (result :mode) "report") (= (result :mode) "rebuild"))
         (if (nil? (result :json-dir))
           (put result :json-dir arg)
           (do
@@ -647,17 +655,17 @@
     (++ i))
 
   (def mode (result :mode))
-  (when (and (not= mode "analyze") (not= mode "report"))
-    (eprintf "Invalid --mode: %s (expected analyze or report)\n" mode)
+  (when (and (not= mode "analyze") (not= mode "report") (not= mode "rebuild"))
+    (eprintf "Invalid --mode: %s (expected analyze, report, or rebuild)\n" mode)
     (os/exit 1))
 
-  (if (= mode "report")
+  (if (or (= mode "report") (= mode "rebuild"))
     (do
       (when (nil? (result :json-dir))
         (if (not (nil? (result :out-dir)))
           (put result :json-dir (result :out-dir))
           (put result :json-dir "/home/private/log-analyzer-data")))
-      (when (nil? (result :report-path))
+      (when (and (= mode "report") (nil? (result :report-path)))
         (put result :report-path (string (result :json-dir) "/report.html"))))
     (when (nil? (result :log-dir))
       (put result :log-dir "/home/logs")))
@@ -674,18 +682,24 @@
           result (report/generate-report-from-json-dir json-dir report-path)]
       (eprintf "Built report from JSON dir: %s\n" json-dir)
       (eprintf "Wrote %s\n" (result :report-path)))
-    (let [log-dir (opts :log-dir)
-          out-dir (opts :out-dir)]
-      (eprintf "Analyzing Apache access logs in: %s\n\n" log-dir)
+    (if (= mode "rebuild")
+      (let [json-dir (opts :json-dir)
+            lifetime-source (opts :lifetime-source)
+            result (rebuild/rebuild-lifetime-from-json-dir json-dir lifetime-source)]
+        (eprintf "Rebuilt lifetime from JSON dir: %s\n" json-dir)
+        (eprintf "Wrote %s\n" (result :lifetime-path)))
+      (let [log-dir (opts :log-dir)
+            out-dir (opts :out-dir)]
+        (eprintf "Analyzing Apache access logs in: %s\n\n" log-dir)
 
-      # Get list of log files before analysis
-      (def log-files
-        (sort (filter log-file-candidate? (os/dir log-dir))))
+        # Get list of log files before analysis
+        (def log-files
+          (sort (filter log-file-candidate? (os/dir log-dir))))
 
-      # Analyze logs
-      (def stats (analyze-logs log-dir))
+        # Analyze logs
+        (def stats (analyze-logs log-dir))
 
-      # Output
-      (if out-dir
-        (output-split stats log-files out-dir)
-        (output-json stats log-files)))))
+        # Output
+        (if out-dir
+          (output-split stats log-files out-dir)
+          (output-json stats log-files))))))

@@ -14,13 +14,11 @@ Pipeline:
 from __future__ import annotations
 
 import argparse
-import base64
 import datetime as dt
 import glob
 import hashlib
 import ipaddress
 import json
-import math
 import os
 from pathlib import Path
 import re
@@ -32,11 +30,6 @@ import tempfile
 from typing import Any
 
 
-HLL_PRECISION = 14
-HLL_NUM_BUCKETS = 1 << HLL_PRECISION
-HLL_VERSION = 1
-HLL_MAGIC = b"HLL"
-SPARSE_THRESHOLD = 3412
 MONTH_JSON_RE = re.compile(r"^\d{4}-\d{2}\.json$")
 IPV4_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 IPV6_CANDIDATE_RE = re.compile(r"(?i)(?<![0-9a-f:])[0-9a-f:]{2,39}(?![0-9a-f:])")
@@ -163,170 +156,64 @@ def privacy_check_dir(root: Path, include_report: bool) -> None:
         check_paths_no_query(doc, fp)
 
 
-def decode_hll_b64(s: str) -> list[int]:
-    raw = base64.b64decode(s.encode("ascii"))
-    if len(raw) < 6:
-        raise RuntimeError("HLL buffer too small")
-    if raw[:3] != HLL_MAGIC:
-        raise RuntimeError("Invalid HLL magic")
-    if raw[3] != HLL_VERSION:
-        raise RuntimeError("Unsupported HLL version")
-    if raw[4] != HLL_PRECISION:
-        raise RuntimeError(f"Unexpected HLL precision {raw[4]}")
+def rebuild_lifetime_with_log_analyzer(
+    log_analyzer_bin: Path,
+    merged_dir: Path,
+    generated_lifetime: Path,
+    log: Logger,
+) -> None:
+    if not log_analyzer_bin.exists():
+        fail(log, f"log-analyzer binary not found: {log_analyzer_bin}")
 
-    fmt = raw[5]
-    buckets = [0] * HLL_NUM_BUCKETS
-    if fmt == 1:
-        if len(raw) < 8:
-            raise RuntimeError("Sparse HLL buffer too small")
-        count = raw[6] | (raw[7] << 8)
-        pos = 8
-        for _ in range(count):
-            if pos + 2 >= len(raw):
-                raise RuntimeError("Sparse HLL truncated")
-            idx = raw[pos] | (raw[pos + 1] << 8)
-            val = raw[pos + 2] & 0x1F
-            if idx >= HLL_NUM_BUCKETS:
-                raise RuntimeError("Sparse HLL index out of range")
-            buckets[idx] = val
-            pos += 3
-    elif fmt == 0:
-        bit_pos = 0
-        bucket_idx = 0
-        offset = 6
-        while bucket_idx < HLL_NUM_BUCKETS:
-            byte_pos = offset + (bit_pos // 8)
-            bit_offset = bit_pos % 8
-            bits_in_first = 8 - bit_offset
-            if byte_pos >= len(raw):
-                raise RuntimeError("Dense HLL truncated")
-            if bits_in_first >= 5:
-                value = (raw[byte_pos] >> (bits_in_first - 5)) & 0x1F
-            else:
-                if byte_pos + 1 >= len(raw):
-                    raise RuntimeError("Dense HLL truncated")
-                first_bits = raw[byte_pos] & ((1 << bits_in_first) - 1)
-                second_bits = raw[byte_pos + 1] >> (8 + bits_in_first - 5)
-                value = (first_bits << (5 - bits_in_first)) | second_bits
-            buckets[bucket_idx] = value & 0x1F
-            bit_pos += 5
-            bucket_idx += 1
-    else:
-        raise RuntimeError(f"Unknown HLL format marker: {fmt}")
-    return buckets
+    cmd = [
+        str(log_analyzer_bin),
+        "--mode",
+        "rebuild",
+        "--json-dir",
+        str(merged_dir),
+    ]
+    if generated_lifetime.exists():
+        cmd.extend(["--lifetime-source", str(generated_lifetime)])
+
+    proc = run_checked(cmd, log, "Lifetime rebuild")
+    if proc.stdout.strip():
+        log.log(proc.stdout.strip())
+    if proc.stderr.strip():
+        log.log(proc.stderr.strip())
 
 
-def encode_hll_b64(buckets: list[int]) -> str:
-    non_zero = sum(1 for v in buckets if v != 0)
-    out = bytearray()
-    out.extend(HLL_MAGIC)
-    out.append(HLL_VERSION)
-    out.append(HLL_PRECISION)
-    if non_zero < SPARSE_THRESHOLD:
-        out.append(1)
-        entries = [(i, v) for i, v in enumerate(buckets) if v != 0]
-        out.append(len(entries) & 0xFF)
-        out.append((len(entries) >> 8) & 0xFF)
-        for idx, val in entries:
-            out.append(idx & 0xFF)
-            out.append((idx >> 8) & 0xFF)
-            out.append(val & 0x1F)
-    else:
-        out.append(0)
-        bit_pos = 0
-        current_byte = 0
-        for v in buckets:
-            v5 = v & 0x1F
-            bits_remaining = 8 - (bit_pos % 8)
-            if bits_remaining >= 5:
-                current_byte |= v5 << (bits_remaining - 5)
-                bit_pos += 5
-                if bit_pos % 8 == 0:
-                    out.append(current_byte & 0xFF)
-                    current_byte = 0
-            else:
-                current_byte |= v5 >> (5 - bits_remaining)
-                out.append(current_byte & 0xFF)
-                current_byte = (v5 & ((1 << (5 - bits_remaining)) - 1)) << (8 + bits_remaining - 5)
-                bit_pos += 5
-        if bit_pos % 8 != 0:
-            out.append(current_byte & 0xFF)
-    return base64.b64encode(bytes(out)).decode("ascii")
+def rebuild_lifetime_and_manifest(
+    merged_dir: Path,
+    generated_lifetime: Path,
+    source_host: str,
+    log_analyzer_bin: Path,
+    log: Logger,
+) -> None:
+    rebuild_lifetime_with_log_analyzer(log_analyzer_bin, merged_dir, generated_lifetime, log)
 
-
-def hll_count_estimate(buckets: list[int]) -> float:
-    m = float(HLL_NUM_BUCKETS)
-    alpha = 0.7213 / (1.0 + 1.079 / m)
-    sum_pow = 0.0
-    zero_buckets = 0
-    for v in buckets:
-        sum_pow += 2.0 ** (-v)
-        if v == 0:
-            zero_buckets += 1
-    raw = alpha * m * m / sum_pow
-    if raw <= 2.5 * m and zero_buckets > 0:
-        return m * math.log(m / zero_buckets)
-    if raw > (2**32) / 30.0:
-        return -1.0 * (2**32) * math.log(1.0 - raw / (2**32))
-    return raw
-
-
-def round_half_up(x: float) -> int:
-    return int(math.floor(x + 0.5))
-
-
-def rebuild_lifetime_and_manifest(merged_dir: Path, generated_lifetime: Path, source_host: str) -> None:
     month_paths = sorted(merged_dir.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9].json"))
     if not month_paths:
         raise RuntimeError("No month JSON files found when rebuilding lifetime.json")
 
-    months: list[dict[str, Any]] = []
-    total_requests = 0
-    merged_buckets = [0] * HLL_NUM_BUCKETS
+    lifetime_path = merged_dir / "lifetime.json"
+    if not lifetime_path.exists():
+        raise RuntimeError(f"Expected lifetime.json from rebuild step: {lifetime_path}")
+    with lifetime_path.open("r", encoding="utf-8") as f:
+        lifetime = json.load(f)
+    generated_at = lifetime.get("generated_at")
+    if not isinstance(generated_at, str) or not generated_at:
+        generated_at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    for month_path in month_paths:
-        with month_path.open("r", encoding="utf-8") as f:
-            doc = json.load(f)
-        summary = doc.get("summary")
-        if not isinstance(summary, dict):
-            raise RuntimeError(f"{month_path}: missing summary object")
-        month = summary.get("month")
-        if not isinstance(month, str):
-            month = month_path.name[:7]
-            summary["month"] = month
-
-        req = int(summary.get("requests", 0))
-        total_requests += req
-        hll_b64 = summary.get("unique_visitors_hll")
-        if not isinstance(hll_b64, str) or not hll_b64:
-            raise RuntimeError(f"{month_path}: missing summary.unique_visitors_hll")
-        buckets = decode_hll_b64(hll_b64)
-        merged_buckets = [max(a, b) for a, b in zip(merged_buckets, buckets)]
-        months.append(summary)
-
-    months.sort(key=lambda m: str(m.get("month", "")))
-    generated_at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    log_files_processed: list[str] = []
-    if generated_lifetime.exists():
-        with generated_lifetime.open("r", encoding="utf-8") as f:
-            src_lifetime = json.load(f)
-        if isinstance(src_lifetime.get("log_files_processed"), list):
-            log_files_processed = src_lifetime["log_files_processed"]
-
-    total_hll_b64 = encode_hll_b64(merged_buckets)
-    total_unique = round_half_up(hll_count_estimate(merged_buckets))
-    lifetime = {
-        "generated_at": generated_at,
-        "log_files_processed": log_files_processed,
-        "total_requests": total_requests,
-        "total_unique_visitors_estimate": total_unique,
-        "total_unique_visitors_hll": total_hll_b64,
-        "months": months,
-    }
-    with (merged_dir / "lifetime.json").open("w", encoding="utf-8") as f:
-        json.dump(lifetime, f, indent=2, sort_keys=True)
-        f.write("\n")
+    month_names: list[str] = []
+    months = lifetime.get("months")
+    if isinstance(months, list):
+        for month_entry in months:
+            if isinstance(month_entry, dict):
+                month = month_entry.get("month")
+                if isinstance(month, str):
+                    month_names.append(month)
+    if not month_names:
+        month_names = [month_path.name[:7] for month_path in month_paths]
 
     checksums: dict[str, str] = {}
     for fp in sorted(merged_dir.glob("*.json")):
@@ -339,7 +226,7 @@ def rebuild_lifetime_and_manifest(merged_dir: Path, generated_lifetime: Path, so
         "published_at": generated_at,
         "source_host": source_host,
         "month_count": len(month_paths),
-        "months": [m.get("month") for m in months],
+        "months": month_names,
         "file_checksums_sha256": checksums,
     }
     with (merged_dir / "manifest.json").open("w", encoding="utf-8") as f:
@@ -629,7 +516,13 @@ def main() -> int:
             merge_generated_months(generated_dir, merged_data_dir, grace_days, log)
 
             log.log("Rebuilding lifetime.json and manifest.json from persisted month files...")
-            rebuild_lifetime_and_manifest(merged_data_dir, generated_lifetime, socket.gethostname().split(".")[0])
+            rebuild_lifetime_and_manifest(
+                merged_data_dir,
+                generated_lifetime,
+                socket.gethostname().split(".")[0],
+                log_analyzer_bin,
+                log,
+            )
 
             log.log("Generating report.html from persisted JSON...")
             generate_report_from_json(log_analyzer_bin, merged_data_dir, merged_data_dir / "report.html", log)
