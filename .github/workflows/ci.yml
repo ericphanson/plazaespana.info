@@ -49,6 +49,7 @@ jobs:
           git clone --depth=1 --branch v1.41.2 https://github.com/janet-lang/janet.git /tmp/janet
           make -C /tmp/janet
           sudo make -C /tmp/janet install
+          sudo make -C /tmp/janet install-jpm-git
 
           ZIG_VERSION=0.13.0
           curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz
