@@ -663,6 +663,7 @@
            max-width: 900px; margin: 0 auto; padding: 1rem; line-height: 1.5; }
     h1 { margin-bottom: 0.25rem; }
     h2 { margin: 1.5rem 0 0.75rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; }
+h3 { margin: 1.25rem 0 0.5rem; color: var(--fg); }
     .meta { color: var(--muted); margin-bottom: 1rem; font-size: 0.9rem; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
@@ -704,6 +705,8 @@
       (length log-files)))
   (buffer/push-string buf "</div>\n")
 
+  # ---- All Traffic section ----
+
   # Traffic breakdown table
   (defn- status-summary [tbl]
     (string/join
@@ -726,16 +729,7 @@
       total-requests (status-summary all-status)))
   (buffer/push-string buf "</table>\n")
 
-  # Monthly summary table
-  (buffer/push-string buf "<h2>Monthly Summary</h2>\n<p class=\"meta\">Unique visitors exclude bots and scans.</p>\n<table>\n")
-  (buffer/push-string buf "<tr><th>Month</th><th>All Requests</th><th>Unique Visitors</th><th>HLL Estimate</th></tr>\n")
-  (each m monthly-json
-    (buffer/push-string buf
-      (string/format "<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%d</td><td class=\"num\">%d</td></tr>\n"
-        (m :month) (m :requests) (m :unique_visitors_exact) (m :unique_visitors_estimate))))
-  (buffer/push-string buf "</table>\n")
-
-  # Daily request bar chart
+  # Daily request bar chart (all traffic)
   (def sorted-days (sort (keys daily-requests)))
   (buffer/push-string buf "<h2>Daily Requests</h2>\n<table>\n")
   (buffer/push-string buf "<tr><th>Date</th><th>Requests</th><th></th></tr>\n")
@@ -748,7 +742,7 @@
         day count pct)))
   (buffer/push-string buf "</table>\n")
 
-  # Top paths
+  # Top paths (all traffic)
   (buffer/push-string buf "<h2>Top Paths</h2>\n<table>\n")
   (buffer/push-string buf "<tr><th>Path</th><th>Requests</th></tr>\n")
   (each [path count] top-paths-all
@@ -756,27 +750,7 @@
       (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" path count)))
   (buffer/push-string buf "</table>\n")
 
-  # Browser breakdown
-  (when (not (empty? all-browsers))
-    (def sorted-browsers (sort-by |(- (get $ 1)) (pairs all-browsers)))
-    (buffer/push-string buf "<h2>Browsers (visitors only)</h2>\n<table>\n")
-    (buffer/push-string buf "<tr><th>Browser</th><th>Requests</th></tr>\n")
-    (each [browser count] sorted-browsers
-      (buffer/push-string buf
-        (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" browser count)))
-    (buffer/push-string buf "</table>\n"))
-
-  # Platform breakdown
-  (when (not (empty? all-platforms))
-    (def sorted-platforms (sort-by |(- (get $ 1)) (pairs all-platforms)))
-    (buffer/push-string buf "<h2>Platforms (visitors only)</h2>\n<table>\n")
-    (buffer/push-string buf "<tr><th>Platform</th><th>Requests</th></tr>\n")
-    (each [platform count] sorted-platforms
-      (buffer/push-string buf
-        (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" platform count)))
-    (buffer/push-string buf "</table>\n"))
-
-  # Referrer categories
+  # Referrer categories (all traffic)
   (when (not (empty? all-referrers))
     (def sorted-refs (sort-by |(- (get $ 1)) (pairs all-referrers)))
     (buffer/push-string buf "<h2>Referrer Categories</h2>\n<table>\n")
@@ -784,6 +758,38 @@
     (each [cat count] sorted-refs
       (buffer/push-string buf
         (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" cat count)))
+    (buffer/push-string buf "</table>\n"))
+
+  # ---- Visitors Only section ----
+  (buffer/push-string buf "<h2>Visitors</h2>\n<p class=\"meta\">The following sections exclude bots and vulnerability scans.</p>\n")
+
+  # Monthly summary table (visitors)
+  (buffer/push-string buf "<h3>Monthly Summary</h3>\n<table>\n")
+  (buffer/push-string buf "<tr><th>Month</th><th>All Requests</th><th>Unique Visitors</th><th>HLL Estimate</th></tr>\n")
+  (each m monthly-json
+    (buffer/push-string buf
+      (string/format "<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%d</td><td class=\"num\">%d</td></tr>\n"
+        (m :month) (m :requests) (m :unique_visitors_exact) (m :unique_visitors_estimate))))
+  (buffer/push-string buf "</table>\n")
+
+  # Browser breakdown (visitors only)
+  (when (not (empty? all-browsers))
+    (def sorted-browsers (sort-by |(- (get $ 1)) (pairs all-browsers)))
+    (buffer/push-string buf "<h3>Browsers</h3>\n<table>\n")
+    (buffer/push-string buf "<tr><th>Browser</th><th>Requests</th></tr>\n")
+    (each [browser count] sorted-browsers
+      (buffer/push-string buf
+        (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" browser count)))
+    (buffer/push-string buf "</table>\n"))
+
+  # Platform breakdown (visitors only)
+  (when (not (empty? all-platforms))
+    (def sorted-platforms (sort-by |(- (get $ 1)) (pairs all-platforms)))
+    (buffer/push-string buf "<h3>Platforms</h3>\n<table>\n")
+    (buffer/push-string buf "<tr><th>Platform</th><th>Requests</th></tr>\n")
+    (each [platform count] sorted-platforms
+      (buffer/push-string buf
+        (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n" platform count)))
     (buffer/push-string buf "</table>\n"))
 
   (buffer/push-string buf "<footer>Generated by log-analyzer</footer>\n</body>\n</html>")
