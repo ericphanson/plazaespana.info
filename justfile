@@ -199,7 +199,7 @@ _deploy-files:
     echo "         Note: Logs to /home/logs/generate.log, emails only on errors"
     echo "      b) Analytics snapshot (aggregate JSON):"
     echo "         Command: /home/private/bin/log-analyzer-weekly.sh"
-    echo "         Schedule: 0 1 * * 0 (Sunday 1 AM)"
+    echo "         Schedule: 15 1 * * * (daily at 01:15)"
     echo "         Note: Logs to /home/logs/log-analyzer.log; serves report at /analytics/report.html"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
@@ -207,6 +207,10 @@ deploy: freebsd log-analyzer-freebsd hash-css _deploy-files
 
 # Deploy to NFSN (for CI - assumes binary already built and CSS hashed)
 deploy-only: _deploy-files
+
+# Check public analytics freshness via manifest.json
+check-analytics-stale MAX_AGE_DAYS="3":
+    python3 scripts/check-analytics-staleness.py --max-age-days {{MAX_AGE_DAYS}}
 
 # Generate content-hashed CSS for cache busting
 hash-css:

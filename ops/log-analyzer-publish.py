@@ -55,7 +55,8 @@ class Logger:
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
     def log(self, msg: str) -> None:
-        print(msg)
+        if sys.stdout.isatty():
+            print(msg)
         with self.log_file.open("a", encoding="utf-8") as f:
             f.write(msg + "\n")
 

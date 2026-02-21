@@ -10,10 +10,34 @@ TMP_DIR_BASE=/tmp
 LOG_DIR=/home/logs
 LOG_FILE=$LOG_DIR/log-analyzer.log
 PUBLIC_ANALYTICS_DIR=/home/public/analytics
+LOCK_DIR=$TMP_DIR_BASE/log-analyzer-weekly.lock
+LOCK_OWNED=0
 
 mkdir -p "$LOG_DIR" "$DATA_DIR"
 
 echo "=== log-analyzer run started: $(date '+%Y-%m-%d %H:%M:%S %Z') ===" >> "$LOG_FILE"
+
+acquire_lock() {
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+        printf '%s\n' "$$" > "$LOCK_DIR/pid"
+        LOCK_OWNED=1
+        return
+    fi
+
+    if [ -f "$LOCK_DIR/pid" ]; then
+        old_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+        if [ -n "$old_pid" ] && ! kill -0 "$old_pid" 2>/dev/null; then
+            rm -rf "$LOCK_DIR"
+            mkdir "$LOCK_DIR"
+            printf '%s\n' "$$" > "$LOCK_DIR/pid"
+            LOCK_OWNED=1
+            return
+        fi
+    fi
+
+    echo "ERROR: another log-analyzer-weekly run appears active (lock: $LOCK_DIR)" >&2
+    exit 1
+}
 
 if [ ! -x "$BIN" ]; then
     echo "ERROR: log-analyzer binary missing or not executable at $BIN" >&2
@@ -51,8 +75,13 @@ unique_dest() {
 
 cleanup() {
     rm -rf "$TMP_OUT" "$TMP_LOG_DIR"
+    if [ "$LOCK_OWNED" -eq 1 ]; then
+        rm -rf "$LOCK_DIR"
+    fi
 }
 trap cleanup EXIT
+
+acquire_lock
 
 HAVE_LOGS=0
 HAVE_GZ=0

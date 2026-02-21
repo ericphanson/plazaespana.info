@@ -11,11 +11,9 @@ if ! command -v zig &> /dev/null; then
     exit 1
 fi
 
-# Check if we have the generated C file
-if [ ! -f "build/log-analyzer.c" ]; then
-    echo "📝 Generating C source with jpm..."
-    jpm build
-fi
+# Always regenerate analyzer C source from current Janet code before compiling.
+echo "📝 Generating C source with jpm..."
+jpm build > /dev/null
 
 # Janet source pinned to a known-good release.
 JANET_VERSION="v1.41.2"

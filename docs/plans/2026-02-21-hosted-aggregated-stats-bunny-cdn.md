@@ -37,14 +37,14 @@ This removes ongoing PR maintenance while preserving privacy and recoverability.
 
 1. Cron executes `/home/private/bin/log-analyzer-weekly.sh`.
 2. Script runs `/home/private/bin/log-analyzer` and generates output in a temp directory.
-3. Privacy validation checks temp artifacts.
+3. Publish step runs privacy validation checks on generated and merged artifacts.
 4. Temp artifacts are promoted to `/home/private/log-analyzer-data` atomically.
 5. Publish to Apache-served path:
    - `/home/public/analytics/report.html` (primary human-facing report)
    - `/home/public/analytics/data/` (public aggregate JSON files)
 6. Mirror JSON files to Bunny backup path:
    - `analytics-backup/current/` (single bounded mirror, no timestamped snapshots)
-   - immutability guards prevent touching completed month JSON backups
+   - immutability guards prevent changing completed month JSON backups (missing remote files are re-uploaded from canonical local data)
 
 ### 3.2 Published artifacts
 
@@ -112,9 +112,10 @@ Responsibilities:
 5. If regenerated immutable-month content differs, preserve existing canonical month file (do not overwrite).
 6. Never delete completed-month backup files from Bunny.
 7. Reject if a completed-month Bunny backup file already exists and differs from canonical local content.
-8. Verify mirrored object count and sizes/checksums.
-9. Log success/failure.
-10. Exit non-zero on any failure.
+8. If a completed-month Bunny backup file is missing, re-upload the canonical local month file.
+9. Verify mirrored object count and sizes/checksums.
+10. Log success/failure.
+11. Exit non-zero on any failure.
 
 Mutable vs immutable backup files:
 
@@ -131,7 +132,7 @@ Mutable vs immutable backup files:
 Use explicit phases:
 
 1. Generate to temp output directory.
-2. Run privacy checks on temp output.
+2. Publish script validates privacy on generated output and merged output.
 3. Atomically update `/home/private/log-analyzer-data`.
 4. Run publish script.
 5. If publish fails:
@@ -232,6 +233,7 @@ External stale check:
 
 1. Read `https://plazaespana.info/analytics/data/manifest.json`.
 2. Alert if `published_at` is older than expected schedule.
+3. Implemented by scheduled workflow: `.github/workflows/check-analytics-stale.yml`.
 
 ---
 

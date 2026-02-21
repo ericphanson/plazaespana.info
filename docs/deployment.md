@@ -209,11 +209,11 @@ After upload, binary runs to generate:
 - `/home/public/events.json` - JSON API (web-accessible)
 - `/home/private/data/` - Cache & audit logs (not web-accessible)
 
-Log analyzer generates (via weekly cron):
+Log analyzer generates (via cron):
 - `/home/private/log-analyzer-data/` - canonical aggregate monthly JSON + lifetime JSON + report HTML
 - `/home/public/analytics/report.html` - public analytics report
 - `/home/public/analytics/data/*.json` - public aggregate JSON
-- Bunny mirror at `analytics-backup/current/` (JSON backup; immutable old month files)
+- Bunny mirror at `analytics-backup/current/` (JSON backup; immutable old month files by content)
 
 Notes:
 - `lifetime.json` is rebuilt from persisted month files and remains stable across log rotation.
@@ -228,7 +228,7 @@ Notes:
       buildsite         # Site generator binary
       cron-generate.sh  # Site generation wrapper (hourly cron)
       log-analyzer      # Log analyzer binary (FreeBSD)
-      log-analyzer-weekly.sh # Aggregate analytics snapshot job (weekly cron)
+      log-analyzer-weekly.sh # Aggregate analytics snapshot job (cron)
       log-analyzer-publish.py # Publish + privacy + backup wrapper
     config.toml         # Site generator config
     aemet-api-key.txt   # AEMET API key (optional, mode 600)
@@ -286,12 +286,12 @@ Expected output:
 
 ### 2. Setup NFSN Cron Job
 
-Add weekly analytics processing:
+Add analytics processing:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
 2. Add task:
    - **Command:** `/home/private/bin/log-analyzer-weekly.sh`
-   - **Schedule:** `0 1 * * 0` (Sunday at 1 AM)
+   - **Schedule:** `15 1 * * *` (daily at 01:15)
    - **Tag:** `log-analyzer-weekly` (optional)
 
 The wrapper script:
@@ -299,6 +299,7 @@ The wrapper script:
 - Writes aggregate output to `/home/private/log-analyzer-data`
 - Logs all activity to `/home/logs/log-analyzer.log`
 - Emits stderr on failures (so cron can alert)
+- Uses a lock directory to prevent overlapping runs
 
 ### 3. Configure Bunny Backup (Recommended)
 
@@ -328,6 +329,19 @@ Recommended:
 - Enable compression
 
 This controls how much exact history is available before only HLL-based long-term unique estimates remain.
+
+### 5. Configure Stale-Data Alerting
+
+This repo includes a scheduled workflow (`.github/workflows/check-analytics-stale.yml`) that checks:
+
+- `https://plazaespana.info/analytics/data/manifest.json`
+- `published_at` age must be <= 3 days
+
+You can run the same check locally:
+
+```bash
+just check-analytics-stale
+```
 
 ## Troubleshooting
 
@@ -390,6 +404,7 @@ tail -100 /home/logs/log-analyzer.log
 1. Missing `/home/private/bunny-*.txt` files
 2. Invalid Bunny storage key / zone / endpoint
 3. Immutable month mismatch (historical JSON changed unexpectedly)
+4. Missing immutable month object on Bunny (script will re-upload canonical local month file)
 
 **Fix:**
 ```bash
@@ -433,9 +448,10 @@ ssh "$NFSN_USER@$NFSN_HOST" 'tail -100 /home/logs/log-analyzer.log'
   - `/analytics/report.html`
   - `/analytics/data/lifetime.json`
 - [ ] Configure NFSN log rotation: Weekly with compression (NFSN web UI → Site Information)
-- [ ] Configure log-analyzer cron job: `0 1 * * 0` (Sunday 1 AM)
+- [ ] Configure log-analyzer cron job: `15 1 * * *` (daily at 01:15)
 - [ ] Configure Bunny backup env vars (`BUNNY_STORAGE_*`) and redeploy
 - [ ] Verify Bunny mirror was updated (check `/home/logs/log-analyzer.log`)
+- [ ] Verify stale-data workflow is green (`Check Analytics Freshness`)
 
 **After each deployment:**
 - [ ] Verify site updates with new content

@@ -64,11 +64,11 @@ scp build/log-analyzer-freebsd $NFSN_USER@$NFSN_HOST:/home/private/bin/log-analy
 ## Testing
 
 ```bash
-# Run all tests
-jpm test
+# Run all tests (Janet + Python HLL interop checks)
+just test
 ```
 
-Tests are in `test/` and cover the HyperLogLog implementation and the main analyzer functions (parsing, timezone conversion, classification, path bucketing).
+Tests cover the HyperLogLog implementation, analyzer functions (parsing, timezone conversion, classification, path bucketing), JSON encoder/decoder roundtrips, report rendering safety, and Python/Janet HLL compatibility for publish-time merging.
 
 ## Usage
 
@@ -89,7 +89,11 @@ Tests are in `test/` and cover the HyperLogLog implementation and the main analy
 ### On NFSN
 
 ```bash
-/home/private/bin/log-analyzer /home/logs
+# Production entrypoint (analyze + publish + backup + report)
+/home/private/bin/log-analyzer-weekly.sh
+
+# Direct analyzer invocation (debug only)
+/home/private/bin/log-analyzer --mode analyze --out-dir /tmp/log-analyzer-out /home/logs
 ```
 
 ## Output
@@ -129,7 +133,9 @@ log-analyzer/
 │   └── report.janet       # Report renderer from persisted JSON
 ├── test/
 │   ├── hll-test.janet     # HLL tests
-│   └── main-test.janet    # Analyzer function tests
+│   ├── json-roundtrip-test.janet # JSON encoder/decoder roundtrip tests
+│   ├── main-test.janet    # Analyzer function tests
+│   └── report-test.janet  # Report rendering safety tests
 ├── build/
 │   ├── log-analyzer       # Compiled executable
 │   └── log-analyzer.c     # Generated C source
@@ -139,4 +145,5 @@ log-analyzer/
 ## Requirements
 
 - **Build time**: Janet with jpm (for `jpm build`)
+- **Test time**: `python3` (for publish/HLL interop tests run via `just test`)
 - **Run time**: None (standalone executable)
