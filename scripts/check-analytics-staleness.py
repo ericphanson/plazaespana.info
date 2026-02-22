@@ -14,7 +14,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check analytics freshness.")
     parser.add_argument(
         "--manifest-url",
-        default="https://plazaespana.info/analytics_report.html",
+        default="https://plazaespana.info/analytics-report.html",
         help="Public analytics URL (report HTML or manifest JSON).",
     )
     parser.add_argument(

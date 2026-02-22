@@ -217,7 +217,7 @@ _deploy-files:
     echo "      b) Analytics snapshot (aggregate JSON):"
     echo "         Command: /home/private/bin/log-analyzer-daily.sh"
     echo "         Schedule: 15 1 * * * (daily at 01:15)"
-    echo "         Note: Logs to /home/logs/log-analyzer.log; serves report at /analytics_report.html"
+    echo "         Note: Logs to /home/logs/log-analyzer.log; serves report at /analytics-report.html"
 
 # Deploy to NearlyFreeSpeech.NET (requires NFSN_HOST and NFSN_USER env vars)
 deploy: freebsd log-analyzer-freebsd hash-css _deploy-files

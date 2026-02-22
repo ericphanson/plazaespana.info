@@ -174,7 +174,7 @@ if ! LOG_FILE="$LOG_FILE" python3 "$PUBLISH_BIN" "$TMP_OUT" "$DATA_DIR" >> "$LOG
 fi
 
 echo "Wrote aggregate stats to: $DATA_DIR" >> "$LOG_FILE"
-echo "Published analytics report to: /home/public/analytics_report.html" >> "$LOG_FILE"
+echo "Published analytics report to: /home/public/analytics-report.html" >> "$LOG_FILE"
 echo "=== log-analyzer run completed: $(date '+%Y-%m-%d %H:%M:%S %Z') ===" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
 

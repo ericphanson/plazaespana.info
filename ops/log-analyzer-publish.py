@@ -494,7 +494,7 @@ def main() -> int:
     parser.add_argument(
         "--public-report-path",
         default=None,
-        help="Public analytics report output path (default: /home/public/analytics_report.html).",
+        help="Public analytics report output path (default: /home/public/analytics-report.html).",
     )
     args = parser.parse_args()
 
@@ -503,7 +503,7 @@ def main() -> int:
     public_report_path = (
         Path(args.public_report_path)
         if args.public_report_path
-        else Path("/home/public/analytics_report.html")
+        else Path("/home/public/analytics-report.html")
     )
     public_json_dir = Path("/home/public/analytics")
     log_file = Path(os.environ.get("LOG_FILE", "/home/logs/log-analyzer.log"))
