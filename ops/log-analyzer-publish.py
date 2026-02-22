@@ -273,6 +273,7 @@ def atomic_copy_file(source_file: Path, target_file: Path) -> None:
             with source_file.open("rb") as src:
                 shutil.copyfileobj(src, tf)
         os.replace(tmp_name, target_file)
+        os.chmod(target_file, 0o644)
     finally:
         if tmp_name and os.path.exists(tmp_name):
             os.unlink(tmp_name)
