@@ -15,5 +15,5 @@ jobs:
       - name: Verify analytics manifest freshness
         run: |
           python3 scripts/check-analytics-staleness.py \
-            --manifest-url "https://plazaespana.info/analytics/data/manifest.json" \
+            --manifest-url "https://plazaespana.info/analytics_report.html" \
             --max-age-days 3

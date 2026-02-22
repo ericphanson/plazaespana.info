@@ -134,7 +134,7 @@ Site wrapper (`cron-generate.sh`):
 Analytics wrapper (`log-analyzer-daily.sh`):
 - Reads `/home/logs/access_log*`
 - Writes snapshots to `/home/private/log-analyzer-data`
-- Publishes `/home/public/analytics/report.html` and `/home/public/analytics/data/*.json`
+- Publishes `/home/public/analytics_report.html`
 - Logs to `/home/logs/log-analyzer.log`
 - Uses a lock directory to prevent overlapping runs and purges stale temp dirs
 - Deployment also creates `/home/private/bin/log-analyzer-weekly.sh` as a compatibility symlink to the daily script
@@ -163,7 +163,7 @@ Configure NFSN log rotation for analytics quality:
 
 Stale-data alerting:
 - Workflow: `.github/workflows/check-analytics-stale.yml`
-- Checks `https://plazaespana.info/analytics/data/manifest.json` and enforces `published_at` age <= 3 days
+- Checks `https://plazaespana.info/analytics_report.html` and enforces report `Generated:` age <= 3 days
 - Local check: `just check-analytics-stale`
 
 **View logs:**
@@ -275,8 +275,7 @@ After upload, binary runs to generate:
 
 Log analyzer generates (via cron):
 - `/home/private/log-analyzer-data/` - canonical aggregate monthly JSON + lifetime JSON + report HTML
-- `/home/public/analytics/report.html` - public analytics report
-- `/home/public/analytics/data/*.json` - public aggregate JSON
+- `/home/public/analytics_report.html` - public analytics report
 - Bunny mirror at `analytics-backup/current/` (JSON backup; immutable old month files by content)
 
 Notes:
@@ -307,9 +306,7 @@ Notes:
   public/               # ✅ Web root (served via HTTP)
     index.html          # Generated event listing
     events.json         # Generated JSON API
-    analytics/
-      report.html       # Analytics report
-      data/*.json       # Public aggregate JSON
+    analytics_report.html # Analytics report
     assets/             # CSS files and weather icons
       site.*.css        # Hashed main site CSS
       build-report.*.css # Hashed build report CSS
@@ -427,7 +424,7 @@ ssh "$NFSN_USER@$NFSN_HOST" 'tail -100 /home/logs/log-analyzer.log'
 **After first deployment (analytics):**
 - [ ] Run initial analytics processing: `/home/private/bin/log-analyzer-daily.sh`
 - [ ] Verify analytics output files in `/home/private/log-analyzer-data/`
-- [ ] Verify public analytics endpoints (`/analytics/report.html` and `/analytics/data/lifetime.json`)
+- [ ] Verify public analytics report endpoint (`/analytics_report.html`)
 - [ ] Configure analytics cron job: `15 1 * * *` (daily at 01:15)
 - [ ] Configure Bunny backup env vars (`BUNNY_STORAGE_*`) and redeploy
 - [ ] Configure NFSN log rotation: weekly with compression (NFSN web UI → Site Information)

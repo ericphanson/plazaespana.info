@@ -9,7 +9,6 @@ DATA_DIR=/home/private/log-analyzer-data
 TMP_DIR_BASE=${LOG_ANALYZER_TMP_DIR_BASE:-/tmp}
 LOG_DIR=/home/logs
 LOG_FILE=$LOG_DIR/log-analyzer.log
-PUBLIC_ANALYTICS_DIR=/home/public/analytics
 LOCK_DIR=$TMP_DIR_BASE/log-analyzer-daily.lock
 LOCK_OWNED=0
 KEEP_TMP_ON_FAILURE=${LOG_ANALYZER_KEEP_TMP_ON_FAILURE:-0}
@@ -166,7 +165,7 @@ if ! "$BIN" --mode analyze --out-dir "$TMP_OUT" "$TMP_LOG_DIR" >> "$LOG_FILE" 2>
     exit 1
 fi
 
-if ! LOG_FILE="$LOG_FILE" python3 "$PUBLISH_BIN" "$TMP_OUT" "$DATA_DIR" "$PUBLIC_ANALYTICS_DIR" >> "$LOG_FILE" 2>&1; then
+if ! LOG_FILE="$LOG_FILE" python3 "$PUBLISH_BIN" "$TMP_OUT" "$DATA_DIR" >> "$LOG_FILE" 2>&1; then
     echo "ERROR: publish step failed at $(date '+%Y-%m-%d %H:%M:%S')" >&2
     echo "==================== LOG TAIL ====================" >&2
     tail -200 "$LOG_FILE" >&2 || true
@@ -175,7 +174,7 @@ if ! LOG_FILE="$LOG_FILE" python3 "$PUBLISH_BIN" "$TMP_OUT" "$DATA_DIR" "$PUBLIC
 fi
 
 echo "Wrote aggregate stats to: $DATA_DIR" >> "$LOG_FILE"
-echo "Published analytics to: $PUBLIC_ANALYTICS_DIR" >> "$LOG_FILE"
+echo "Published analytics report to: /home/public/analytics_report.html" >> "$LOG_FILE"
 echo "=== log-analyzer run completed: $(date '+%Y-%m-%d %H:%M:%S %Z') ===" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
 

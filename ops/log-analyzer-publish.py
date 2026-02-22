@@ -8,7 +8,7 @@ Pipeline:
 4) generate report.html from persisted JSON files (phase 2)
 5) publish canonical private data
 6) mirror JSON backup to Bunny with immutable-month safeguards
-7) publish Apache analytics endpoints
+7) publish Apache analytics report
 """
 
 from __future__ import annotations
@@ -259,6 +259,25 @@ def atomic_replace_from_source(source_dir: Path, target_dir: Path) -> None:
         raise
 
 
+def atomic_copy_file(source_file: Path, target_file: Path) -> None:
+    target_file.parent.mkdir(parents=True, exist_ok=True)
+    tmp_name = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix=f".{target_file.name}.",
+            suffix=".tmp",
+            dir=target_file.parent,
+            delete=False,
+        ) as tf:
+            tmp_name = tf.name
+            with source_file.open("rb") as src:
+                shutil.copyfileobj(src, tf)
+        os.replace(tmp_name, target_file)
+    finally:
+        if tmp_name and os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+
+
 def run_checked(cmd: list[str], log: Logger, context: str) -> subprocess.CompletedProcess[str]:
     proc = subprocess.run(cmd, text=True, capture_output=True)
     if proc.returncode != 0:
@@ -472,12 +491,21 @@ def main() -> int:
     )
     parser.add_argument("generated_dir")
     parser.add_argument("data_dir", nargs="?", default="/home/private/log-analyzer-data")
-    parser.add_argument("public_analytics_dir", nargs="?", default="/home/public/analytics")
+    parser.add_argument(
+        "--public-report-path",
+        default=None,
+        help="Public analytics report output path (default: /home/public/analytics_report.html).",
+    )
     args = parser.parse_args()
 
     generated_dir = Path(args.generated_dir)
     data_dir = Path(args.data_dir)
-    public_dir = Path(args.public_analytics_dir)
+    public_report_path = (
+        Path(args.public_report_path)
+        if args.public_report_path
+        else Path("/home/public/analytics_report.html")
+    )
+    public_json_dir = Path("/home/public/analytics")
     log_file = Path(os.environ.get("LOG_FILE", "/home/logs/log-analyzer.log"))
     log = Logger(log_file)
 
@@ -503,9 +531,7 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix="log-analyzer-publish-") as td:
             work_dir = Path(td)
             merged_data_dir = work_dir / "merged-data"
-            public_stage_dir = work_dir / "public-analytics"
             merged_data_dir.mkdir(parents=True, exist_ok=True)
-            (public_stage_dir / "data").mkdir(parents=True, exist_ok=True)
 
             if data_dir.exists():
                 # Persist only canonical month shards from prior runs.
@@ -542,13 +568,18 @@ def main() -> int:
                 log=log,
             )
 
-            log.log("Publishing Apache analytics report and JSON...")
-            shutil.copy2(data_dir / "report.html", public_stage_dir / "report.html")
-            for fp in data_dir.glob("*.json"):
-                shutil.copy2(fp, public_stage_dir / "data" / fp.name)
-            atomic_replace_from_source(public_stage_dir, public_dir)
+            log.log("Publishing Apache analytics report...")
+            atomic_copy_file(data_dir / "report.html", public_report_path)
+            if public_json_dir.exists():
+                if public_json_dir.is_dir():
+                    shutil.rmtree(public_json_dir)
+                else:
+                    public_json_dir.unlink()
+                log.log(f"Removed public analytics JSON endpoint dir: {public_json_dir}")
 
-        log.log(f"Publish completed: data_dir={data_dir} public_dir={public_dir}")
+        log.log(
+            f"Publish completed: data_dir={data_dir} public_report={public_report_path}"
+        )
         return 0
     except Exception as e:  # noqa: BLE001
         log.log(f"ERROR: {e}")

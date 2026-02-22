@@ -461,8 +461,8 @@
 
     (buffer/push-string buf
       (string/format
-        "<section class=\"window-panel%s\" data-window=\"%s\">\n<h2>%s</h2>\n<div class=\"cards\">\n"
-        (if default? " active" "")
+        "<section id=\"panel-%s\" class=\"window-panel window-%s\">\n<h2>%s</h2>\n<div class=\"cards\">\n"
+        (escape-html id)
         (escape-html id)
         (escape-html title)))
 
@@ -515,21 +515,10 @@
         (escape-html (status-summary (agg :status-all)))))
     (buffer/push-string buf "</table>\n")
 
-    (buffer/push-string buf "<h3>Top Scan Signatures</h3>\n")
-    (if (empty? scan-signatures)
-      (buffer/push-string buf "<p class=\"meta\">No suspicious signatures in this window.</p>\n")
-      (do
-        (buffer/push-string buf "<ul class=\"scan-list\">\n")
-        (each [path count] scan-signatures
-          (buffer/push-string buf
-            (string/format "<li><code>%s</code> <span class=\"num\">(%d)</span></li>\n"
-              (escape-html path) count)))
-        (buffer/push-string buf "</ul>\n")))
-
-    (buffer/push-string buf "<h3>Daily Requests</h3>\n")
+    (buffer/push-string buf "<h3>Daily Requests (All Traffic)</h3>\n")
     (buffer/push-string buf
       (render-daily-chart (agg :daily-pairs) (agg :max-day) (agg :max-count)))
-    (buffer/push-string buf "<h4>Daily Visitor-Classified Requests</h4>\n")
+    (buffer/push-string buf "<h3>Daily Visitor-Classified Requests</h3>\n")
     (buffer/push-string buf
       (render-daily-chart
         (agg :daily-visitor-pairs)
@@ -554,6 +543,17 @@
           (string/format "<tr><td>%s</td><td class=\"num\">%d</td></tr>\n"
             (escape-html path) count))))
     (buffer/push-string buf "</table></div>\n</div>\n")
+
+    (buffer/push-string buf "<h3>Top Scan Signatures</h3>\n")
+    (if (empty? scan-signatures)
+      (buffer/push-string buf "<p class=\"meta\">No suspicious signatures in this window.</p>\n")
+      (do
+        (buffer/push-string buf "<ul class=\"scan-list\">\n")
+        (each [path count] scan-signatures
+          (buffer/push-string buf
+            (string/format "<li><code>%s</code> <span class=\"num\">(%d)</span></li>\n"
+              (escape-html path) count)))
+        (buffer/push-string buf "</ul>\n")))
 
     (buffer/push-string buf "</section>\n"))
 
@@ -588,12 +588,20 @@
     h4 { margin: 0.75rem 0 0.4rem; color: var(--muted); font-size: 0.95rem; }
     .meta { color: var(--muted); margin-bottom: 1rem; font-size: 0.9rem; }
     .summary { color: var(--fg); margin: 0.25rem 0 1rem; font-size: 0.98rem; }
-    .window-tabs { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
+    .window-switcher { margin: 1rem 0; }
+    .tab-radio { position: absolute; opacity: 0; pointer-events: none; }
+    .window-tabs { display: flex; gap: 0.5rem; margin: 0 0 1rem; flex-wrap: wrap; }
     .tab-btn { border: 1px solid var(--border); background: var(--card-bg); color: var(--fg);
-               border-radius: 999px; padding: 0.35rem 0.8rem; cursor: pointer; }
-    .tab-btn.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+               border-radius: 999px; padding: 0.35rem 0.8rem; cursor: pointer; user-select: none; }
+    #tab-30d:checked ~ .window-tabs label[for="tab-30d"],
+    #tab-7d:checked ~ .window-tabs label[for="tab-7d"],
+    #tab-all:checked ~ .window-tabs label[for="tab-all"] {
+      border-color: var(--accent); color: var(--accent); font-weight: 600;
+    }
     .window-panel { display: none; }
-    .window-panel.active { display: block; }
+    #tab-30d:checked ~ .window-panels .window-30d { display: block; }
+    #tab-7d:checked ~ .window-panels .window-7d { display: block; }
+    #tab-all:checked ~ .window-panels .window-all { display: block; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
     .card .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -636,15 +644,21 @@
       summary-human))
 
   (buffer/push-string buf
-    "<div class=\"window-tabs\" role=\"tablist\" aria-label=\"Time window\">
-<button class=\"tab-btn active\" data-window=\"30d\" type=\"button\">30d</button>
-<button class=\"tab-btn\" data-window=\"7d\" type=\"button\">7d</button>
-<button class=\"tab-btn\" data-window=\"all\" type=\"button\">All time</button>
-</div>\n")
+    "<div class=\"window-switcher\" aria-label=\"Time window\">
+<input class=\"tab-radio\" type=\"radio\" name=\"window-tab\" id=\"tab-30d\" checked>
+<input class=\"tab-radio\" type=\"radio\" name=\"window-tab\" id=\"tab-7d\">
+<input class=\"tab-radio\" type=\"radio\" name=\"window-tab\" id=\"tab-all\">
+<div class=\"window-tabs\" role=\"tablist\" aria-label=\"Time window\">
+<label class=\"tab-btn\" for=\"tab-30d\" role=\"tab\" aria-controls=\"panel-30d\">30d</label>
+<label class=\"tab-btn\" for=\"tab-7d\" role=\"tab\" aria-controls=\"panel-7d\">7d</label>
+<label class=\"tab-btn\" for=\"tab-all\" role=\"tab\" aria-controls=\"panel-all\">All time</label>
+</div>
+<div class=\"window-panels\">\n")
 
   (render-window-panel buf "30d" "Last 30 Days" agg-30 agg-prev-30 uniq-30 uniq-prev-30 "30d" true true)
   (render-window-panel buf "7d" "Last 7 Days" agg-7 agg-prev-7 uniq-7 uniq-prev-7 "7d" false true)
   (render-window-panel buf "all" "All Time" agg-all @{:requests 0 :visitors 0} uniq-all nil nil false false)
+  (buffer/push-string buf "</div>\n</div>\n")
 
   (when (or (not (empty? (agg-all :referrers)))
             (not (empty? (agg-all :referrers-visitors))))
@@ -704,19 +718,7 @@
     (buffer/push-string buf "</table>\n"))
 
   (buffer/push-string buf
-    "<script>
-(() => {
-  const buttons = Array.from(document.querySelectorAll('.tab-btn'));
-  const panels = Array.from(document.querySelectorAll('.window-panel'));
-  const show = (id) => {
-    buttons.forEach((b) => b.classList.toggle('active', b.dataset.window === id));
-    panels.forEach((p) => p.classList.toggle('active', p.dataset.window === id));
-  };
-  buttons.forEach((b) => b.addEventListener('click', () => show(b.dataset.window)));
-  show('30d');
-})();
-</script>
-<footer>Generated by log-analyzer</footer>\n</body>\n</html>")
+    "<footer>Generated by log-analyzer</footer>\n</body>\n</html>")
   (string buf))
 
 (defn generate-report-from-json-dir
