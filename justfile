@@ -229,6 +229,10 @@ deploy-only: _deploy-files
 check-analytics-stale MAX_AGE_DAYS="3":
     python3 scripts/check-analytics-staleness.py --max-age-days {{MAX_AGE_DAYS}}
 
+# Smoke-test Bunny credentials from local env (writes, reads, deletes a probe object)
+bunny-check:
+    @./scripts/bunny-smoke-test.sh
+
 # Generate content-hashed CSS for cache busting
 hash-css:
     @echo "🧹 Cleaning up old CSS files..."

@@ -143,6 +143,7 @@ Configure Bunny backup (recommended):
 - Set `BUNNY_STORAGE_KEY`, `BUNNY_STORAGE_ZONE`, `BUNNY_STORAGE_ENDPOINT`
 - Optional `BUNNY_BASE_PATH` defaults to `analytics-backup/current`
 - Run `just deploy` after setting them (deployment writes `/home/private/bunny-*.txt`, mode `600`)
+- Validate credentials before deploy with `just bunny-check` (performs a write/read/delete smoke test under `.../_healthchecks/`)
 
 Runtime knobs for analytics job:
 - `MONTH_CLOSE_GRACE_DAYS` (default `7`)
