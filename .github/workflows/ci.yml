@@ -161,6 +161,11 @@ jobs:
           name: log-analyzer-freebsd
           path: log-analyzer/build/
 
+      - name: Restore binary execute permissions
+        run: |
+          chmod +x build/buildsite log-analyzer/build/log-analyzer-freebsd
+          ls -l build/buildsite log-analyzer/build/log-analyzer-freebsd
+
       - name: Hash CSS
         run: just hash-css
 

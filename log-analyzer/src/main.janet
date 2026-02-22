@@ -345,22 +345,23 @@
                   scan (and (not bot) (is-scan? path status))]
 
               # Update hourly stats
-              (def hourly-entry
-                (or (get (stats :hourly) hour)
-                    (let [entry @{:ips @{}
-                                  :requests 0
-                                  :bytes 0
-                                  :bots 0
-                                  :scans 0
-                                  :visitors 0
-                                  :status-codes @{}
-                                  :status-by-type @{:bots @{} :scans @{} :visitors @{}}
-                                  :paths @{}
-                                  :referrer-categories @{}
-                                  :browsers @{}
-                                  :platforms @{}}]
-                      (put (stats :hourly) hour entry)
-                      entry)))
+	              (def hourly-entry
+	                (or (get (stats :hourly) hour)
+	                    (let [entry @{:ips @{}
+	                                  :requests 0
+	                                  :bytes 0
+	                                  :bots 0
+	                                  :scans 0
+	                                  :visitors 0
+	                                  :status-codes @{}
+	                                  :status-by-type @{:bots @{} :scans @{} :visitors @{}}
+	                                  :paths @{}
+	                                  :referrer-categories @{}
+	                                  :referrer-categories-by-type @{:bots @{} :scans @{} :visitors @{}}
+	                                  :browsers @{}
+	                                  :platforms @{}}]
+	                      (put (stats :hourly) hour entry)
+	                      entry)))
 
               (put hourly-entry :requests (+ 1 (hourly-entry :requests)))
               (put hourly-entry :bytes (+ bytes (hourly-entry :bytes)))
@@ -380,10 +381,13 @@
               (def path-counts (hourly-entry :paths))
               (put path-counts path (+ 1 (get path-counts path 0)))
 
-              # Track referrer categories
-              (def ref-cats (hourly-entry :referrer-categories))
-              (def ref-cat (classify-referrer referrer))
-              (put ref-cats ref-cat (+ 1 (get ref-cats ref-cat 0)))
+	              # Track referrer categories
+	              (def ref-cats (hourly-entry :referrer-categories))
+	              (def ref-cat (classify-referrer referrer))
+	              (put ref-cats ref-cat (+ 1 (get ref-cats ref-cat 0)))
+	              (def ref-cats-by-type (hourly-entry :referrer-categories-by-type))
+	              (def ref-cats-type (get ref-cats-by-type type-key))
+	              (put ref-cats-type ref-cat (+ 1 (get ref-cats-type ref-cat 0)))
 
               # Track unique visitors, browsers, platforms (visitors only)
               (when (not (or bot scan))
@@ -501,11 +505,12 @@
       :scans (entry :scans)
       :visitors (entry :visitors)
       :status_codes (entry :status-codes)
-      :status_by_type (entry :status-by-type)
-      :top_paths (format-top-paths (entry :paths) 20)
-      :referrer_categories (entry :referrer-categories)
-      :browsers (entry :browsers)
-      :platforms (entry :platforms)}))
+	      :status_by_type (entry :status-by-type)
+	      :top_paths (format-top-paths (entry :paths) 20)
+	      :referrer_categories (entry :referrer-categories)
+	      :referrer_categories_by_type (entry :referrer-categories-by-type)
+	      :browsers (entry :browsers)
+	      :platforms (entry :platforms)}))
 
 (defn build-monthly-json
   "Build monthly summary for JSON output.
