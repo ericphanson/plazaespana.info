@@ -37,6 +37,7 @@ direnv allow
 ```
 
 Variables will auto-load when you `cd` into the project. Why direnv? Gitignored credentials, no shell pollution, per-project config.
+The repo's `.envrc` loads `.envrc.local`.
 
 **Alternative (manual):**
 ```bash
@@ -74,6 +75,24 @@ just deploy
 
 **Automatic:** GitHub Actions deploys on push to `main` (after tests pass).
 
+### 4. Run Initial Analytics Snapshot (One Time)
+
+Run this once after the first successful deploy so analytics files exist before cron:
+
+```bash
+ssh $NFSN_USER@$NFSN_HOST
+/home/private/bin/log-analyzer-daily.sh
+
+# Verify outputs
+ls -lh /home/private/log-analyzer-data/
+tail -50 /home/logs/log-analyzer.log
+```
+
+Expected output:
+- `/home/private/log-analyzer-data/lifetime.json`
+- `/home/private/log-analyzer-data/YYYY-MM.json` files
+- `/home/private/log-analyzer-data/report.html`
+
 ## GitHub Actions Setup
 
 Add these secrets in repository Settings → Secrets and variables → Actions:
@@ -94,24 +113,63 @@ Add these secrets in repository Settings → Secrets and variables → Actions:
 
 **Note:** `AEMET_API_KEY` is required. Without it, site builds will fail.
 
-## Cron Setup on NFSN
+## Cron Setup on NFSN (Site + Analytics)
 
-After first deployment, set up hourly regeneration:
+After first deployment, configure both scheduled tasks:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
-2. Add task:
+2. Add site generation task:
    - **Command:** `/home/private/bin/cron-generate.sh`
    - **Schedule:** Every hour (or `0 * * * *`)
+3. Add analytics task:
+   - **Command:** `/home/private/bin/log-analyzer-daily.sh`
+   - **Schedule:** `15 1 * * *` (daily at 01:15)
+   - **Tag:** `log-analyzer-daily` (optional)
 
-The wrapper script:
+Site wrapper (`cron-generate.sh`):
 - Logs all output to `/home/logs/generate.log` with timestamps
-- Only sends email on build failures (non-zero exit code)
-- Includes full log in error emails for complete debugging context
+- Sends cron email only on failures with a concise error summary
+- Includes fallback log tail and full logfile path for debugging
+
+Analytics wrapper (`log-analyzer-daily.sh`):
+- Reads `/home/logs/access_log*`
+- Writes snapshots to `/home/private/log-analyzer-data`
+- Publishes `/home/public/analytics/report.html` and `/home/public/analytics/data/*.json`
+- Logs to `/home/logs/log-analyzer.log`
+- Uses a lock directory to prevent overlapping runs and purges stale temp dirs
+- Deployment also creates `/home/private/bin/log-analyzer-weekly.sh` as a compatibility symlink to the daily script
+
+Configure Bunny backup (recommended):
+- Set `BUNNY_STORAGE_KEY`, `BUNNY_STORAGE_ZONE`, `BUNNY_STORAGE_ENDPOINT`
+- Optional `BUNNY_BASE_PATH` defaults to `analytics-backup/current`
+- Run `just deploy` after setting them (deployment writes `/home/private/bunny-*.txt`, mode `600`)
+
+Runtime knobs for analytics job:
+- `MONTH_CLOSE_GRACE_DAYS` (default `7`)
+- `BUNNY_BACKUP_REQUIRED` (default `1`)
+- `LOG_ANALYZER_TMP_DIR_BASE` (default `/tmp`)
+- `LOG_ANALYZER_KEEP_TMP_ON_FAILURE` (`1` preserves temp dirs for debugging)
+- `BUNNY_CURL_CONNECT_TIMEOUT_SEC` (default `10`)
+- `BUNNY_CURL_MAX_TIME_SEC` (default `120`)
+- `BUNNY_CURL_RETRIES` (default `3`)
+- `BUNNY_CURL_RETRY_DELAY_SEC` (default `2`)
+- `BUNNY_CURL_RETRY_MAX_TIME_SEC` (default `180`)
+
+Configure NFSN log rotation for analytics quality:
+- Rotate weekly
+- Keep at least 4-8 weeks
+- Enable compression
+
+Stale-data alerting:
+- Workflow: `.github/workflows/check-analytics-stale.yml`
+- Checks `https://plazaespana.info/analytics/data/manifest.json` and enforces `published_at` age <= 3 days
+- Local check: `just check-analytics-stale`
 
 **View logs:**
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
 tail -f /home/logs/generate.log
+tail -f /home/logs/log-analyzer.log
 ```
 
 ## AEMET Weather API Setup
@@ -267,101 +325,6 @@ Notes:
 - Only `/home/public/` is web-accessible via HTTP/HTTPS
 - All other files (`/home/private/`, `/home/logs/`) are SSH-only
 
-## Log Analyzer Setup (One-Time Configuration)
-
-After first deployment with `log-analyzer`, complete these steps on NFSN.
-
-### 1. Run Initial Aggregation
-
-```bash
-ssh $NFSN_USER@$NFSN_HOST
-
-# Run initial analytics snapshot
-/home/private/bin/log-analyzer-daily.sh
-
-# Check output and logs
-ls -lh /home/private/log-analyzer-data/
-tail -50 /home/logs/log-analyzer.log
-```
-
-Expected output:
-- `/home/private/log-analyzer-data/lifetime.json`
-- `/home/private/log-analyzer-data/YYYY-MM.json` files
-- `/home/private/log-analyzer-data/report.html`
-
-### 2. Setup NFSN Cron Job
-
-Add analytics processing:
-
-1. NFSN web interface → Sites → your_site → Scheduled Tasks
-2. Add task:
-   - **Command:** `/home/private/bin/log-analyzer-daily.sh`
-   - **Schedule:** `15 1 * * *` (daily at 01:15)
-   - **Tag:** `log-analyzer-daily` (optional)
-
-The wrapper script:
-- Reads logs from `/home/logs/access_log*`
-- Writes aggregate output to `/home/private/log-analyzer-data`
-- Logs all activity to `/home/logs/log-analyzer.log`
-- Emits stderr on failures (so cron can alert)
-- Uses a lock directory to prevent overlapping runs
-- Cleans stale temp directories in `/tmp` from interrupted prior runs
-- Deployment also creates `/home/private/bin/log-analyzer-weekly.sh` as a compatibility symlink to the daily script
-
-### 3. Configure Bunny Backup (Recommended)
-
-Set these env vars before deployment (local or CI), then run `just deploy`:
-
-- `BUNNY_STORAGE_KEY`
-- `BUNNY_STORAGE_ZONE`
-- `BUNNY_STORAGE_ENDPOINT`
-- `BUNNY_BASE_PATH` (optional, default `analytics-backup/current`)
-
-Deployment writes these to `/home/private/bunny-*.txt` with mode `600`.
-If neither env vars nor existing Bunny files are present, `just deploy` fails to prevent a broken cron publish path.
-
-By default, publish will fail if Bunny config is missing (`BUNNY_BACKUP_REQUIRED=1` default).
-Temporary bypass (not recommended long-term):
-```bash
-BUNNY_BACKUP_REQUIRED=0 /home/private/bin/log-analyzer-daily.sh
-```
-
-Runtime knobs for analytics job:
-
-- `MONTH_CLOSE_GRACE_DAYS` (default `7`)
-- `BUNNY_BACKUP_REQUIRED` (default `1`)
-- `LOG_ANALYZER_TMP_DIR_BASE` (default `/tmp`)
-- `LOG_ANALYZER_KEEP_TMP_ON_FAILURE` (`1` preserves temp dirs for debugging)
-- `BUNNY_CURL_CONNECT_TIMEOUT_SEC` (default `10`)
-- `BUNNY_CURL_MAX_TIME_SEC` (default `120`)
-- `BUNNY_CURL_RETRIES` (default `3`)
-- `BUNNY_CURL_RETRY_DELAY_SEC` (default `2`)
-- `BUNNY_CURL_RETRY_MAX_TIME_SEC` (default `180`)
-
-### 4. Configure NFSN Log Rotation
-
-`log-analyzer` is stateless and reprocesses all available `access_log*` files each run.
-
-Recommended:
-- Rotate weekly
-- Keep at least 4–8 weeks
-- Enable compression
-
-This controls how much exact history is available before only HLL-based long-term unique estimates remain.
-
-### 5. Configure Stale-Data Alerting
-
-This repo includes a scheduled workflow (`.github/workflows/check-analytics-stale.yml`) that checks:
-
-- `https://plazaespana.info/analytics/data/manifest.json`
-- `published_at` age must be <= 3 days
-
-You can run the same check locally:
-
-```bash
-just check-analytics-stale
-```
-
 ## Troubleshooting
 
 ### Permission denied (SSH)
@@ -460,15 +423,13 @@ ssh "$NFSN_USER@$NFSN_HOST" 'tail -100 /home/logs/log-analyzer.log'
 - [ ] Check `/home/private/data/request-audit.json` for errors (via SSH)
 - [ ] View `build-report.html` to verify weather data fetching
 
-**Log-analyzer setup (after first deployment):**
-- [ ] Run initial processing: `/home/private/bin/log-analyzer-daily.sh`
-- [ ] Verify output files in `/home/private/log-analyzer-data/`
-- [ ] Verify public analytics endpoints:
-  - `/analytics/report.html`
-  - `/analytics/data/lifetime.json`
-- [ ] Configure NFSN log rotation: Weekly with compression (NFSN web UI → Site Information)
-- [ ] Configure log-analyzer cron job: `15 1 * * *` (daily at 01:15)
+**After first deployment (analytics):**
+- [ ] Run initial analytics processing: `/home/private/bin/log-analyzer-daily.sh`
+- [ ] Verify analytics output files in `/home/private/log-analyzer-data/`
+- [ ] Verify public analytics endpoints (`/analytics/report.html` and `/analytics/data/lifetime.json`)
+- [ ] Configure analytics cron job: `15 1 * * *` (daily at 01:15)
 - [ ] Configure Bunny backup env vars (`BUNNY_STORAGE_*`) and redeploy
+- [ ] Configure NFSN log rotation: weekly with compression (NFSN web UI → Site Information)
 - [ ] Verify Bunny mirror was updated (check `/home/logs/log-analyzer.log`)
 - [ ] Verify stale-data workflow is green (`Check Analytics Freshness`)
 

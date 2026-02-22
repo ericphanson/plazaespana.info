@@ -1,6 +1,6 @@
 # Local Environment Configuration (Example)
-# Copy this to .envrc.local and fill in your values
-# .envrc.local is gitignored and won't be committed
+# Copy this to .env.local and fill in your values.
+# .env.local is gitignored and won't be committed.
 
 # NearlyFreeSpeech.NET deployment credentials
 # Required for: just deploy
@@ -12,6 +12,21 @@ export NFSN_USER=your_username
 # Required for: weather integration, fixture fetching
 # Note: API keys have indefinite validity (no expiration)
 export AEMET_API_KEY=your_aemet_api_key_here
+
+# Bunny backup settings for analytics publish
+# If any are set, KEY + ZONE + ENDPOINT are all required.
+# Recommended for production deploys.
+export BUNNY_STORAGE_KEY=your_bunny_storage_key_here
+export BUNNY_STORAGE_ZONE=your_bunny_storage_zone_here
+export BUNNY_STORAGE_ENDPOINT=storage.bunnycdn.com
+# Optional (default is analytics-backup/current)
+export BUNNY_BASE_PATH=analytics-backup/current
+
+# Optional analytics runtime tuning knobs
+# export MONTH_CLOSE_GRACE_DAYS=7
+# export BUNNY_BACKUP_REQUIRED=1
+# export LOG_ANALYZER_TMP_DIR_BASE=/tmp
+# export LOG_ANALYZER_KEEP_TMP_ON_FAILURE=0
 
 # Optional: Add other local development settings here
 # export MY_DEBUG_FLAG=true
