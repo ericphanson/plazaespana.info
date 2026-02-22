@@ -41,24 +41,26 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
 
-      - name: Install Janet/JPM and Zig
+      - name: Install Janet/JPM
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential curl xz-utils
+          sudo apt-get install -y build-essential
 
           git clone --depth=1 --branch v1.41.2 https://github.com/janet-lang/janet.git /tmp/janet
           make -C /tmp/janet
           sudo make -C /tmp/janet install
           sudo make -C /tmp/janet install-jpm-git
 
-          ZIG_VERSION=0.13.0
-          curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz
-          tar -xf /tmp/zig.tar.xz -C /tmp
-          sudo mv "/tmp/zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/zig
-
           janet -v
           command -v jpm >/dev/null
-          zig version
+
+      - name: Set up Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.13.0
+
+      - name: Verify Zig
+        run: zig version
 
       - name: Check formatting
         run: just fmt-check
