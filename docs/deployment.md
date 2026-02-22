@@ -19,6 +19,7 @@ This guide covers deploying the Madrid Events site to NearlyFreeSpeech.NET (NFSN
 - SSH access to your NFSN account
 - SSH key pair for authentication
 - **direnv** (recommended) - [Install direnv](https://direnv.net/docs/installation.html)
+- NFS host has `python3` and `curl` available (required by analytics publish/backup script)
 
 ## Quick Start
 
@@ -36,6 +37,7 @@ direnv allow
 ```
 
 Variables will auto-load when you `cd` into the project. Why direnv? Gitignored credentials, no shell pollution, per-project config.
+The repo's `.envrc` loads `.envrc.local`.
 
 **Alternative (manual):**
 ```bash
@@ -66,60 +68,109 @@ ssh your_username@ssh.phx.nearlyfreespeech.net
 just deploy
 ```
 
+`just deploy` now fails early with actionable errors if common prerequisites are missing:
+- `build/buildsite` missing (`just freebsd`)
+- `log-analyzer/build/log-analyzer-freebsd` missing (`just log-analyzer-freebsd`)
+- hashed CSS artifacts missing (`just hash-css`)
+
 **Automatic:** GitHub Actions deploys on push to `main` (after tests pass).
+
+### 4. Run Initial Analytics Snapshot (One Time)
+
+Run this once after the first successful deploy so analytics files exist before cron:
+
+```bash
+ssh $NFSN_USER@$NFSN_HOST
+/home/private/bin/log-analyzer-daily.sh
+
+# Verify outputs
+ls -lh /home/private/log-analyzer-data/
+tail -50 /home/logs/log-analyzer.log
+```
+
+Expected output:
+- `/home/private/log-analyzer-data/lifetime.json`
+- `/home/private/log-analyzer-data/YYYY-MM.json` files
+- `/home/private/log-analyzer-data/report.html`
 
 ## GitHub Actions Setup
 
 Add these secrets in repository Settings → Secrets and variables → Actions:
 
-| Secret Name        | Description                  | Value                               | Required |
-|--------------------|------------------------------|-------------------------------------|----------|
-| `NFSN_SSH_KEY`     | Private SSH key              | Contents of `~/.ssh/id_ed25519`     | Yes      |
-| `NFSN_HOST`        | NFSN SSH hostname            | SSH hostname from site information  | Yes      |
-| `NFSN_USER`        | NFSN username                | `your_username`                     | Yes      |
-| `NFSN_KNOWN_HOST`  | SSH host key (for security)  | Output from `ssh-keyscan` command   | Yes      |
-| `AEMET_API_KEY`    | AEMET weather API key        | Your AEMET OpenData API key         | Yes      |
+| Secret Name               | Description                          | Value                               | Required |
+|---------------------------|--------------------------------------|-------------------------------------|----------|
+| `NFSN_SSH_KEY`            | Private SSH key                      | Contents of `~/.ssh/id_ed25519`     | Yes      |
+| `NFSN_HOST`               | NFSN SSH hostname                    | SSH hostname from site information  | Yes      |
+| `NFSN_USER`               | NFSN username                        | `your_username`                     | Yes      |
+| `NFSN_KNOWN_HOST`         | SSH host key (preview/cleanup jobs)  | Output from `ssh-keyscan -H`        | Yes      |
+| `AEMET_API_KEY`           | AEMET weather API key                | Your AEMET OpenData API key         | Yes      |
+| `BUNNY_STORAGE_KEY`       | Bunny storage API key                | Bunny storage key                   | Recommended |
+| `BUNNY_STORAGE_ZONE`      | Bunny storage zone                   | e.g. `my-analytics-zone`            | Recommended |
+| `BUNNY_STORAGE_ENDPOINT`  | Bunny storage endpoint host          | e.g. `storage.bunnycdn.com`         | Recommended |
+| `BUNNY_BASE_PATH`         | Bunny backup path prefix             | default: `analytics-backup/current` | Optional |
 
 ⚠️ Use the **private key** that matches the public key uploaded to NFSN.
 
 **Note:** `AEMET_API_KEY` is required. Without it, site builds will fail.
 
-### How to populate NFSN_KNOWN_HOST
+## Cron Setup on NFSN (Site + Analytics)
 
-To securely verify the NFSN host key, run this command **from a trusted machine** (not in CI):
-
-```bash
-ssh-keyscan -H "$NFSN_HOST"
-```
-
-This will output something like:
-```
-|1|abc123...= ssh-ed25519 AAAA...
-|1|def456...= ssh-rsa AAAA...
-```
-
-**Copy the entire output** and paste it as the value for the `NFSN_KNOWN_HOST` secret.
-
-**Why this matters:** This prevents man-in-the-middle attacks during GitHub Actions deployments. By capturing the host key once from a trusted network and storing it as a secret, all future CI runs will verify they're connecting to the legitimate NFSN server.
-
-## Cron Setup on NFSN
-
-After first deployment, set up hourly regeneration:
+After first deployment, configure both scheduled tasks:
 
 1. NFSN web interface → Sites → your_site → Scheduled Tasks
-2. Add task:
+2. Add site generation task:
    - **Command:** `/home/private/bin/cron-generate.sh`
    - **Schedule:** Every hour (or `0 * * * *`)
+3. Add analytics task:
+   - **Command:** `/home/private/bin/log-analyzer-daily.sh`
+   - **Schedule:** `15 1 * * *` (daily at 01:15)
+   - **Tag:** `log-analyzer-daily` (optional)
 
-The wrapper script:
+Site wrapper (`cron-generate.sh`):
 - Logs all output to `/home/logs/generate.log` with timestamps
-- Only sends email on build failures (non-zero exit code)
-- Includes full log in error emails for complete debugging context
+- Sends cron email only on failures with a concise error summary
+- Includes fallback log tail and full logfile path for debugging
+
+Analytics wrapper (`log-analyzer-daily.sh`):
+- Reads `/home/logs/access_log*`
+- Writes snapshots to `/home/private/log-analyzer-data`
+- Publishes `/home/public/analytics/report.html` and `/home/public/analytics/data/*.json`
+- Logs to `/home/logs/log-analyzer.log`
+- Uses a lock directory to prevent overlapping runs and purges stale temp dirs
+- Deployment also creates `/home/private/bin/log-analyzer-weekly.sh` as a compatibility symlink to the daily script
+
+Configure Bunny backup (recommended):
+- Set `BUNNY_STORAGE_KEY`, `BUNNY_STORAGE_ZONE`, `BUNNY_STORAGE_ENDPOINT`
+- Optional `BUNNY_BASE_PATH` defaults to `analytics-backup/current`
+- Run `just deploy` after setting them (deployment writes `/home/private/bunny-*.txt`, mode `600`)
+- Validate credentials before deploy with `just bunny-check` (performs a write/read/delete smoke test under `.../_healthchecks/`)
+
+Runtime knobs for analytics job:
+- `MONTH_CLOSE_GRACE_DAYS` (default `7`)
+- `BUNNY_BACKUP_REQUIRED` (default `1`)
+- `LOG_ANALYZER_TMP_DIR_BASE` (default `/tmp`)
+- `LOG_ANALYZER_KEEP_TMP_ON_FAILURE` (`1` preserves temp dirs for debugging)
+- `BUNNY_CURL_CONNECT_TIMEOUT_SEC` (default `10`)
+- `BUNNY_CURL_MAX_TIME_SEC` (default `120`)
+- `BUNNY_CURL_RETRIES` (default `3`)
+- `BUNNY_CURL_RETRY_DELAY_SEC` (default `2`)
+- `BUNNY_CURL_RETRY_MAX_TIME_SEC` (default `180`)
+
+Configure NFSN log rotation for analytics quality:
+- Rotate weekly
+- Keep at least 4-8 weeks
+- Enable compression
+
+Stale-data alerting:
+- Workflow: `.github/workflows/check-analytics-stale.yml`
+- Checks `https://plazaespana.info/analytics/data/manifest.json` and enforces `published_at` age <= 3 days
+- Local check: `just check-analytics-stale`
 
 **View logs:**
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
 tail -f /home/logs/generate.log
+tail -f /home/logs/log-analyzer.log
 ```
 
 ## AEMET Weather API Setup
@@ -201,7 +252,7 @@ build/buildsite                      → /home/private/bin/buildsite
 ops/cron-generate.sh                 → /home/private/bin/cron-generate.sh
 config.toml                          → /home/private/config.toml
 $AEMET_API_KEY (env)                 → /home/private/aemet-api-key.txt (if set)
-templates/index-grouped.tmpl.html    → /home/private/templates/index-grouped.tmpl.html
+generator/templates/index.tmpl.html  → /home/private/templates/index.tmpl.html
 
 # Static assets
 public/assets/site.*.css             → /home/public/assets/
@@ -210,10 +261,11 @@ public/assets/*.hash                 → /home/public/assets/
 public/assets/weather-icons/*.png    → /home/public/assets/weather-icons/
 ops/htaccess                         → /home/public/.htaccess
 
-# AWStats
-ops/awstats.conf                     → /home/private/awstats.conf
-ops/awstats-weekly.sh                → /home/private/bin/awstats-weekly.sh
-ops/stats.htaccess                   → /home/public/stats/.htaccess
+# Log analyzer
+log-analyzer/build/log-analyzer-freebsd → /home/private/bin/log-analyzer
+ops/log-analyzer-daily.sh               → /home/private/bin/log-analyzer-daily.sh
+ops/log-analyzer-publish.py             → /home/private/bin/log-analyzer-publish.py
+$BUNNY_* (env, optional)                → /home/private/bunny-*.txt
 ```
 
 After upload, binary runs to generate:
@@ -221,9 +273,15 @@ After upload, binary runs to generate:
 - `/home/public/events.json` - JSON API (web-accessible)
 - `/home/private/data/` - Cache & audit logs (not web-accessible)
 
-AWStats generates (via weekly cron):
-- `/home/public/stats/` - AWStats HTML pages (Basic Auth protected)
-- `/home/private/awstats-data/` - AWStats database files (synced to git via GitHub Actions)
+Log analyzer generates (via cron):
+- `/home/private/log-analyzer-data/` - canonical aggregate monthly JSON + lifetime JSON + report HTML
+- `/home/public/analytics/report.html` - public analytics report
+- `/home/public/analytics/data/*.json` - public aggregate JSON
+- Bunny mirror at `analytics-backup/current/` (JSON backup; immutable old month files by content)
+
+Notes:
+- `lifetime.json` is rebuilt from persisted month files and remains stable across log rotation.
+- `report.html` is generated from persisted JSON files, so historical months remain represented after log rotation.
 
 ## NFSN Directory Structure
 
@@ -233,194 +291,40 @@ AWStats generates (via weekly cron):
     bin/
       buildsite         # Site generator binary
       cron-generate.sh  # Site generation wrapper (hourly cron)
-      awstats-weekly.sh # AWStats processor (weekly cron)
+      log-analyzer      # Log analyzer binary (FreeBSD)
+      log-analyzer-daily.sh # Aggregate analytics snapshot job (cron)
+      log-analyzer-publish.py # Publish + privacy + backup wrapper
     config.toml         # Site generator config
     aemet-api-key.txt   # AEMET API key (optional, mode 600)
-    awstats.conf        # AWStats config
+    bunny-storage-key.txt      # Bunny storage key (optional, mode 600)
+    bunny-storage-zone.txt     # Bunny storage zone (optional, mode 600)
+    bunny-storage-endpoint.txt # Bunny endpoint host (optional, mode 600)
+    bunny-base-path.txt        # Bunny base path (optional, mode 600)
     templates/          # HTML templates
     data/               # Site generator cache, audit logs (auto-created)
-    awstats-data/       # AWStats database files (synced to git)
-
-  protected/            # 🔒 Apache-readable only (not web-accessible)
-    .htpasswd           # Basic Auth passwords
+    log-analyzer-data/  # Canonical aggregate analytics snapshots
 
   public/               # ✅ Web root (served via HTTP)
     index.html          # Generated event listing
     events.json         # Generated JSON API
+    analytics/
+      report.html       # Analytics report
+      data/*.json       # Public aggregate JSON
     assets/             # CSS files and weather icons
       site.*.css        # Hashed main site CSS
       build-report.*.css # Hashed build report CSS
       weather-icons/    # AEMET weather icons (PNG)
-    stats/              # AWStats HTML (Basic Auth protected)
-      .htaccess         # Basic Auth config for stats
-      index.html        # AWStats main page
     .htaccess           # Apache config (caching, security headers)
 
   logs/                 # Log files
     access_log          # Apache access log (NFSN rotates automatically)
     generate.log        # Site generation log
-    awstats.log         # AWStats processing log
+    log-analyzer.log    # Log analyzer processing log
 ```
 
 **Access control:**
 - Only `/home/public/` is web-accessible via HTTP/HTTPS
-- `/home/public/stats/` requires Basic Auth (username/password)
-- `/home/protected/` is readable by Apache (for .htpasswd) but not web-accessible
 - All other files (`/home/private/`, `/home/logs/`) are SSH-only
-
-## AWStats Setup (One-Time Configuration)
-
-After first deployment with AWStats files, complete these one-time setup steps on NFSN.
-
-### 1. Create Basic Auth Password
-
-Protect the `/stats/` directory with a password:
-
-```bash
-# SSH to NFSN
-ssh $NFSN_USER@$NFSN_HOST
-
-# Create protected directory if it doesn't exist
-mkdir -p /home/protected
-
-# Create htpasswd file (username: awstats)
-htpasswd -c /home/protected/.htpasswd awstats
-# Enter password when prompted
-
-# Set secure permissions
-chmod 600 /home/protected/.htpasswd
-chmod 755 /home/protected
-
-# Exit SSH
-exit
-```
-
-**Important:** Remember this username/password - you'll need it to access `https://plazaespana.info/stats/`
-
-### 2. Verify AWStats Config
-
-Test that AWStats can read the config:
-
-```bash
-ssh $NFSN_USER@$NFSN_HOST
-
-# Test config syntax
-perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest
-
-# Expected output should show:
-# Config file '/home/private/awstats.conf' read successfully
-# LogFile = /home/logs/access_log
-# SiteDomain = plazaespana.info
-```
-
-### 3. Run Initial AWStats Processing
-
-Generate the first stats manually:
-
-```bash
-# Still on NFSN via SSH
-
-# IMPORTANT: If you previously ran AWStats without privacy settings,
-# clean existing database files to remove stored IP addresses
-rm -f /home/private/awstats-data/*.txt
-
-# Run initial processing with privacy-focused config
-/home/private/bin/awstats-weekly.sh
-
-# Check for errors
-tail -50 /home/logs/awstats.log
-
-# Verify files were created
-ls -lh /home/public/stats/
-ls -lh /home/private/awstats-data/
-```
-
-**Expected output:**
-- `/home/public/stats/index.html` and other AWStats HTML files
-- `/home/private/awstats-data/*.txt` - AWStats database files (aggregate statistics only, no IPs)
-
-### 4. Test Web Access
-
-Visit `https://plazaespana.info/stats/` in your browser:
-- Should prompt for username/password (Basic Auth)
-- After login, should show AWStats statistics page
-- If you see Apache directory listing or 403 error, check `.htaccess` deployment
-
-### 5. Setup AWStats Cron Job
-
-Add weekly AWStats processing to NFSN scheduled tasks:
-
-1. NFSN web interface → Sites → your_site → Scheduled Tasks
-2. Add task:
-   - **Command:** `/home/private/bin/awstats-weekly.sh`
-   - **Schedule:** `0 1 * * 0` (Sunday at 1 AM)
-   - **Tag:** `awstats-weekly` (optional, for identification)
-
-The wrapper script:
-- Logs all output to `/home/logs/awstats.log` with timestamps
-- Only sends email on processing failures (non-zero exit code)
-- Includes full log in error emails for complete debugging context
-
-**Why Sunday 1 AM?**
-- Low traffic time
-- After weekend events (captures full week)
-- Weekly processing schedule
-
-**View logs:**
-```bash
-ssh your_username@ssh.phx.nearlyfreespeech.net
-tail -f /home/logs/awstats.log
-```
-
-### 6. Setup AWStats Database Sync (GitHub Actions)
-
-For automated PR creation when statistics database is updated:
-
-1. **Generate dedicated SSH key for database sync:**
-   ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/nfsn_awstats -N ""
-   ```
-
-2. **Add public key to NFSN:**
-   - NFSN web interface → Sites → your_site → SSH/SFTP → Authorized Keys
-   - Upload `~/.ssh/nfsn_awstats.pub`
-
-3. **Add GitHub Secrets:**
-   - Repository Settings → Secrets and variables → Actions
-   - Add secrets:
-     - `NFSN_SSH_KEY`: Paste contents of `~/.ssh/nfsn_awstats` (private key)
-     - `NFSN_HOST`: Your NFSN hostname (e.g., `ssh.phx.nearlyfreespeech.net`)
-     - `NFSN_USER`: Your NFSN username (format: `username_sitename`)
-
-4. **Test workflow:**
-   - GitHub → Actions → "Fetch AWStats Archives" → Run workflow
-   - Should create/update PR with AWStats database files from `/home/private/awstats-data/`
-
-**What gets synced:**
-- Monthly statistics files (`awstatsMMYYYY.awstats.txt`)
-- DNS cache and other state files
-- **Privacy:** Only aggregate statistics (no IPs or individual requests)
-
-**Note:** The workflow runs automatically after each push to `main`, or manually via workflow_dispatch.
-
-### 7. Configure NFSN Log Rotation
-
-Since AWStats tracks its position in the log file, NFSN's automatic log rotation won't cause issues. However, you should verify rotation is configured:
-
-1. **NFSN web interface → Sites → your_site → Site Information**
-2. Look for "Log Rotation" settings
-3. **Recommended:** Daily or weekly rotation with compression
-
-**Why this matters:**
-- Without rotation, `access_log` grows indefinitely
-- AWStats uses `KeepBackupOfHistoricFiles=1` to track position across rotations
-- After rotation, AWStats automatically detects the new log file and continues processing
-- Historical data is preserved in AWStats database files (synced to git)
-
-**Example rotation schedule:**
-- Rotate: Weekly (recommended)
-- Keep: 4 weeks of compressed logs
-- Compression: gzip
 
 ## Troubleshooting
 
@@ -437,7 +341,7 @@ ssh-keyscan -H ssh.phx.nearlyfreespeech.net >> ~/.ssh/known_hosts
 
 ### GitHub Actions deployment fails
 
-1. Verify all three secrets are set in repository settings
+1. Verify required secrets are set in repository settings (`NFSN_SSH_KEY`, `NFSN_HOST`, `NFSN_USER`, `AEMET_API_KEY`)
 2. Ensure `NFSN_SSH_KEY` private key matches public key on NFSN
 3. Check GitHub Actions logs for specific errors
 
@@ -452,64 +356,47 @@ tail -100 /home/logs/generate.log
 **Run manually to debug:**
 ```bash
 ssh your_username@ssh.phx.nearlyfreespeech.net
-/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index-grouped.tmpl.html -fetch-mode production
+/home/private/bin/buildsite -config /home/private/config.toml -out-dir /home/public -data-dir /home/private/data -template-path /home/private/templates/index.tmpl.html -fetch-mode production
 ```
 
-### AWStats shows "No data available"
+### Log analyzer output missing or stale
 
 **Causes:**
 1. Access log is empty (no traffic yet)
-2. AWStats hasn't processed any logs
-3. Config pointing to wrong log file
+2. Log-analyzer cron hasn't run yet
+3. Wrapper script failed
 
 **Fix:**
 ```bash
 # Check if logs exist
 ls -lh /home/logs/access_log
 
-# Check if AWStats data exists
-ls -lh /home/private/awstats-data/
+# Check if aggregate output exists
+ls -lh /home/private/log-analyzer-data/
 
-# Manually process current log
-/home/private/bin/awstats-weekly.sh
+# Manually process current logs
+/home/private/bin/log-analyzer-daily.sh
+
+# Inspect logs
+tail -100 /home/logs/log-analyzer.log
 ```
 
-### Basic Auth not working for /stats/
-
-**Symptom:** Can access `/stats/` without password, or get 500 error
-
-**Fix:**
-```bash
-# Verify .htaccess was deployed
-ssh $NFSN_USER@$NFSN_HOST ls -la /home/public/stats/.htaccess
-
-# Verify .htpasswd exists
-ssh $NFSN_USER@$NFSN_HOST ls -la /home/protected/.htpasswd
-
-# Check permissions
-ssh $NFSN_USER@$NFSN_HOST "stat -f '%A %N' /home/protected/.htpasswd /home/protected"
-# Should show: 600 /home/protected/.htpasswd and 755 /home/protected
-```
-
-### Database sync workflow fails
+### Bunny backup sync fails
 
 **Common causes:**
-1. SSH key not added to NFSN
-2. `NFSN_SSH_KEY` secret has wrong key
-3. `gh` authentication failed
+1. Missing `/home/private/bunny-*.txt` files
+2. Invalid Bunny storage key / zone / endpoint
+3. Immutable month mismatch (historical JSON changed unexpectedly)
+4. Missing immutable month object on Bunny (script will re-upload canonical local month file)
 
 **Fix:**
 ```bash
-# Test SSH access locally
-ssh -i ~/.ssh/nfsn_awstats $NFSN_USER@$NFSN_HOST ls /home/private/awstats-data/
+# Check Bunny config on NFS
+ssh "$NFSN_USER@$NFSN_HOST" 'ls -l /home/private/bunny-*.txt'
 
-# Test SCP access
-scp "$NFSN_USER@$NFSN_HOST:/home/private/awstats-data/*.txt" /tmp/test-awstats/
-
-# Verify GitHub CLI auth
-gh auth status
-
-# Check workflow logs for specific error
+# Run analytics job manually and inspect logs
+ssh "$NFSN_USER@$NFSN_HOST" '/home/private/bin/log-analyzer-daily.sh'
+ssh "$NFSN_USER@$NFSN_HOST" 'tail -100 /home/logs/log-analyzer.log'
 ```
 
 ## Security
@@ -518,7 +405,7 @@ gh auth status
 - Private keys belong in `~/.ssh/` (local) and GitHub Secrets (CI)
 - Public keys are safe to share (uploaded to NFSN)
 - Use `ed25519` keys (more secure than RSA)
-- Keep separate SSH keys for deployment vs. database sync (better security isolation)
+- Keep Bunny credentials in `/home/private` with mode `600` and rotate periodically
 
 ## Deployment Checklist
 
@@ -537,19 +424,17 @@ gh auth status
 - [ ] Check `/home/private/data/request-audit.json` for errors (via SSH)
 - [ ] View `build-report.html` to verify weather data fetching
 
-**AWStats setup (after first deployment):**
-- [ ] Create protected directory: `mkdir -p /home/protected`
-- [ ] Create Basic Auth password: `htpasswd -c /home/protected/.htpasswd awstats`
-- [ ] Set permissions: `chmod 600 /home/protected/.htpasswd && chmod 755 /home/protected`
-- [ ] Verify AWStats config: `perl /usr/local/www/awstats/cgi-bin/awstats.pl -configdir=/home/private -config=awstats -configtest`
-- [ ] Run initial processing: `/home/private/bin/awstats-weekly.sh`
-- [ ] Test web access: Visit `https://plazaespana.info/stats/` (should prompt for password)
-- [ ] Configure NFSN log rotation: Weekly with compression (NFSN web UI → Site Information)
-- [ ] Configure AWStats cron job: `0 1 * * 0` (Sunday 1 AM)
-- [ ] Setup database sync SSH key and GitHub secrets
-- [ ] Test database sync workflow: GitHub Actions → "Fetch AWStats Archives" → Run workflow
+**After first deployment (analytics):**
+- [ ] Run initial analytics processing: `/home/private/bin/log-analyzer-daily.sh`
+- [ ] Verify analytics output files in `/home/private/log-analyzer-data/`
+- [ ] Verify public analytics endpoints (`/analytics/report.html` and `/analytics/data/lifetime.json`)
+- [ ] Configure analytics cron job: `15 1 * * *` (daily at 01:15)
+- [ ] Configure Bunny backup env vars (`BUNNY_STORAGE_*`) and redeploy
+- [ ] Configure NFSN log rotation: weekly with compression (NFSN web UI → Site Information)
+- [ ] Verify Bunny mirror was updated (check `/home/logs/log-analyzer.log`)
+- [ ] Verify stale-data workflow is green (`Check Analytics Freshness`)
 
 **After each deployment:**
 - [ ] Verify site updates with new content
 - [ ] Check `/home/logs/generate.log` for build errors
-- [ ] If AWStats enabled, check `/home/logs/awstats.log` for stats errors
+- [ ] Check `/home/logs/log-analyzer.log` for analytics errors

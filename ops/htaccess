@@ -10,7 +10,7 @@
 
 # Security headers
 <IfModule mod_headers.c>
-  Header always set Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+  Header always set Content-Security-Policy "default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'"
   Header always set Referrer-Policy "no-referrer"
   Header always set X-Content-Type-Options "nosniff"
   Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
