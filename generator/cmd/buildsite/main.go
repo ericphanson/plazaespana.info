@@ -819,8 +819,20 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: Weather fetch failed: %v\n", err)
 			log.Printf("ERROR: Weather fetch failed: %v", err)
-			buildReport.AddWarning("Weather fetch failed: %v", err)
-			buildReport.Weather.Error = err.Error()
+
+			// Only hard-fail if there is no recent successful build to fall back on.
+			// A transient failure (e.g. 429) while recent output exists is not worth an email.
+			// Exit cleanly (code 0) so existing output files are left untouched.
+			const recentBuildThreshold = 24 * time.Hour
+			indexPath := filepath.Join(outputDir, "index.html")
+			if info, statErr := os.Stat(indexPath); statErr == nil {
+				age := time.Since(info.ModTime())
+				if age < recentBuildThreshold {
+					log.Printf("WARNING: Weather unavailable, but a recent successful build exists (%s ago). Exiting cleanly — existing output unchanged.",
+						age.Round(time.Minute))
+					os.Exit(0) // skip defer: don't overwrite build-report.html either
+				}
+			}
 			log.Fatal("weather fetch is required but failed")
 		}
 		log.Printf("Weather forecast received: %d days", len(forecast.Prediction.Days))
